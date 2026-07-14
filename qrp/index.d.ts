@@ -2,7 +2,7 @@
  * @module qrp
  * Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
  * keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
- * custom elements (`define`), and HTML5 routing. `import … from "./qrp/index.js"`.
+ * custom elements (`define`), and HTML5 routing. `import … from "@nemanjan00/qrp"`.
  */
 
 // --- shared types ----------------------------------------------------------

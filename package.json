@@ -1,14 +1,72 @@
 {
-	"name": "qrp",
+	"name": "@nemanjan00/qrp",
 	"version": "0.1.0",
 	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step — the devDependencies below are only for tests, lint, and git hooks.",
 	"type": "module",
+	"exports": {
+		".": { "types": "./qrp/index.d.ts", "default": "./qrp/index.js" },
+		"./html": { "types": "./html/index.d.ts", "default": "./html/index.js" },
+		"./forms": { "types": "./forms/index.d.ts", "default": "./forms/index.js" },
+		"./table": { "types": "./table/index.d.ts", "default": "./table/index.js" },
+		"./collection": { "types": "./collection/index.d.ts", "default": "./collection/index.js" },
+		"./http": { "types": "./http/index.d.ts", "default": "./http/index.js" },
+		"./events": { "types": "./events/index.d.ts", "default": "./events/index.js" },
+		"./toasts": { "types": "./toasts/index.d.ts", "default": "./toasts/index.js" },
+		"./browser": { "types": "./browser/index.d.ts", "default": "./browser/index.js" },
+		"./proto": { "types": "./proto/index.d.ts", "default": "./proto/index.js" },
+		"./behaviors": { "types": "./behaviors/index.d.ts", "default": "./behaviors/index.js" },
+		"./behaviors/*": { "types": "./behaviors/*.d.ts", "default": "./behaviors/*.js" },
+		"./utils": { "types": "./utils/index.d.ts", "default": "./utils/index.js" },
+		"./utils/*": { "types": "./utils/*.d.ts", "default": "./utils/*.js" },
+		"./qrp.css": "./qrp.css",
+		"./package.json": "./package.json"
+	},
+	"author": "Nemanja Nedeljkovic <nemanjan00@gmail.com>",
+	"homepage": "https://qrp-xdl4.onrender.com/",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nemanjan00/qrp.git"
+	},
+	"bugs": {
+		"url": "https://github.com/nemanjan00/qrp/issues"
+	},
+	"keywords": [
+		"dashboard",
+		"reactive",
+		"proxy",
+		"declarative",
+		"framework",
+		"frontend",
+		"no-build",
+		"zero-dependency",
+		"dom",
+		"forms",
+		"table"
+	],
 	"scripts": {
 		"test": "node --test 'test/*.test.js'",
 		"lint": "eslint qrp forms browser events toasts proto http utils behaviors collection table html test",
 		"prepare": "husky",
 		"typecheck": "tsc --noEmit",
 		"docs": "node bin/gen-api.js"
+	},
+	"files": [
+		"qrp",
+		"html",
+		"forms",
+		"table",
+		"collection",
+		"http",
+		"events",
+		"toasts",
+		"browser",
+		"behaviors",
+		"utils",
+		"proto",
+		"qrp.css"
+	],
+	"publishConfig": {
+		"access": "public"
 	},
 	"lint-staged": {
 		"*.js": "eslint --fix"

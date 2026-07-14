@@ -16,21 +16,21 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // Module order + display + import path + the .d.ts file(s) it aggregates.
 const MODULES = [
-	{ title: "qrp — core", imp: "./qrp/index.js", files: ["qrp/index.d.ts"] },
-	{ title: "html — HTML templates", imp: "./html/index.js", files: ["html/index.d.ts"] },
-	{ title: "forms", imp: "./forms/index.js", files: ["forms/index.d.ts"] },
-	{ title: "collection", imp: "./collection/index.js", files: ["collection/index.d.ts"] },
-	{ title: "table", imp: "./table/index.js", files: ["table/index.d.ts"] },
-	{ title: "http", imp: "./http/index.js", files: ["http/index.d.ts"] },
-	{ title: "events", imp: "./events/index.js", files: ["events/index.d.ts"] },
-	{ title: "toasts", imp: "./toasts/index.js", files: ["toasts/index.d.ts"] },
-	{ title: "browser", imp: "./browser/index.js", files: ["browser/index.d.ts"] },
-	{ title: "behaviors", imp: "./behaviors/<name>.js", files: [
+	{ title: "qrp — core", imp: "@nemanjan00/qrp", files: ["qrp/index.d.ts"] },
+	{ title: "html — HTML templates", imp: "@nemanjan00/qrp/html", files: ["html/index.d.ts"] },
+	{ title: "forms", imp: "@nemanjan00/qrp/forms", files: ["forms/index.d.ts"] },
+	{ title: "collection", imp: "@nemanjan00/qrp/collection", files: ["collection/index.d.ts"] },
+	{ title: "table", imp: "@nemanjan00/qrp/table", files: ["table/index.d.ts"] },
+	{ title: "http", imp: "@nemanjan00/qrp/http", files: ["http/index.d.ts"] },
+	{ title: "events", imp: "@nemanjan00/qrp/events", files: ["events/index.d.ts"] },
+	{ title: "toasts", imp: "@nemanjan00/qrp/toasts", files: ["toasts/index.d.ts"] },
+	{ title: "browser", imp: "@nemanjan00/qrp/browser", files: ["browser/index.d.ts"] },
+	{ title: "behaviors", imp: "@nemanjan00/qrp/behaviors/<name>", files: [
 		"behaviors/portal.d.ts", "behaviors/dismissable.d.ts", "behaviors/trap-focus.d.ts",
 		"behaviors/anchored.d.ts", "behaviors/disclosure.d.ts", "behaviors/busy-while.d.ts"] },
-	{ title: "utils", imp: "./utils/<name>.js", files: [
+	{ title: "utils", imp: "@nemanjan00/qrp/utils/<name>", files: [
 		"utils/lru.d.ts", "utils/memoize.d.ts", "utils/cache.d.ts", "utils/paginate.d.ts"] },
-	{ title: "proto", imp: "./proto/index.js", files: ["proto/index.d.ts"] }
+	{ title: "proto", imp: "@nemanjan00/qrp/proto", files: ["proto/index.d.ts"] }
 ];
 
 // --- parse one .d.ts into { overview, entries[], types[] } -----------------

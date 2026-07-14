@@ -26,12 +26,12 @@ next to each module, so editors resolve them with no build step.
 ## qrp — core
 
 ```js
-import { … } from "./qrp/index.js"
+import { … } from "@nemanjan00/qrp"
 ```
 
 Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
 keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
-custom elements (`define`), and HTML5 routing. `import … from "./qrp/index.js"`.
+custom elements (`define`), and HTML5 routing. `import … from "@nemanjan00/qrp"`.
 
 ### `state`
 
@@ -271,7 +271,7 @@ HTML5 History router: path patterns → components.
 ## html — HTML templates
 
 ```js
-import { … } from "./html/index.js"
+import { … } from "@nemanjan00/qrp/html"
 ```
 
 Author DOM as HTML strings. Three forms: `` html`…` `` / `html("…")` (inline,
@@ -316,7 +316,7 @@ token. html() swaps it for the real node/binding (consumed on use).
 ## forms
 
 ```js
-import { … } from "./forms/index.js"
+import { … } from "@nemanjan00/qrp/forms"
 ```
 
 Declarative forms + an open input-type registry. A `FieldSpec` is
@@ -402,7 +402,7 @@ A textarea editing the same settings state (KEY=value), both directions.
 ## collection
 
 ```js
-import { … } from "./collection/index.js"
+import { … } from "@nemanjan00/qrp/collection"
 ```
 
 Reactive sort / filter / paginate over a dataset. `collection(source, options)`
@@ -422,7 +422,7 @@ Reactive sort / filter / paginate over a dataset.
 ## table
 
 ```js
-import { … } from "./table/index.js"
+import { … } from "@nemanjan00/qrp/table"
 ```
 
 A declarative data table over `collection` + `list`: sortable headers, keyed
@@ -444,7 +444,7 @@ Build a declarative, sortable, keyed, paginated data table.
 ## http
 
 ```js
-import { … } from "./http/index.js"
+import { … } from "@nemanjan00/qrp/http"
 ```
 
 A fetch client for a JSON backend: URL shaping, auth headers, a reactive
@@ -468,7 +468,7 @@ Create a fetch client: URL shaping, auth headers, reactive loader, error bus.
 ## events
 
 ```js
-import { … } from "./events/index.js"
+import { … } from "@nemanjan00/qrp/events"
 ```
 
 A global event bus on native `EventTarget`. `Emitter`: `on(type, handler) → off`,
@@ -519,7 +519,7 @@ Mirror a piece of reactive state onto an emitter on every change.
 ## toasts
 
 ```js
-import { … } from "./toasts/index.js"
+import { … } from "@nemanjan00/qrp/toasts"
 ```
 
 Notifications driven by the global bus — any code raises one without importing
@@ -554,7 +554,7 @@ Fire-and-forget notifications through the global bus. Content is renderable.
 ## browser
 
 ```js
-import { … } from "./browser/index.js"
+import { … } from "@nemanjan00/qrp/browser"
 ```
 
 ### `persisted`
@@ -641,7 +641,7 @@ IntersectionObserver as reactive state: { matches } (on screen).
 ## behaviors
 
 ```js
-import { … } from "./behaviors/<name>.js"
+import { … } from "@nemanjan00/qrp/behaviors/<name>"
 ```
 
 Headless helpers to build styled components (one file each). Compose them: a
@@ -701,7 +701,7 @@ Track in-flight promises as reactive busy state (spinners/overlays).
 ## utils
 
 ```js
-import { … } from "./utils/<name>.js"
+import { … } from "@nemanjan00/qrp/utils/<name>"
 ```
 
 Pure data helpers a dashboard needs (one file each): `memoize`, `lru`,
@@ -767,7 +767,7 @@ Number of pages for `total` items at `size` per page.
 ## proto
 
 ```js
-import { … } from "./proto/index.js"
+import { … } from "@nemanjan00/qrp/proto"
 ```
 
 Prototype-level enhancement of native objects — find a prototype by name,

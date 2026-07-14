@@ -17,8 +17,36 @@
 		<div><h4>vanilla</h4><div id="van-root"></div></div>
 	</div>
 
+	<script type="importmap">
+		{
+			"imports": {
+				"@nemanjan00/qrp": "../qrp/index.js",
+				"@nemanjan00/qrp/": "../",
+				"@nemanjan00/qrp/html": "../html/index.js",
+				"@nemanjan00/qrp/forms": "../forms/index.js",
+				"@nemanjan00/qrp/table": "../table/index.js",
+				"@nemanjan00/qrp/collection": "../collection/index.js",
+				"@nemanjan00/qrp/http": "../http/index.js",
+				"@nemanjan00/qrp/events": "../events/index.js",
+				"@nemanjan00/qrp/toasts": "../toasts/index.js",
+				"@nemanjan00/qrp/browser": "../browser/index.js",
+				"@nemanjan00/qrp/proto": "../proto/index.js",
+				"@nemanjan00/qrp/behaviors/portal": "../behaviors/portal.js",
+				"@nemanjan00/qrp/behaviors/dismissable": "../behaviors/dismissable.js",
+				"@nemanjan00/qrp/behaviors/trap-focus": "../behaviors/trap-focus.js",
+				"@nemanjan00/qrp/behaviors/anchored": "../behaviors/anchored.js",
+				"@nemanjan00/qrp/behaviors/disclosure": "../behaviors/disclosure.js",
+				"@nemanjan00/qrp/behaviors/busy-while": "../behaviors/busy-while.js",
+				"@nemanjan00/qrp/utils": "../utils/index.js",
+				"@nemanjan00/qrp/utils/memoize": "../utils/memoize.js",
+				"@nemanjan00/qrp/utils/lru": "../utils/lru.js",
+				"@nemanjan00/qrp/utils/cache": "../utils/cache.js",
+				"@nemanjan00/qrp/utils/paginate": "../utils/paginate.js"
+			}
+		}
+	</script>
 	<script type="module">
-		import { state, el, list, mount, clear } from "../qrp/index.js";
+		import { state, el, list, mount, clear } from "@nemanjan00/qrp";
 
 		// --- data -----------------------------------------------------------
 		let seq = 1;

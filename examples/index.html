@@ -49,11 +49,39 @@
 		<qrp-clock></qrp-clock>
 	</p>
 
+	<script type="importmap">
+		{
+			"imports": {
+				"@nemanjan00/qrp": "../qrp/index.js",
+				"@nemanjan00/qrp/": "../",
+				"@nemanjan00/qrp/html": "../html/index.js",
+				"@nemanjan00/qrp/forms": "../forms/index.js",
+				"@nemanjan00/qrp/table": "../table/index.js",
+				"@nemanjan00/qrp/collection": "../collection/index.js",
+				"@nemanjan00/qrp/http": "../http/index.js",
+				"@nemanjan00/qrp/events": "../events/index.js",
+				"@nemanjan00/qrp/toasts": "../toasts/index.js",
+				"@nemanjan00/qrp/browser": "../browser/index.js",
+				"@nemanjan00/qrp/proto": "../proto/index.js",
+				"@nemanjan00/qrp/behaviors/portal": "../behaviors/portal.js",
+				"@nemanjan00/qrp/behaviors/dismissable": "../behaviors/dismissable.js",
+				"@nemanjan00/qrp/behaviors/trap-focus": "../behaviors/trap-focus.js",
+				"@nemanjan00/qrp/behaviors/anchored": "../behaviors/anchored.js",
+				"@nemanjan00/qrp/behaviors/disclosure": "../behaviors/disclosure.js",
+				"@nemanjan00/qrp/behaviors/busy-while": "../behaviors/busy-while.js",
+				"@nemanjan00/qrp/utils": "../utils/index.js",
+				"@nemanjan00/qrp/utils/memoize": "../utils/memoize.js",
+				"@nemanjan00/qrp/utils/lru": "../utils/lru.js",
+				"@nemanjan00/qrp/utils/cache": "../utils/cache.js",
+				"@nemanjan00/qrp/utils/paginate": "../utils/paginate.js"
+			}
+		}
+	</script>
 	<script type="module">
-		import { state, effect, el, define, mount } from "../qrp/index.js";
-		import { form, textual, parseKV, registerInput, inputs } from "../forms/index.js";
-		import { persisted } from "../browser/index.js";
-		import { toasts, notify } from "../toasts/index.js";
+		import { state, effect, el, define, mount } from "@nemanjan00/qrp";
+		import { form, textual, parseKV, registerInput, inputs } from "@nemanjan00/qrp/forms";
+		import { persisted } from "@nemanjan00/qrp/browser";
+		import { toasts, notify } from "@nemanjan00/qrp/toasts";
 
 		// Mount the toast stack once, near the root. Any code can now raise a
 		// toast by calling notify.* (which emits on the global bus).
@@ -143,7 +171,7 @@
 		// Routes match location.pathname. Serve this folder over HTTP
 		// (e.g. `python -m http.server`) so the History API works, then open
 		// /examples/index.html. Links navigate without a page reload.
-		import { router } from "../qrp/index.js";
+		import { router } from "@nemanjan00/qrp";
 
 		const routes = {
 			"/examples/index.html": home,

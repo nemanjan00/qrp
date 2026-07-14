@@ -25,7 +25,7 @@ running. No compiler, no bundler, no `node_modules` at runtime. Reactivity is a
 of that is JSDoc comments (**~5 KB** minified).
 
 ```js
-import { state, el, mount } from "./qrp/index.js";
+import { state, el, mount } from "@nemanjan00/qrp";
 
 const counter = state({ n: 0 });
 
@@ -37,6 +37,37 @@ That's the entire setup. No `createRoot`, no providers, no hydration. You mutate
 data, the DOM follows.
 
 ---
+
+## 📥 Install
+
+```sh
+npm i @nemanjan00/qrp
+```
+
+The bare `@nemanjan00/qrp/*` specifiers in the snippets below resolve through the
+package's `exports` map, so **with any bundler they just work** — and unused
+subpaths tree-shake away.
+
+**Zero-build in the browser** — two ways, both still no bundler:
+
+```html
+<!-- 1) a CDN that serves npm as ESM (clean subpaths honour exports) -->
+<script type="module">
+  import { state, el, mount } from "https://esm.sh/@nemanjan00/qrp";
+  import { table } from "https://esm.sh/@nemanjan00/qrp/table";
+</script>
+
+<!-- 2) vendor the files and map the name once with an import map -->
+<script type="importmap">
+{ "imports": {
+  "@nemanjan00/qrp":       "/vendor/qrp/qrp/index.js",
+  "@nemanjan00/qrp/table": "/vendor/qrp/table/index.js"
+} }
+</script>
+```
+
+(This site's own pages use option 2 — see the `<script type="importmap">` block
+in [`index.html`](index.html).)
 
 ## 🧭 What is qrp?
 
@@ -79,13 +110,13 @@ the way infrastructure should be.
 A live, sortable, filterable table with a modal — the whole thing, no build step:
 
 ```js
-import { state, el } from "./qrp/index.js";
-import { table } from "./table/index.js";
-import { portal } from "./behaviors/portal.js";
-import { trapFocus } from "./behaviors/trap-focus.js";
-import { dismissable } from "./behaviors/dismissable.js";
-import { notify, toasts } from "./toasts/index.js";
-import { html } from "./html/index.js";
+import { state, el } from "@nemanjan00/qrp";
+import { table } from "@nemanjan00/qrp/table";
+import { portal } from "@nemanjan00/qrp/behaviors/portal";
+import { trapFocus } from "@nemanjan00/qrp/behaviors/trap-focus";
+import { dismissable } from "@nemanjan00/qrp/behaviors/dismissable";
+import { notify, toasts } from "@nemanjan00/qrp/toasts";
+import { html } from "@nemanjan00/qrp/html";
 
 const users = state({ rows: await fetch("/api/users").then(r => r.json()) });
 const filter = state({ q: "" });
@@ -243,18 +274,18 @@ unused exports tree-shake away.
 
 | Module | What it gives you |
 |--------|-------------------|
-| `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `compilePath` |
-| `html/index.js` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML; text holes escaped (see escaping guarantee above) |
-| `forms/index.js` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
-| `table/index.js` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
-| `collection/index.js` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
-| `http/index.js` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing |
-| `events/index.js` | Global event bus on native `EventTarget`: `bus`, `emitter`, `request`/`respond`, `channel` |
-| `toasts/index.js` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
-| `browser/index.js` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
-| `behaviors/*.js` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
-| `utils/*.js` | Pure data helpers for dashboards: `memoize`, `lru`, `cache` (`cacheForever`/`precache`/`precacheWithRefresh`), `paginate` |
-| `proto/index.js` | Prototype-level enhancement (objects & `__proto__`, no classes): `findProto`, `wrapMethod`, `onceOnly`, `delegate` |
+| `@nemanjan00/qrp` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `compilePath` |
+| `@nemanjan00/qrp/html` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML; text holes escaped (see escaping guarantee above) |
+| `@nemanjan00/qrp/forms` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
+| `@nemanjan00/qrp/table` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
+| `@nemanjan00/qrp/collection` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
+| `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing |
+| `@nemanjan00/qrp/events` | Global event bus on native `EventTarget`: `bus`, `emitter`, `request`/`respond`, `channel` |
+| `@nemanjan00/qrp/toasts` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
+| `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
+| `@nemanjan00/qrp/behaviors/*` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
+| `@nemanjan00/qrp/utils/*` | Pure data helpers for dashboards: `memoize`, `lru`, `cache` (`cacheForever`/`precache`/`precacheWithRefresh`), `paginate` |
+| `@nemanjan00/qrp/proto` | Prototype-level enhancement (objects & `__proto__`, no classes): `findProto`, `wrapMethod`, `onceOnly`, `delegate` |
 | `qrp.css` | Optional minimal baseline (design tokens + semantic classes). Link it yourself. |
 
 ## 📊 Performance
@@ -431,7 +462,7 @@ how qrp loads. Generics flow through: `state<T>`, `list<T>`, `collection<T>`,
 `table<T>`, `memoize`, and the rest.
 
 ```ts
-import { state, el, list } from "./qrp/index.js";
+import { state, el, list } from "@nemanjan00/qrp";
 
 interface User { id: number; name: string; }
 const users = state<{ rows: User[] }>({ rows: [] });
