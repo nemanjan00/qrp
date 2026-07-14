@@ -61,12 +61,19 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 `/index.js` is always written out.
 
 - `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`),
-  DOM (`el`, `reactive`, `bind`), keyed lists (`list` — element reuse +
-  `itemFor` delegation), components (`mount`/`scope`), custom elements
+  DOM (`el`, `reactive`, `bind`, `clear`), keyed lists (`list` — element reuse +
+  `itemFor` delegation), conditional subtrees (`when` — swaps branch + disposes
+  old scope), components (`mount`/`scope`/`onDispose`), custom elements
   (`define`), routing (`router`/`navigate`/`compilePath`). `state()` skips
   proxying frozen objects (freeze static data to opt out of reactivity).
+- `html/index.js` — `` html`` `` / `html()`: author DOM as HTML strings with
+  reactive, XSS-safe holes (string→escaped text, `${()=>…}`→reactive, `onX`→
+  listener). An alternative to `el()`; both produce real DOM.
 - `forms/index.js` — declarative forms + open input-type registry
-  (`registerInput`).
+  (`registerInput`, `field`, `form`).
+- `table/index.js` — declarative data table (collection + list): sortable
+  headers, keyed row reuse, per-column accessor/formatter/render.
+- `collection/index.js` — reactive sort/filter/paginate combiner; drives `list`.
 - `browser/index.js` — reactive wrappers over native browser APIs.
 - `events/index.js` — global event bus over native `EventTarget`.
 - `toasts/index.js` — notifications driven by the bus (`notify.*`, `toasts`);

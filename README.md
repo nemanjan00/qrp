@@ -1,410 +1,326 @@
 # qrp
 
-**A data-first, declarative, low-overhead framework for dashboards.** Zero
-dependencies, zero build step, one mental model. Named after QRP — the ham-radio
-practice of getting the job done with the least possible power.
+**Turn data into a dashboard. Nothing else.**
 
-qrp does one thing and does it well: turn **data** into a **dashboard** — the
-settings panels, forms, tables, and views that make up an admin/control UI —
-with the least machinery possible. It is not trying to be a general-purpose
-application framework that competes with React; it is trying to be the right
-tool for the large class of apps that are, at heart, "render this data, let me
-edit it, reflect the changes."
-
-Its four commitments:
-
-- **Data first.** Reactive state (a `Proxy`) is the single source of truth; the
-  DOM is just a reflection of it. You mutate data, the view follows.
-- **Declarative first.** Forms are described as data, routes as patterns,
-  elements through a helper — you say *what*, not *how*.
-- **Low overhead.** ~9 KB gzipped, ~12 ms to first paint, no runtime to boot,
-  no hydration, no virtual DOM (measured — see below).
-- **Do one thing well.** Small, sharp, composable modules; include only what a
-  given dashboard needs.
-
-qrp is also a reaction to modern frontend: the split into "frontend app" +
-"backend app" that duplicates state, validation, types, and auth, then papers
-over the duplication with more machinery than it removed. qrp keeps the good
-ideas the platform already gives you — the DOM, `URL`, `EventTarget`, custom
-elements, the History API, `Proxy` — and adds only the thin reactive layer that
-ties them together.
-
-It's a `<script type="module">` and a handful of files. No compiler, no JSX, no
-virtual DOM, no `node_modules` to render a form. The `package.json` here exists
-only to run the tests.
-
-## The one idea: Proxy-based reactive state
-
-`state()` wraps a plain object in a `Proxy`. Reads inside an `effect()` are
-tracked *per key*; a write re-runs only the effects that read that key. State is
-per-component by construction — call `state()` inside a component function and it
-lives in that closure.
+A data-first, declarative frontend framework for the browser. Zero dependencies,
+zero build step — one `<script type="module">` and you're running. No compiler,
+no bundler, no `node_modules` at runtime. Reactivity is a `Proxy`, the DOM is
+real, and the whole core gzips to **11.5 KB**.
 
 ```js
-import { state, effect, el } from "./qrp/index.js";
+import { state, el, mount } from "./qrp/index.js";
 
 const counter = state({ n: 0 });
 
-effect(() => console.log("n is", counter.n)); // logs immediately, and on change
-
-counter.n++; // → "n is 1"
+mount(document.body, () =>
+  el("button", { onclick: () => counter.n++ }, () => `clicked ${counter.n}×`));
 ```
 
-Nested objects are wrapped lazily. Adding or deleting keys is reactive too
-(iteration is tracked), so a form can grow and shrink rows live.
+That's the entire setup. No `createRoot`, no providers, no hydration. You mutate
+data, the DOM follows.
 
-## Building DOM
+---
 
-`el(tag, props, ...children)` is a plain-DOM helper — it returns a real element,
-never a virtual one. Function-valued props and children are reactive:
+## What is qrp?
+
+qrp does **one thing well**: it turns **data** into a **dashboard** — the
+settings panels, forms, tables, and control UIs that make up an admin or
+internal tool. It is not trying to be a general-purpose app framework that
+competes with React. It's the right tool for the enormous class of apps that
+are, at heart, *"render this data, let me edit it, reflect the changes."*
+
+- **Reactive state** is a `Proxy`. Read a key inside an `effect`, and that effect
+  re-runs when the key changes — nothing else does.
+- **The DOM is real.** `el()` returns actual elements; there's no virtual DOM and
+  no reconcile pass on update. A field edit touches exactly one text node.
+- **Keyed lists reuse elements.** Sort, filter, or paginate 10,000 rows and qrp
+  moves nodes instead of rebuilding them.
+- **Batteries where dashboards need them:** declarative forms, a data table, a
+  fetch client, a toast system, an event bus — each an independent module you
+  import only if you use it.
+
+## Why it exists
+
+Modern frontend split one app into two — a "frontend app" and a "backend app" —
+and in doing so **duplicated** state, validation, types, and auth across the wire.
+Then it papered over the duplication with more machinery than it removed: a
+compiler, a bundler, a hydration pass, a client-side cache to hold a copy of data
+the server already has.
+
+For a dashboard behind a login, most of that machinery is paying for problems you
+don't have. Nobody SEOs an admin panel, so you don't need SSR or hydration. Your
+data lives one `fetch` away, so you don't need a normalized client store. What you
+actually need is: *show the data, let me sort and edit it, send it back.*
+
+qrp keeps the good ideas the platform already ships — the DOM, `URL`,
+`EventTarget`, the History API, custom elements, `Proxy` — and adds only the thin
+reactive layer that ties them together. The result is small, fast, and boring in
+the way infrastructure should be.
+
+## 5-minute example
+
+A live, sortable, filterable table with a modal — the whole thing, no build step:
 
 ```js
-el("button", { onclick: () => counter.n++ }, "+1");
-el("span", {}, () => `count: ${counter.n}`);          // reactive text
-el("ul", {}, () => items.map(i => el("li", {}, i.name))); // reactive list
+import { state, el } from "./qrp/index.js";
+import { table } from "./table/index.js";
+import { portal } from "./behaviors/portal.js";
+import { trapFocus } from "./behaviors/trap-focus.js";
+import { dismissable } from "./behaviors/dismissable.js";
+import { notify, toasts } from "./toasts/index.js";
+import { html } from "./html/index.js";
+
+const users = state({ rows: await fetch("/api/users").then(r => r.json()) });
+const filter = state({ q: "" });
+
+const t = table({
+  rows: () => users.rows,
+  key: (u) => u.id,                                  // the :key equivalent
+  filter,
+  filterFn: (u, f) => u.name.toLowerCase().includes(f.q.toLowerCase()),
+  page: state({ index: 0, size: 20 }),
+  fields: [
+    { key: "name",   label: "Name",   sortable: true },
+    { key: "email",  label: "Email",  sortable: true },
+    { key: "signups",label: "Signups",sortable: true, formatter: (v) => v.toLocaleString() },
+    { key: "actions",label: "",       render: (u) => el("button", { onclick: () => open(u) }, "View") }
+  ]
+});
+
+// a search box wired to the filter, written as HTML:
+const search = html`
+  <input type="search" placeholder="Filter users…"
+         oninput=${(e) => { filter.q = e.target.value; }}>`;
+
+document.querySelector("#app").append(search, t);
+
+// a modal from three headless behaviors + an html template
+function open(user) {
+  const dialog = html`
+    <div class="qrp-modal">
+      <h3>${user.name}</h3>
+      <p>${user.email} — ${() => user.signups.toLocaleString()} signups</p>
+      <button onclick=${() => close()}>Close</button>
+    </div>`;
+  const backdrop = el("div", { class: "qrp-modal-backdrop" }, dialog);
+
+  const remove = portal(backdrop);          // → document.body
+  const untrap = trapFocus(dialog);         // focus trap + restore
+  const undismiss = dismissable(dialog, () => close());  // Esc / outside-click
+
+  function close() { undismiss(); untrap(); remove(); notify.info("Closed"); }
+}
 ```
 
-### Two ways to bind
+Sorting, filtering, pagination, keyed row reuse, a focus-trapped modal, and
+toasts — with no framework runtime to boot and no bundler in sight.
 
-**Declarative** — `bind: [state, key]` is two-way for inputs, selects, textareas
-(with number/checkbox coercion):
+## Features
+
+**Two ways to write markup.** Prefer functions, or prefer HTML — both are
+first-class and produce the same real DOM.
 
 ```js
-el("input", { type: "number", bind: [settings, "ID"] });
+// el() — plain-DOM helper; function props/children are reactive
+el("span", {}, () => `count: ${counter.n}`);
+
+// html`` — for people who think in HTML. String holes are escaped (XSS-safe);
+// ${() => …} holes are reactive; onX=${fn} wires listeners.
+html`<button onclick=${() => counter.n++}>${() => counter.n}</button>`;
 ```
 
-**Novel: reactive node proxies** — wrap a real node in a `Proxy` and *assign* to
-its properties. Function assignments become live bindings; it reads like
-imperative DOM but is fully reactive:
+**Reactive state that tracks per key.**
 
 ```js
-import { reactive } from "./qrp/index.js";
-
-const span = reactive(document.createElement("span"));
-span.textContent = () => `count: ${counter.n}`; // fn → reactive effect
-span.className   = "big";                         // value → set once
-span.onclick     = () => counter.n++;             // on* fn → listener
-parent.appendChild(span); // qrp unwraps the proxy to the real node for you
+const s = state({ first: "Ada", last: "Lovelace", tags: [] });
+const full = derive(() => `${s.first} ${s.last}`);   // recomputed on change
+effect(() => console.log(full.value));               // logs on change
+s.tags.push("math");                                 // arrays are reactive too
 ```
 
-## Keyed lists — cache and reuse elements
-
-A plain reactive region (`el("ul", {}, () => items.map(...))`) rebuilds every
-node on any change — fine for small lists, wrong for a data table you filter or
-sort on every keystroke. `list()` does **keyed reconciliation**: one element per
-item identity, cached and reused. A filter/sort/paginate only *reorders* the
-cached elements (minimal DOM moves), and each row updates itself through its own
-bindings — survivors are never rebuilt. The element is, in effect, data cached
-by item identity (`Map` for key→element, `WeakMap` for element→item).
+**Declarative forms with an open input registry.** Describe fields as data; add
+your own input types at runtime.
 
 ```js
-import { list } from "./qrp/index.js";
+registerInput("callsign", (settings, key, field) => {
+  const input = inputs.text(settings, key, field);
+  input.addEventListener("input", () => settings[key] = input.value.toUpperCase());
+  return input;
+});
 
+form({ settings, fields: {
+  name: { label: "Name", type: "text" },
+  call: { label: "Callsign", type: "callsign" },       // your custom type
+  mode: { label: "Mode", type: "select", options: { dmr: "DMR", ysf: "YSF" } }
+}});
+```
+
+**Keyed lists that reuse elements.** The primitive under every table.
+
+```js
 el("tbody", {}, list(
-  () => view.items,                     // reactive, ordered source
-  item => item.id,                       // stable key
-  item => el("tr", {}, () => item.name)  // built once per key; self-updates
+  () => view.items,                       // reactive source
+  (row) => row.id,                         // stable key
+  (row) => html`<tr><td>${() => row.name}</td></tr>`  // built once per key
 ));
 ```
 
-The marker also exposes `itemFor(elementOrEvent)` — map a clicked element back
-to its item for **one-listener event delegation** over huge lists (leak-free via
-`WeakMap`), instead of thousands of handlers.
-
-Bonus: freeze data you never mutate — `state({ ref: Object.freeze(bigData) })` —
-and qrp skips proxying it entirely (no tracking overhead, no memory). And
-`untracked(fn)` reads state without creating a dependency.
-
-## Components, scopes, cleanup
-
-A component is just `(parent) => { ...appendChild... }`. `mount()` runs it inside
-an ownership **scope**: every effect created during the render belongs to the
-component and is disposed when it unmounts. No manual unsubscribe bookkeeping,
-no leaks.
+**Conditional subtrees, with cleanup.** `when()` swaps a branch on a condition
+and disposes the old branch's effects — no leaks, no DOM surgery.
 
 ```js
-import { mount } from "./qrp/index.js";
-
-const app = mount(document.getElementById("view"), (view) => {
-	view.appendChild(el("h1", {}, () => `Hello ${name.value}`));
-});
-
-app.dispose(); // tears down effects + DOM
+el("div", {}, when(
+  () => editing.on,
+  () => html`<input value=${row.name}>`,   // edit
+  () => html`<span>${() => row.name}</span>`  // display
+));
 ```
 
-## Real custom elements, no classes
-
-`define()` registers a genuine Custom Element — the browser's own component
-model — but builds the constructor and prototype chain by hand (`__proto__`,
-`Object.create`), no `class`/`extends`. Observed attributes arrive as reactive
-state:
+**A fetch client built for dashboards.** URL shaping, auth headers, a **reactive**
+in-flight loader, and errors routed to the toast bus.
 
 ```js
-import { define } from "./qrp/index.js";
-
-define("qrp-greeting", (host, attrs) => {
-	host.appendChild(el("p", {}, () => `Hello, ${attrs.name || "world"}`));
-}, { attrs: ["name"] });
+const http = createHttp({ baseUrl: "/api", token: () => session.token });
+http.get("/things", { params: { page: 2, ids: [1, 2, 3] } });   // → parsed JSON
+effect(() => bar.hidden = http.loading.pending === 0);          // a spinner in one line
 ```
 
-```html
-<qrp-greeting name="Nemanja"></qrp-greeting>
-```
+Plus: a global event bus, cross-tab persistence, HTML5 routing with `:param`
+patterns, real custom elements (no `class extends`), and headless behaviors for
+modals, dropdowns, tooltips, and disclosures.
 
-Effects created in setup are scoped to the element and disposed on disconnect;
-a `qrp:disconnect` event fires first so you can release timers/sockets.
+## Modules
 
-## Declarative forms with an open type registry
+Each module is an independent file — import only what you use; with a bundler,
+unused exports tree-shake away.
 
-Describe fields as data; values live in one reactive state object; inputs are
-two-way bound. A field names its input **type** as a string, resolved from a
-registry you can extend at runtime:
+| Module | What it gives you |
+|--------|-------------------|
+| `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `compilePath` |
+| `html/index.js` | `` html`` `` / `html()` — author DOM as HTML strings with reactive, XSS-safe holes |
+| `forms/index.js` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
+| `table/index.js` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
+| `collection/index.js` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
+| `http/index.js` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing |
+| `events/index.js` | Global event bus on native `EventTarget`: `bus`, `emitter`, `request`/`respond`, `channel` |
+| `toasts/index.js` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
+| `browser/index.js` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
+| `behaviors/*.js` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
+| `utils/*.js` | Pure data helpers: `memoize`, `lru`, `cache`, `paginate`, `roundRobinByKey`, `weightedPool` |
+| `proto/index.js` | Prototype-level enhancement: `findProto`, `wrapMethod`, `delegate` |
+| `qrp.css` | Optional minimal baseline (design tokens + semantic classes). Link it yourself. |
 
-```js
-import { form, registerInput, inputs } from "./forms/index.js";
+## Performance
 
-const settings = state({ NICK: "", VOL: 5, MODE: "dmr" });
+Measured in real Chromium, **paint-timed** (time until the frame is painted, not
+just the synchronous write), median of 5 after warmup. The control is a
+hand-written keyed vanilla-DOM implementation of the same table — *"the floor"*,
+not another framework.
 
-// Register your own input type once, use it declaratively anywhere.
-registerInput("callsign", (settings, key, field) => {
-	const input = inputs.text(settings, key, field);
-	input.addEventListener("input", () => { settings[key] = input.value.toUpperCase(); });
-	return input;
-});
+| Operation | qrp | vanilla DOM | ratio |
+|---|---|---|---|
+| create 1,000 rows | 29 ms | 31 ms | **0.9×** |
+| create 10,000 rows | 271 ms | 214 ms | 1.3× |
+| replace all 1,000 rows | 32 ms | 33 ms | **1.0×** |
+| update every 10th row | 8 ms | 9 ms | **0.9×** |
+| swap 2 rows in 10,000 | 44 ms | 34 ms | 1.3× |
+| remove 1 row in 10,000 | 58 ms | 48 ms | 1.2× |
+| select 1 row in 10,000 | 10 ms | 7 ms | 1.5× |
+| clear 10,000 rows | 40 ms | 22 ms | 1.8× |
 
-view.appendChild(form({
-	settings,
-	fields: {
-		NICK: { name: "Nick",   type: "text" },
-		CS:   { name: "Call",   type: "callsign" },              // custom type
-		VOL:  { name: "Volume", type: "range", min: 0, max: 10 },
-		MODE: { name: "Mode",   type: "select", options: { dmr: "DMR", ysf: "YSF" } }
-	},
-	sections: [{ name: "Radio", filter: () => true }]
-}));
-```
+The headline: on create, replace, update, and remove, qrp is at **hand-written
+DOM parity (0.9–1.3×)** — there's no reconcile pass to pay for, because updates
+are fine-grained. The swap case was 5.9× before a longest-increasing-subsequence
+reconcile brought it to 1.3×. The remaining gaps (select, clear) are the cost of
+per-row subscriptions and scope disposal, and are the next things to sharpen.
 
-Built-in types: every native `<input>` variant (`text`, `number`, `email`,
-`password`, `url`, `tel`, `search`, `date`, `time`, `datetime-local`, `month`,
-`week`, `color`, `range`, `checkbox`), plus `textarea`, `select`, and `radio`.
-A live `textual()` textarea can edit the same state as the form, both
-directions at once.
+Run it yourself: `examples/bench.html` exposes the suite on `window.bench`.
 
-## Helpers to build (styled) components
+## Philosophy
 
-qrp doesn't ship styled components — it ships the *behaviors* so building your
-own styled ones is trivial. A data table is `collection` + `list`; a modal is
-`portal` + `dismissable` + `trapFocus`; a dropdown is `anchored` + `dismissable`
-+ `disclosure`. You write the markup and CSS; the helpers carry the platform and
-a11y hard parts.
+Four commitments gate every design decision:
 
-```js
-import { portal } from "./behaviors/portal.js";
-import { dismissable } from "./behaviors/dismissable.js";
-import { trapFocus } from "./behaviors/trap-focus.js";
+1. **Data first.** Reactive state is the single source of truth; the DOM is a
+   reflection of it. You never imperatively poke the DOM to stay in sync.
+2. **Declarative first.** Forms are data, routes are patterns, tables are column
+   configs. You say *what*, not *how*.
+3. **Low overhead.** No runtime to boot, no hydration, no virtual DOM. Small
+   gzipped size, fast first paint, cheap updates.
+4. **Do one thing well.** Small, sharp, composable modules. qrp ships **helpers
+   to build styled components**, not components — a table is `collection` +
+   `list`; a modal is `portal` + `trapFocus` + `dismissable`. You bring the
+   markup and CSS; the helpers carry the platform and a11y hard parts.
 
-const openModal = (content) => {
-  const dialog = el("div", { class: "my-modal" }, content); // your styled markup
-  const remove = portal(dialog);                             // → document.body
-  const untrap = trapFocus(dialog);                          // a11y focus trap
-  const undismiss = dismissable(dialog, () => close());      // Esc / outside-click
-  const close = () => { undismiss(); untrap(); remove(); };
-  return close;
-};
-```
+And underneath all of it: **use the platform.** `URL`, `URLSearchParams`,
+`EventTarget`, `IntersectionObserver`, custom elements, the History API — qrp
+wraps them reactively instead of reinventing them.
 
-And a sortable, filterable, keyed table:
+## Advanced implementation details
 
-```js
-import { collection } from "./collection/index.js";
+**Reactivity is a `Proxy` with per-key dependency tracking.** `state()` wraps a
+plain object; the `get` trap records `(effect, key)` pairs, the `set` trap
+re-runs exactly the effects that read that key. Writes use `Object.is`, so
+`NaN`-over-`NaN` doesn't spuriously re-trigger. Arrays track `length` explicitly
+so `push()` updates length-only readers. Frozen objects are returned as-is —
+`Object.freeze(bigStaticData)` is the documented opt-out from reactivity, and it
+makes reads free.
 
-const view = collection(() => rows, {
-  sort:     state({ key: "name", dir: 1 }),
-  filter:   state({ q: "" }),
-  filterFn: (r, f) => r.name.includes(f.q)
-});
+**Ownership-based cleanup.** Every effect created during a component's render is
+adopted by its `scope`; unmounting disposes them all — no manual unsubscribe.
+`onDispose(fn)` registers arbitrary cleanup against the current scope, which is
+how `list()`, `when()`, and every `browser/` factory tear down their
+subscriptions on unmount. An effect that throws is torn down (unsubscribed) and
+the error propagates — no dangling subscriptions.
 
-el("table", { class: "table" },
-  el("thead", {}, el("tr", {}, columns.map(c =>
-    el("th", { onclick: () => view.toggleSort(c.key) }, c.label)))),
-  el("tbody", {}, list(view.items, r => r.id, r =>          // keyed reuse
-    el("tr", {}, columns.map(c => el("td", {}, () => r[c.key]))))));
-```
+**Keyed reconciliation with minimal moves.** `list()` keeps a `Map<key, element>`
+and a `WeakMap<element, item>` (the latter powers `itemFor()` for one-listener
+event delegation over huge lists). On change it diffs new positions against old,
+keeps the longest increasing subsequence as a stable backbone that never moves,
+and inserts only new or genuinely-displaced rows. A 2-row swap does 1 DOM move,
+not O(n).
 
-## HTML5 History routing
+**The DOM rejects `Proxy`-wrapped nodes** (`appendChild` brand-checks its
+argument), verified in Chromium — so `reactive(node)` unwraps to the raw node on
+insert, and `state()` never proxies DOM nodes, `Map`/`Set`, or class instances
+stored inside it. A DOM node also lives in exactly one place, so reusing content
+across sites means a thunk `() => el(...)`, never a shared live node.
 
-`router()` matches `location.pathname` against Express-style patterns
-(`:param`, `:rest*`), extracts params and the query, intercepts same-origin link
-clicks, and re-renders on back/forward — and on *any* `pushState`, even from
-third-party code (it wraps `pushState` and emits an event, the trick from the
-tracker syncer). Uses native `URL`/`URLSearchParams` throughout. The previous
-route's scope is disposed on navigation.
+**Synchronous by design.** qrp writes to the DOM synchronously — there's no
+scheduler and no batching, which is why updates are cheap and why it's *not*
+interruptible the way React's concurrent renderer is. For a dashboard that's the
+right trade; if you need to coalesce a high-frequency stream, do it upstream of
+`state`.
 
-```js
-import { router, navigate } from "./qrp/index.js";
+## Running the demos
 
-router({
-	"/": home,
-	"/settings/:section": settings,
-	"/files/:path*": fileBrowser
-}, document.getElementById("view"));
-
-navigate("/settings/user"); // programmatic
-```
-
-Route strings are the same convention as a path-to-regexp backend router, so
-front and back can share them verbatim.
-
-## The modules
-
-| File | What it gives you |
-|------|-------------------|
-| `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `clear`, `mount`, `scope`, `define`, `router`, `navigate`, `compilePath`, `matchPath` |
-| `forms/index.js` | Declarative settings forms over reactive state; an open input-type registry (`registerInput`); `parseKV`/`serializeKV`; live "textual mode" editing the same state |
-| `browser/index.js` | Reactive facades over browser APIs everyone forgot: `persisted` (localStorage + cross-tab sync), `query` (URL as state), `hashState`, `media`, `viewport`, `online`, `visible`, `seen` (IntersectionObserver), `cookies`, `watch` |
-| `events/index.js` | Global event bus on native `EventTarget`: `emitter`, `bus`, `request`/`respond`, `fromEvent`, `channel` (cross-tab via BroadcastChannel), `broadcast` |
-| `http/index.js` | `fetch` wrapper for a JSON backend: `createHttp` — URL shaping, auth headers, a **reactive** in-flight loader, and centralized errors routed to the bus (`error`, `auth:unauthorized`) |
-| `utils/*.js` | Pure data helpers, **one file each** so you import only what you use: `memoize.js` (in-flight dedup + optional LRU), `lru.js`, `cache.js` (`cacheForever`/`precache`/`precacheWithRefresh`), `round-robin.js`, `weighted-pool.js`, `paginate.js`. `utils/index.js` is an opt-in barrel |
-| `behaviors/*.js` | Headless behaviors to build your own styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile`. Carry the platform/a11y hard parts; you bring the markup + CSS |
-| `collection/index.js` | Reactive sort/filter/paginate over a dataset (`collection`) — the `form()`-style combiner that drives a keyed `list()` table; each stage also usable alone |
-| `table/index.js` | Declarative data table (`table`): column config (accessor/formatter/sortByFormatted/render/classes), sortable headers, keyed row reuse, holder-based cell updates on immutable refetch; `.view` exposes the collection for pagination |
-| `qrp.css` | Optional minimal baseline styling (design tokens + semantic classes) so helper-built UIs look fine before you theme them. Not auto-loaded — link it yourself |
-| `toasts/index.js` | Notifications driven by the event bus: `notify.success/error/info/warning`, `toasts` (mountable stack), `createToasts`; content is any renderable |
-| `proto/index.js` | Prototype-level enhancement: `findProto`, `wrapMethod` (idempotent), `onceOnly`, `delegate` |
-
-Include only what you use — each is an independent ES module.
-
-## Forgotten browser tricks, made reactive
-
-The platform already ships most of what frameworks reinvent. qrp-browser wraps
-the good parts as qrp state, so they compose with `effect()`/`el()`:
-
-```js
-import { persisted, query, media } from "./browser/index.js";
-
-const prefs = persisted("app", { theme: "dark" }); // survives reload + syncs across tabs
-const params = query();                              // the URL *is* your store
-const dark = media("(prefers-color-scheme: dark)");  // reactive dark mode
-
-effect(() => document.body.classList.toggle("dark", dark.matches));
-```
-
-## Notifications, off the event pipe
-
-A dashboard needs toasts. In qrp they ride the global bus, so any code — a
-service call, a keyboard handler, a validation — can raise one without importing
-the toast UI:
-
-```js
-import { toasts, notify } from "./toasts/index.js";
-
-mount(document.body, toasts.component); // once, near the root
-
-notify.success("Settings saved");
-notify.error("Could not reach the hotspot");
-
-// content is a RENDERABLE, not just a string:
-notify.error(el("span", {}, "Save failed — ", el("a", { href: "/logs" }, "see logs")));
-```
-
-Variants: `success`, `error`, `info`, `warning`. Identical string messages
-inside a short window are deduped (retry storms don't bury the screen); toasts
-auto-dismiss. Because a DOM node can only live in one place (see below), reuse
-the same content across toasts by passing a thunk `() => el(...)`, not a shared
-node.
-
-> **Aside — can the same element be in two places?** No. A DOM node has exactly
-> one parent; inserting it elsewhere *moves* it. Relatedly, you cannot hand a
-> `Proxy`-wrapped node to the DOM at all — `appendChild` brand-checks its
-> argument and throws `parameter 1 is not of type 'Node'` (verified in
-> Chromium). That's why `reactive()` unwraps to the raw node on insert, and why
-> `state()` never wraps DOM nodes/Maps/class instances stored inside it.
-
-## A global event bus
-
-Propagate changes everywhere over the platform's own `EventTarget`:
-
-```js
-import { bus, fromEvent } from "./events/index.js";
-
-bus.on("user:login", user => console.log("hi", user.name));
-bus.emit("user:login", { name: "Nemanja" });
-
-const lastLogin = fromEvent(bus, "user:login", u => u.name); // event → state
-
-// request/response over the bus (like the tracker syncer's sendCommand):
-bus.respond("add", ({ a, b }) => a + b);
-await bus.request("add", { a: 2, b: 3 }); // → 5
-```
-
-## Talking to a backend
-
-`createHttp` is the fetch equivalent of the classic axios-interceptor stack —
-URL shaping, auth headers, a global loader, and centralized errors — but
-auth-agnostic and with the loader as **reactive state** instead of bookkeeping:
-
-```js
-import { createHttp } from "./http/index.js";
-
-const http = createHttp({ baseUrl: "/api/v2", token: () => session.token });
-
-http.get("/things", { params: { page: 2 } });   // → parsed JSON
-http.post("/things", { name: "x" });
-
-// a global progress bar is one effect — no loader.start/stop plumbing in the UI
-effect(() => bar.hidden = http.loading.pending === 0);
-```
-
-Every relative URL is prefixed with `baseUrl`; `params` go through
-`URLSearchParams`; the bearer token (and an optional `x-authorization-client`)
-are attached. A non-2xx response emits `error` on the bus (so a toast shows),
-appends any per-field validation messages, and emits `auth:unauthorized` on a
-401; a 302 rejects silently for the caller to handle. `loader.start`/
-`loader.stop` are still emitted for event-style UIs.
-
-## Measured, in a real browser
-
-Driven headless in Chromium (served over `http.server`, `examples/todomvc.html`):
-
-| Metric | qrp TodoMVC |
-|---|---|
-| First contentful paint | **12 ms** |
-| DOMContentLoaded | 12 ms |
-| Fully loaded | 15 ms |
-| JS heap used | 1.45 MB |
-| DOM nodes | 26 |
-| Bytes over the wire (core + browser module, uncompressed) | ~26 KB (~9 KB gzipped) |
-
-There is no framework runtime to boot, no hydration pass, no bundle to parse
-before the app is interactive — the page paints as fast as the browser can read
-three small modules. For contrast, a React runtime alone is ~45 KB gzipped
-*before* any application code, and ships a hydration step qrp simply doesn't
-have. (Those framework figures are from published bundle sizes, not measured
-here; the qrp numbers above are measured.)
-
-## Running the demo
-
-The demo uses real History routing, so serve it over HTTP:
+The demos use HTML5 History routing, so serve over HTTP (not `file://`):
 
 ```sh
-python -m http.server
-# open http://localhost:8000/examples/index.html
+python -m http.server 8000
+# then open http://localhost:8000/examples/table.html
 ```
+
+`examples/` — `table.html` (styled data table + modal), `todomvc.html` (the
+classic, built with `list()` + `when()`), `index.html` (forms, routing, toasts),
+`bench.html` (the performance harness).
+
+> Note: a plain static server has no SPA fallback, so refreshing a deep route
+> (e.g. `/settings/user`) 404s. That's expected for a History-API app, not a qrp
+> bug.
 
 ## Tests & tooling
 
 ```sh
-npm install   # dev-only: happy-dom (tests), eslint (lint), husky (git hooks)
-npm test      # node --test — 80 tests across core / forms / browser / events / toasts / proto
-npm run lint  # eslint (eslint:recommended + house style)
+npm install    # dev-only: happy-dom (tests), eslint (lint), husky (git hooks)
+npm test       # node --test — 182 tests across every module
+npm run lint   # eslint (eslint:recommended + house style)
 ```
 
-The framework itself has **zero runtime dependencies**; everything in
-`devDependencies` is for tests, lint, and the pre-commit hook (lint-staged +
-`npm test`). Nothing is required to *use* qrp — just load the modules.
+The framework has **zero runtime dependencies**; everything in `devDependencies`
+is for tests, lint, and the pre-commit hook. Nothing is required to *use* qrp —
+just load the modules.
 
-## Philosophy, in one line
+---
 
-Data first, declarative first, low overhead — do one thing (dashboards) and do
-it well. Use the platform, add a `Proxy` for reactivity and a scope for
-cleanup, ship no build step. That's the whole framework.
+*Named after QRP — the ham-radio practice of getting the job done with the least
+possible power.*

@@ -39,6 +39,7 @@
 
 	<script type="module">
 		import { state, effect, el, mount, list, when } from "../qrp/index.js";
+		import { html } from "../html/index.js";
 		import { persisted } from "../browser/index.js";
 		import { router } from "../qrp/index.js";
 
@@ -79,33 +80,30 @@
 			store.items = store.items.map(t => ({ ...t, done }));
 		};
 
-		// --- a single todo row: edit vs. display via when(), no DOM surgery -
+		// --- a single todo row: edit vs. display via when(), written as HTML -
 		const editView = (todo, editing) => {
-			const input = el("input", {
-				class: "edit",
-				value: todo.title,
-				onkeydown: (e) => {
-					if(e.key === "Enter") { rename(todo.id, input.value); editing.id = null; }
-					if(e.key === "Escape") { editing.id = null; }
-				},
-				onblur: () => { rename(todo.id, input.value); editing.id = null; }
-			});
+			const commit = () => { rename(todo.id, input.value); editing.id = null; };
 
-			// focus once the node is live
-			requestAnimationFrame(() => input.focus());
+			const input = html`
+				<input class="edit" value=${todo.title}
+					onkeydown=${(e) => {
+						if(e.key === "Enter") { commit(); }
+						if(e.key === "Escape") { editing.id = null; }
+					}}
+					onblur=${commit}>`;
+
+			requestAnimationFrame(() => input.focus()); // focus once the node is live
 
 			return input;
 		};
 
-		const displayView = (todo, editing) => el("span", { class: "row" },
-			el("input", {
-				type: "checkbox",
-				checked: () => todo.done,
-				onchange: (e) => setDone(todo.id, e.target.checked)
-			}),
-			el("label", { ondblclick: () => { editing.id = todo.id; } }, () => todo.title),
-			el("button", { class: "destroy", onclick: () => remove(todo.id), title: "Delete" }, "✕")
-		);
+		const displayView = (todo, editing) => html`
+			<span class="row">
+				<input type="checkbox" checked=${() => todo.done}
+					onchange=${(e) => setDone(todo.id, e.target.checked)}>
+				<label ondblclick=${() => { editing.id = todo.id; }}>${() => todo.title}</label>
+				<button class="destroy" title="Delete" onclick=${() => remove(todo.id)}>✕</button>
+			</span>`;
 
 		const todoRow = (todo, editing) => el("li",
 			{ class: () => `todo ${todo.done ? "completed" : ""}` },
