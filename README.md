@@ -6,6 +6,7 @@
 
 A data-first, declarative frontend framework for the browser — reactivity is a `Proxy`, the DOM is real, and there's no build step.
 
+[![CI](https://img.shields.io/github/actions/workflow/status/nemanjan00/qrp/ci.yml?branch=master&style=flat-square&labelColor=0a0d12&label=CI)](https://github.com/nemanjan00/qrp/actions/workflows/ci.yml)
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-none-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
 [![gzipped](https://img.shields.io/badge/gzipped-~12_KB-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
