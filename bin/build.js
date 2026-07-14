@@ -14,37 +14,72 @@ import fs from "node:fs";
 import zlib from "node:zlib";
 import process from "node:process";
 
-// output-name -> source entry. The name becomes dist/<name>.js and must match
-// the `exports` map / import-map subpaths in package.json.
-const ENTRIES = {
-	"qrp": "qrp/index.js",
-	"html": "html/index.js",
-	"forms": "forms/index.js",
-	"table": "table/index.js",
-	"collection": "collection/index.js",
-	"http": "http/index.js",
-	"events": "events/index.js",
-	"toasts": "toasts/index.js",
-	"browser": "browser/index.js",
-	"proto": "proto/index.js",
-	"behaviors": "behaviors/index.js",
-	"behaviors/portal": "behaviors/portal.js",
-	"behaviors/dismissable": "behaviors/dismissable.js",
-	"behaviors/trap-focus": "behaviors/trap-focus.js",
-	"behaviors/anchored": "behaviors/anchored.js",
-	"behaviors/disclosure": "behaviors/disclosure.js",
-	"behaviors/busy-while": "behaviors/busy-while.js",
-	"utils": "utils/index.js",
-	"utils/memoize": "utils/memoize.js",
-	"utils/lru": "utils/lru.js",
-	"utils/cache": "utils/cache.js",
-	"utils/paginate": "utils/paginate.js"
-};
+// Single-index modules: dist/<name>.js <- <name>/index.js
+const INDEX_MODULES = [
+	"qrp", "html", "forms", "table", "collection", "http",
+	"events", "toasts", "browser", "proto"
+];
+
+// Directories whose EVERY *.js file (a .d.ts sibling excluded) is a public deep
+// subpath. Derived from the filesystem so a new util/behavior file can't be
+// added to exports without also being built — the drift that shipped 0.4.0's
+// dist/utils missing debounce/limit/validate/load-script.
+const GLOB_DIRS = ["behaviors", "utils"];
+
+// output-name -> source entry. The name becomes dist/<name>.js and MUST match
+// the `exports` map subpaths in package.json.
+const ENTRIES = {};
+
+INDEX_MODULES.forEach((name) => { ENTRIES[name] = `${name}/index.js`; });
+
+GLOB_DIRS.forEach((dir) => {
+	fs.readdirSync(dir)
+		.filter((file) => file.endsWith(".js"))
+		.forEach((file) => {
+			const base = file.slice(0, -3);   // strip .js
+			const name = base === "index" ? dir : `${dir}/${base}`;
+			ENTRIES[name] = `${dir}/${file}`;
+		});
+});
 
 const OUTDIR = "dist";
 
 const kb = (bytes) => (bytes / 1024).toFixed(1) + " KB";
 const gzip = (buf) => zlib.gzipSync(buf, { level: 9 }).length;
+
+// Assert every package.json `exports` subpath points at a file that now exists
+// in dist/. Globs (./utils/*, ./behaviors/*) are checked per source .js file.
+const verifyExportsResolve = () => {
+	const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+	const missing = [];
+
+	Object.entries(pkg.exports).forEach(([sub, val]) => {
+		if(sub.includes("*")) {
+			const dir = sub.replace("./", "").replace("/*", "");
+
+			fs.readdirSync(dir)
+				.filter((file) => file.endsWith(".js") && file !== "index.js")
+				.forEach((file) => {
+					const out = `${OUTDIR}/${dir}/${file}`;
+
+					if(!fs.existsSync(out)) { missing.push(`${sub} → ${out}`); }
+				});
+
+			return;
+		}
+
+		const target = typeof val === "string" ? val : val.default;
+
+		if(target && target.startsWith("./dist/") && !fs.existsSync(target.slice(2))) {
+			missing.push(`${sub} → ${target}`);
+		}
+	});
+
+	if(missing.length) {
+		console.error("BUILD GUARD: exports subpaths with no built file:\n  " + missing.join("\n  "));
+		process.exit(1);
+	}
+};
 
 fs.rmSync(OUTDIR, { recursive: true, force: true });
 
@@ -71,6 +106,14 @@ esbuild.build({
 		const tag = f === "qrp.js" ? "  <- core" : "";
 		console.log(`  ${f.padEnd(28)} ${kb(buf.length).padStart(9)}  |  ${kb(g).padStart(9)} gz${tag}`);
 	});
+	// honest core figure: what `import "@nemanjan00/qrp"` actually pulls. With
+	// splitting the core lives in a shared chunk, so measure a standalone bundle
+	// (no splitting) of the core entry rather than the thin re-export stub.
+	// GUARD: every public exports subpath must resolve to a file we just built,
+	// or npm ships a package whose imports 404 (exactly how 0.4.0's deep
+	// utils/* subpaths broke). Fail the build (→ prepack → publish) if not.
+	verifyExportsResolve();
+
 	// honest core figure: what `import "@nemanjan00/qrp"` actually pulls. With
 	// splitting the core lives in a shared chunk, so measure a standalone bundle
 	// (no splitting) of the core entry rather than the thin re-export stub.
