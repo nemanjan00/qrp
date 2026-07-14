@@ -289,14 +289,18 @@ el("tbody", {}, list(
 ```
 
 **Conditional subtrees, with cleanup.** `when()` swaps a branch on a condition
-and disposes the old branch's effects — no leaks, no DOM surgery.
+and disposes the old branch's effects — no leaks, no DOM surgery. It's
+**value-keyed**, so it drives tabs directly (re-renders when the value changes,
+not just on true⇄false):
 
 ```js
-el("div", {}, when(
-  () => editing.on,
-  () => html`<input value=${row.name}>`,   // edit
-  () => html`<span>${() => row.name}</span>`  // display
-));
+// edit vs display
+el("div", {}, when(() => editing.on,
+  () => html`<input value=${row.name}>`,
+  () => html`<span>${() => row.name}</span>`));
+
+// a tab switcher — re-renders on every tab
+el("div", {}, when(() => ui.tab, (tab) => TABS[tab]()));
 ```
 
 **A fetch client built for dashboards.** URL shaping, auth headers, a **reactive**
@@ -306,11 +310,31 @@ in-flight loader, and errors routed to the toast bus.
 const http = createHttp({ baseUrl: "/api", token: () => session.token });
 http.get("/things", { params: { page: 2, ids: [1, 2, 3] } });   // → parsed JSON
 effect(() => bar.hidden = http.loading.pending === 0);          // a spinner in one line
+http.get("/export.msgpack", { responseType: "arraybuffer" });  // binary, not just JSON
+```
+
+**Dashboard utilities that carry the boring parts.** Rate-limit, debounce,
+validate — the stuff every admin tool hand-rolls.
+
+```js
+const search = debounce((q) => http.get("/find", { params: { q } }), 300);
+const sync   = limit((id) => http.post(`/follow/${id}`), { max: 5 });  // ≤5 in flight
+const errors = validate({ email: { required: true, pattern: /@/ } }, form);  // [] = ok
+```
+
+**Reactive routing & owned side-effects.** The route is state; UI built outside a
+render stays owned.
+
+```js
+el("a", { class: () => currentRoute.path === "/users" ? "active" : "" }, "Users");
+const { value: modal, dispose } = scoped(() => buildDialog());  // no ownerless effects
+onEffectError((err) => Sentry.captureException(err));           // central crash reporting
 ```
 
 Plus: a global event bus, cross-tab persistence, HTML5 routing with `:param`
-patterns, real custom elements (no `class extends`), and headless behaviors for
-modals, dropdowns, tooltips, and disclosures.
+patterns (keep-alive on same-pattern navigation), real custom elements (no
+`class extends`), and headless behaviors for modals, dropdowns, tooltips, and
+disclosures.
 
 ## 📦 Modules
 

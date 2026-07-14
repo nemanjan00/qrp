@@ -208,7 +208,8 @@
 				"@nemanjan00/qrp/utils/memoize": "./utils/memoize.js",
 				"@nemanjan00/qrp/utils/lru": "./utils/lru.js",
 				"@nemanjan00/qrp/utils/cache": "./utils/cache.js",
-				"@nemanjan00/qrp/utils/paginate": "./utils/paginate.js"
+				"@nemanjan00/qrp/utils/paginate": "./utils/paginate.js",
+				"@nemanjan00/qrp/utils/debounce": "./utils/debounce.js"
 			}
 		}
 	</script>
@@ -224,6 +225,7 @@
 		import { dismissable } from "@nemanjan00/qrp/behaviors/dismissable";
 		import { disclosure } from "@nemanjan00/qrp/behaviors/disclosure";
 		import { busyWhile } from "@nemanjan00/qrp/behaviors/busy-while";
+		import { debounce } from "@nemanjan00/qrp/utils/debounce";
 		import { persisted, viewport, online, seen, media } from "@nemanjan00/qrp/browser";
 		import { wrapMethod, delegate } from "@nemanjan00/qrp/proto";
 
@@ -241,7 +243,7 @@
 		const highlight = (code) => {
 			const esc = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 			return esc.replace(
-				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|define|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen|wrapMethod|delegate|onceOnly)\b/g,
+				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|define|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen|wrapMethod|delegate|onceOnly|debounce|throttle|limit|validate|scoped|currentRoute|loadScript|memoize)\b/g,
 				(m, c, s, k, fn) =>
 					c ? `<span class="c">${c}</span>`
 					: s ? `<span class="s">${s}</span>`
@@ -711,6 +713,31 @@ el("div", { hidden: () =>
 
 http.get("/me", { params: { page: 2 } });`),
 				httpDemo())));
+
+		// ============================================================ utils (debounce)
+		const utilsDemo = () => {
+			const s = state({ typed: 0, searched: 0, last: "" });
+			const runSearch = debounce((q) => { s.searched++; s.last = q; }, 400);
+			return livePanel(
+				el("div", { class: "dim", style: "font-size:.8rem" }, "type fast — keystrokes fire every time; the search waits 400ms for a pause:"),
+				el("input", { "aria-label": "Search", placeholder: "search…", style: "width:100%",
+					oninput: (e) => { s.typed++; runSearch(e.target.value); } }),
+				el("div", { class: "row", style: "gap:2rem" },
+					el("div", {}, el("span", { class: "dim" }, "keystrokes "), el("strong", { style: "color:var(--accent);font-size:1.2rem" }, () => `${s.typed}`)),
+					el("div", {}, el("span", { class: "dim" }, "searches "), el("strong", { style: "color:var(--accent2);font-size:1.2rem" }, () => `${s.searched}`))),
+				el("code", { style: "font-size:.8rem;color:var(--accent2)" }, () => s.last ? `GET /find?q=${s.last}` : "—"));
+		};
+		app.appendChild(section("utils", "Dashboard utilities", "The boring parts, carried.",
+			"debounce/throttle, a concurrency + rate limiter (limit), memoize with TTL, and a schema validator — the helpers every admin tool hand-rolls, here scope-aware and dependency-free (the concurrency core is queue-promised, distilled). Type below: keystrokes fire every time; the debounced search waits for a pause.",
+			el("div", { class: "demo" },
+				codeWindow("utils.js", `
+const search = debounce(
+  (q) => http.get("/find", { params: { q } }),
+  400);                         // fires after a pause
+
+const sync = limit(fn, { max: 5 });  // ≤5 in flight
+validate(schema, payload);           // [] = valid`),
+				utilsDemo())));
 
 		// ============================================================ router (in-page)
 		const routerDemo = () => {
