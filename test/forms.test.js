@@ -78,6 +78,10 @@ test("select via declarative type + options", () => {
 	const select = el.querySelector("select");
 	assert.equal(select.querySelectorAll("option").length, 2);
 	assert.equal(select.value, "dmr");
+
+	// a11y: the select is associated with its label (fixes Lighthouse select-name)
+	assert.ok(select.id, "select gets an id");
+	assert.equal(el.querySelector("label").getAttribute("for"), select.id);
 });
 
 test("radio group sets state on change", () => {
@@ -126,6 +130,12 @@ test("field() renders one labelled input standalone (no form needed)", () => {
 	assert.equal(row.querySelector("label").textContent, "Nick");
 	assert.equal(row.querySelector("input").value, "R2");
 	assert.equal(row.querySelector(".description").textContent, "your handle");
+
+	// a11y: the label is associated with the control (for -> id)
+	const label = row.querySelector("label");
+	const control = row.querySelector("input");
+	assert.ok(control.id, "control gets an id");
+	assert.equal(label.getAttribute("for"), control.id, "label.for points at the control");
 
 	// still two-way bound
 	const input = row.querySelector("input");

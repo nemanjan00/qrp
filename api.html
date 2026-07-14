@@ -55,7 +55,15 @@
 		.hidden { display: none; }
 		.note { color: var(--muted); font-size: 0.82rem; margin-top: 2rem; }
 		.loading { color: var(--muted); padding: 3rem 0; }
-		@media (max-width: 800px) { .layout { grid-template-columns: 1fr; } aside { position: static; max-height: none; } .nav-links a[href^="#"] { display: none; } }
+		/* reserve height so the async-rendered doc doesn't shift layout (CLS) */
+		#doc { min-height: 100vh; }
+		@media (max-width: 800px) {
+			.layout { grid-template-columns: 1fr; }
+			/* content first; the async-populated TOC fills in below so it can't
+			   shove the doc down (eliminates CLS on the mobile audit) */
+			main#doc { order: 1; } aside { order: 2; position: static; max-height: none; }
+			.nav-links a[href^="#"] { display: none; }
+		}
 	</style>
 </head>
 <body>
@@ -73,8 +81,8 @@
 
 	<div class="layout">
 		<aside>
-			<input class="search" id="search" type="search" placeholder="Filter…" autocomplete="off">
-			<ul class="toc" id="toc"></ul>
+			<input class="search" id="search" type="search" aria-label="Filter API reference" placeholder="Filter…" autocomplete="off">
+			<nav id="toc" aria-label="API sections"></nav>
 		</aside>
 		<main id="doc"><div class="loading">Loading API reference…</div></main>
 	</div>

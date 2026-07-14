@@ -37,6 +37,9 @@
 		}
 		a { color: var(--accent); text-decoration: none; }
 		code, pre, .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; }
+		/* sections mount at runtime (deferred module); reserve viewport height so
+		   the footer starts below the fold and filling #app can't shift it (CLS) */
+		main#app { display: block; min-height: 100vh; }
 		section { max-width: 1040px; margin: 0 auto; padding: 5rem 1.5rem; }
 		h2 { font-size: clamp(1.6rem, 3vw, 2.3rem); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 0.4rem; }
 		.lede { color: var(--muted); font-size: 1.1rem; max-width: 60ch; margin: 0 0 2.5rem; }
@@ -172,7 +175,7 @@
 		</div>
 	</nav>
 
-	<div id="app"></div>
+	<main id="app"></main>
 
 	<footer>
 		<p><b style="color:var(--accent)">qrp</b> — a data-first, declarative frontend framework.</p>
@@ -333,8 +336,8 @@ void handleRoot() {
 			const full = derive(() => `${s.first} ${s.last}`);
 			return livePanel(
 				el("div", { class: "row" },
-					el("input", { value: s.first, oninput: (e) => s.first = e.target.value }),
-					el("input", { value: s.last, oninput: (e) => s.last = e.target.value })),
+					el("input", { "aria-label": "First name", value: s.first, oninput: (e) => s.first = e.target.value }),
+					el("input", { "aria-label": "Last name", value: s.last, oninput: (e) => s.last = e.target.value })),
 				el("div", {}, el("span", { class: "dim" }, "derived → "),
 					el("strong", { style: "color:var(--accent);font-size:1.2rem" }, () => full.value)));
 		};
@@ -497,7 +500,7 @@ form({ settings, fields: {
 				el("div", { class: "window-bar" }, el("span", { class: "dot r" }), el("span", { class: "dot y" }), el("span", { class: "dot g" }), el("span", { class: "window-name" }, "live · sortable · filtered · paginated")),
 				el("div", { style: "padding:1rem" },
 					el("div", { class: "toolbar" },
-						el("input", { type: "search", placeholder: "Filter names…", style: "flex:1", oninput: (e) => { filter.q = e.target.value; page.index = 0; } })),
+						el("input", { type: "search", "aria-label": "Filter table rows", placeholder: "Filter names…", style: "flex:1", oninput: (e) => { filter.q = e.target.value; page.index = 0; } })),
 					el("div", { style: "overflow-x:auto" }, t),
 					el("div", { class: "pager" },
 						el("button", { class: "btn", onclick: () => { if(page.index > 0) page.index--; } }, "‹"),
@@ -636,7 +639,7 @@ el("button", { onclick: () => prefs.likes++ });`),
 				el("div", { class: "dim", style: "font-size:.8rem" }, "double-click the name to edit — when() swaps the subtree and disposes the old one:"),
 				el("div", { class: "view-panel", style: "min-height:auto" }, when(
 					() => st.editing,
-					() => { const i = el("input", { value: st.name, onblur: () => st.editing = false,
+					() => { const i = el("input", { "aria-label": "Edit name", value: st.name, onblur: () => st.editing = false,
 						onkeydown: (e) => { if(e.key === "Enter") { st.name = e.target.value; st.editing = false; } } });
 						requestAnimationFrame(() => i.focus()); return i; },
 					() => el("strong", { style: "font-size:1.3rem;color:var(--accent);cursor:pointer", ondblclick: () => st.editing = true }, () => st.name))));
@@ -682,7 +685,7 @@ http.get("/me", { params: { page: 2 } });`),
 		// ============================================================ router (in-page)
 		const routerDemo = () => {
 			const outlet = el("div", { class: "view-panel" });
-			const view = (title, body) => (v) => v.appendChild(el("div", {}, el("h4", { style: "margin:.2rem 0;color:var(--accent)" }, title), el("p", { class: "dim", style: "margin:0" }, body)));
+			const view = (title, body) => (v) => v.appendChild(el("div", {}, el("div", { style: "margin:.2rem 0;color:var(--accent);font-weight:700" }, title), el("p", { class: "dim", style: "margin:0" }, body)));
 			// a self-contained router over an in-memory path (no navigation side effects)
 			const cur = state({ path: "overview" });
 			const routes = { overview: view("Overview", "Routes are path patterns; :params and query are parsed for you."), settings: view("Settings", "The matched component mounts in its own scope."), about: view("About", "Leaving a route disposes its effects — no leaks.") };
@@ -750,7 +753,7 @@ el("div", {}, list(
 				el("div", {}, el("span", { class: "dim" }, "OS prefers dark: "), el("strong", { style: "color:var(--accent)" }, () => String(prefersDark.matches))),
 				el("div", { class: "row" },
 					el("span", { class: "dim", style: "font-size:.85rem" }, "your saved choice (persists + syncs tabs):"),
-					el("select", { onchange: (e) => theme.mode = e.target.value, value: () => theme.mode },
+					el("select", { "aria-label": "Theme preference", onchange: (e) => theme.mode = e.target.value, value: () => theme.mode },
 						el("option", { value: "auto" }, "auto"), el("option", { value: "light" }, "light"), el("option", { value: "dark" }, "dark"))),
 				swatch);
 		};

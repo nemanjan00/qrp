@@ -187,10 +187,25 @@ const resolveInput = (field) => {
  * @param {object} [spec] { name, description, type, input, ...attrs }
  * @returns {Element} label + input (+ description)
  */
+// labelable native controls — a <label for> only associates with these, not a
+// wrapper like the radio-group div (which carries its own per-option labels).
+const LABELABLE = new Set(["INPUT", "SELECT", "TEXTAREA"]);
+let fieldSeq = 0;
+
 export const field = (settings, key, spec = {}) => {
+	const control = resolveInput(spec)(settings, key, spec);
+
+	// associate the label with the control for a11y (screen readers, click-to-focus)
+	const labelAttrs = {};
+	if(control && LABELABLE.has(control.tagName)) {
+		const id = `qrp-f${++fieldSeq}-${String(key).replace(/[^\w-]/g, "")}`;
+		control.id = id;
+		labelAttrs.for = id;
+	}
+
 	return el("div", { class: "setting-item" },
-		el("label", {}, spec.name || key),
-		resolveInput(spec)(settings, key, spec),
+		el("label", labelAttrs, spec.name || key),
+		control,
 		spec.description ? el("div", { class: "description" }, spec.description) : null
 	);
 };
