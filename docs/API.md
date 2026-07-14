@@ -227,20 +227,18 @@ el("tbody", {}, list(
 when<T>(cond: () => T, thenFn: (value: NonNullable<T>) => Renderable, elseFn?: (value: T) => Renderable): WhenMarker
 ```
 
-Conditionally render one of two subtrees, swapping on a reactive condition
-and disposing the old branch (effects + DOM) when it flips.
+Conditionally render one of two subtrees, disposing the old branch (effects +
+DOM) when it changes.
 
-IMPORTANT — `when` reacts to **truthiness, not value**. The branch swaps only
-when `cond()` crosses truthy⇄falsy; it does NOT re-render while the value
-changes but stays truthy, and `value` is captured at swap time (it does not
-update). So this does NOT switch tabs:
+**Value-keyed:** the branch re-renders whenever the condition's value changes
+(by `Object.is`), so a value-switch works directly — this DOES switch tabs:
 
-  when(() => state.tab, (tab) => TABS[tab]())   // stuck on the first tab
+  when(() => state.tab, (tab) => TABS[tab]())
 
-For a value-keyed switch, branch per value (each is its own truthy⇄falsy):
-
-  when(() => state.tab === "a", renderA)
-  when(() => state.tab === "b", renderB)
+Falsy values collapse to a single else-branch. A branch's own reactive updates
+still happen in place; only a value change rebuilds. If the value is an object
+whose identity changes each read, that rebuilds every time — key on a primitive
+(`() => user?.id`) or mutate the object in place.
 
 A `WhenMarker` is only valid as an `el()`/`html` child; to nest one inside
 another branch, wrap it: `() => el("div", {}, when(...))`.

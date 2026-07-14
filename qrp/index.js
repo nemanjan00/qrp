@@ -555,7 +555,7 @@ const setupWhen = (parent, marker) => {
 
 	let branchScope = null;
 	let nodes = [];
-	let last;
+	let lastKey;
 	let first = true;
 
 	// Dispose the live branch when the enclosing owner (mount/scope) tears down.
@@ -569,14 +569,19 @@ const setupWhen = (parent, marker) => {
 		const value = marker.cond();
 		const truthy = !!value;
 
-		// Only rebuild when the branch actually changes (guarded so state read
-		// inside a branch's own effects doesn't re-run the whole subtree).
-		if(!first && truthy === last) {
+		// Value-keyed: rebuild when the branch's KEY changes. When truthy the key
+		// IS the value (so `when(() => state.tab, tab => TABS[tab]())` re-renders
+		// on every tab), when falsy all falsy values collapse to one key (so the
+		// else-branch doesn't churn on false↔0↔""). A branch's own reactive
+		// updates still happen in place — only a key change rebuilds.
+		const key = truthy ? value : false;
+
+		if(!first && Object.is(key, lastKey)) {
 			return;
 		}
 
 		first = false;
-		last = truthy;
+		lastKey = key;
 
 		if(branchScope) {
 			branchScope.dispose();
@@ -619,8 +624,13 @@ const setupWhen = (parent, marker) => {
  *   ));
  *
  * The condition's truthy value is passed to the branch, so `when(() => user,
- * u => ...)` works as a presence guard. Only re-renders when truthiness flips,
- * so a branch's own reactive updates happen in place.
+ * u => ...)` works as a presence guard. It is **value-keyed**: the branch
+ * re-renders when the value changes, so a value-switch works directly —
+ * `when(() => state.tab, tab => TABS[tab]())` re-renders on every tab. Falsy
+ * values collapse to a single else-branch. A branch's own reactive updates
+ * still happen in place; only a value (key) change rebuilds. If the value is an
+ * object whose identity changes each read, that's a rebuild each time — key on
+ * a primitive (`() => user?.id`) or mutate the object in place.
  *
  * @param {Function} cond () => any (reactive)
  * @param {Function} thenFn (value) => renderable, shown when cond is truthy

@@ -104,3 +104,41 @@ test("when branch effects dispose with their mount", () => {
 	s.n = 2;
 	assert.equal(runs, 2); // no leak after unmount
 });
+
+test("when is value-keyed: re-renders when the truthy value changes (tabs)", () => {
+	const s = state({ tab: "a" });
+	const builds = [];
+
+	const view = el("div", {}, when(
+		() => s.tab,
+		(tab) => { builds.push(tab); return el("p", {}, `tab ${tab}`); }
+	));
+
+	assert.equal(view.querySelector("p").textContent, "tab a");
+	assert.deepEqual(builds, ["a"]);
+
+	// switching between two TRUTHY values must re-render (the §2.1 fix)
+	s.tab = "b";
+	assert.equal(view.querySelector("p").textContent, "tab b");
+	assert.deepEqual(builds, ["a", "b"]);
+
+	// same value again → no rebuild
+	s.tab = "b";
+	assert.deepEqual(builds, ["a", "b"]);
+});
+
+test("when collapses falsy values: else-branch doesn't churn on false↔0↔''", () => {
+	const s = state({ v: false });
+	let elseBuilds = 0;
+
+	el("div", {}, when(
+		() => s.v,
+		(v) => el("span", {}, `on ${v}`),
+		() => { elseBuilds++; return el("em", {}, "off"); }
+	));
+
+	assert.equal(elseBuilds, 1);
+	s.v = 0;   // still falsy, different value
+	s.v = "";  // still falsy
+	assert.equal(elseBuilds, 1, "no rebuild among falsy values");
+});
