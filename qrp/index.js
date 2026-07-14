@@ -425,7 +425,11 @@ const setupList = (parent, marker) => {
 	let cache = new Map();
 
 	effect(() => {
-		const items = marker.source() || [];
+		// Track that the array changed (identity/length), then iterate the RAW
+		// array — keying/diffing must not re-read every element through the
+		// reactive proxy on each change (that made an N-item swap pay an
+		// O(rows) proxy tax). Rows are wrapped reactively only when built.
+		const items = raw(marker.source() || []);
 
 		const next = new Map();
 		const desired = [];
@@ -436,15 +440,17 @@ const setupList = (parent, marker) => {
 			let entry = cache.get(key) || next.get(key);
 
 			if(!entry) {
-				// Build the row DETACHED: its effects must be owned by the row's
-				// own scope (so they survive this effect re-running) and must
-				// not track anything here (so item edits don't re-run the list).
+				// New row: build DETACHED (its effects belong to the row's own
+				// scope so they survive reconciles). Wrap the item reactively
+				// here, once — so cell bindings track it, without the reconcile
+				// loop touching every item's proxy.
 				let element;
 				let rowScope;
+				const reactiveItem = state(item);
 
 				untracked(() => {
 					rowScope = scope(() => {
-						element = toNodes(marker.render(item, index))[0];
+						element = toNodes(marker.render(reactiveItem, index))[0];
 					});
 				});
 

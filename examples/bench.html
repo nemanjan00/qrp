@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>qrp • benchmark</title>
+</head>
+<body>
+	<h1>qrp benchmark harness</h1>
+	<div id="root"></div>
+
+	<script type="module">
+		import { state, el, list, mount } from "../qrp/index.js";
+
+		let seq = 1;
+		const A = ["pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant", "easy", "angry", "crazy", "helpful", "mushy", "odd", "unsightly", "adorable"];
+		const N = ["table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard"];
+		const pick = (arr, i) => arr[i % arr.length];
+
+		// deterministic-ish builder (no Math.random dependency for stability)
+		let r = 12345;
+		const rnd = (m) => { r = (r * 48271) % 2147483647; return r % m; };
+		const build = (n) => Array.from({ length: n }, () => ({
+			id: seq++,
+			label: pick(A, rnd(A.length)) + " " + pick(N, rnd(N.length))
+		}));
+
+		const store = state({ rows: [] });
+		const selected = state({ id: 0 });
+
+		const tableEl = el("table", {},
+			el("tbody", {}, list(
+				() => store.rows,
+				(row) => row.id,
+				(row) => el("tr", { class: () => (selected.id === row.id ? "danger" : "") },
+					el("td", {}, () => row.id),
+					el("td", {}, el("a", { onclick: () => { selected.id = row.id; } }, () => row.label)),
+					el("td", {}, el("button", { onclick: () => remove(row.id) }, "x"))
+				)
+			))
+		);
+
+		mount(document.getElementById("root"), (view) => view.appendChild(tableEl));
+
+		const remove = (id) => { store.rows = store.rows.filter((row) => row.id !== id); };
+
+		const timed = (fn) => {
+			const t = performance.now();
+			fn();
+			return performance.now() - t;
+		};
+
+		// median of repeated runs
+		const median = (fn, reps) => {
+			const runs = [];
+			for(let i = 0; i < reps; i++) { runs.push(fn()); }
+			runs.sort((a, b) => a - b);
+			return Math.round(runs[Math.floor(runs.length / 2)] * 10) / 10;
+		};
+
+		window.bench = {
+			create1k: () => timed(() => { store.rows = build(1000); }),
+			create10k: () => timed(() => { store.rows = build(10000); }),
+			append1k: () => timed(() => { store.rows = [...store.rows, ...build(1000)]; }),
+
+			// update every 10th row's label IN PLACE (mutation → fine-grained)
+			updateEvery10th: () => timed(() => {
+				const rows = store.rows;
+				for(let i = 0; i < rows.length; i += 10) { rows[i].label = rows[i].label + " !!!"; }
+			}),
+
+			selectRow: () => timed(() => { selected.id = store.rows[1] ? store.rows[1].id : 0; }),
+
+			swapRows: () => timed(() => {
+				const rows = store.rows.slice();
+				if(rows.length > 998) {
+					const tmp = rows[1]; rows[1] = rows[998]; rows[998] = tmp;
+				}
+				store.rows = rows;
+			}),
+
+			removeRow: () => timed(() => { store.rows = store.rows.filter((_, i) => i !== 1); }),
+
+			clear: () => timed(() => { store.rows = []; }),
+
+			// live ticker: mutate EVERY row's label once (one full pass)
+			tickAll: () => timed(() => {
+				const rows = store.rows;
+				for(let i = 0; i < rows.length; i++) { rows[i].label = rows[i].label + "."; }
+			}),
+
+			rowCount: () => document.querySelectorAll("tbody tr").length,
+			median
+		};
+	</script>
+</body>
+</html>
