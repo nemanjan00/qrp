@@ -1,0 +1,24 @@
+# render.com blueprint — deploy this repo as a static site.
+# The marketing site (index.html) and the framework modules it imports are all
+# plain static files; no build step. Connect the repo on render.com and this
+# serves index.html at / with the qrp/, html/, table/, … modules alongside it.
+services:
+  - type: web
+    name: qrp
+    runtime: static
+    # nothing to build — qrp has no build step
+    buildCommand: ""
+    # the repo root IS the site (index.html + the modules it imports)
+    staticPublishPath: .
+    headers:
+      # correct MIME type for the ES modules the page imports
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+    routes:
+      # examples/ use the History API; send unknown deep paths to the SPA-less
+      # landing page rather than 404. (The marketing site itself is anchor-based
+      # and needs no fallback.)
+      - type: rewrite
+        source: /examples/*
+        destination: /examples/index.html

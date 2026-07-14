@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>qrp — turn data into a dashboard</title>
+	<meta name="description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step. Reactivity is a Proxy, the DOM is real, the core is 11.5 KB.">
+	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
+	<meta property="og:title" content="qrp — turn data into a dashboard">
+	<meta property="og:description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step, 11.5 KB core.">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="./qrp.css">
+	<style>
+		:root {
+			--bg: #0a0d12;
+			--surface: #121821;
+			--surface2: #19212c;
+			--border: #232d3b;
+			--fg: #e8ebf0;
+			--muted: #8894a6;
+			--accent: #ffb23e;
+			--accent2: #34d399;
+			--radius: 12px;
+			/* retint qrp.css tokens so the table/toasts match the site */
+			--qrp-bg: var(--surface);
+			--qrp-surface: var(--surface2);
+			--qrp-border: var(--border);
+			--qrp-fg: var(--fg);
+			--qrp-muted: var(--muted);
+			--qrp-accent: var(--accent);
+		}
+		* { box-sizing: border-box; }
+		html { scroll-behavior: smooth; }
+		body {
+			margin: 0; background: var(--bg); color: var(--fg);
+			font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+			line-height: 1.6; -webkit-font-smoothing: antialiased;
+		}
+		a { color: var(--accent); text-decoration: none; }
+		code, pre, .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; }
+		section { max-width: 1040px; margin: 0 auto; padding: 5rem 1.5rem; }
+		h2 { font-size: clamp(1.6rem, 3vw, 2.3rem); font-weight: 700; letter-spacing: -0.02em; margin: 0 0 0.4rem; }
+		.lede { color: var(--muted); font-size: 1.1rem; max-width: 60ch; margin: 0 0 2.5rem; }
+		.eyebrow { color: var(--accent); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.6rem; }
+
+		/* nav */
+		nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px);
+			background: color-mix(in srgb, var(--bg) 80%, transparent);
+			border-bottom: 1px solid var(--border); }
+		.nav-inner { max-width: 1040px; margin: 0 auto; padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 1.5rem; }
+		.brand { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.03em; }
+		.brand b { color: var(--accent); }
+		.nav-links { margin-left: auto; display: flex; gap: 1.4rem; font-size: 0.9rem; }
+		.nav-links a { color: var(--muted); }
+		.nav-links a:hover { color: var(--fg); }
+		.online-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 0.4rem; }
+
+		/* hero */
+		.hero { text-align: center; padding-top: 4rem; padding-bottom: 3rem; position: relative; overflow: hidden; }
+		.hero::before { content: ""; position: absolute; top: -40%; left: 50%; transform: translateX(-50%);
+			width: 800px; height: 800px; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%);
+			pointer-events: none; z-index: -1; }
+		.wordmark { font-size: clamp(3.5rem, 12vw, 7rem); font-weight: 900; letter-spacing: -0.05em; line-height: 1;
+			background: linear-gradient(180deg, #fff, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent;
+			filter: drop-shadow(0 0 40px color-mix(in srgb, var(--accent) 30%, transparent)); }
+		.tagline { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 600; margin: 1rem 0 0.5rem; letter-spacing: -0.01em; }
+		.hero .lede { margin: 0 auto 2rem; text-align: center; }
+		.badges { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-bottom: 2rem; }
+		.badge { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.82rem; color: var(--muted); }
+		.badge b { color: var(--accent2); }
+		.cta { display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; }
+		.btn { font: inherit; font-weight: 600; padding: 0.7rem 1.4rem; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--fg); transition: .15s; }
+		.btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+		.btn-primary { background: var(--accent); color: #1a1206; border-color: var(--accent); }
+		.btn-primary:hover { box-shadow: 0 8px 30px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+		/* code window */
+		.demo { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-items: stretch; }
+		@media (max-width: 760px) { .demo { grid-template-columns: 1fr; } }
+		.window { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+		.window-bar { display: flex; align-items: center; gap: 0.4rem; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border); background: var(--surface2); }
+		.dot { width: 11px; height: 11px; border-radius: 50%; }
+		.dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+		.window-name { margin-left: 0.6rem; font-size: 0.78rem; color: var(--muted); }
+		pre { margin: 0; padding: 1.1rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.7; flex: 1; }
+		.c { color: #5f6b7c; } .s { color: var(--accent2); } .k { color: #c792ea; } .fn { color: var(--accent); }
+		.live { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem; display: flex; flex-direction: column; }
+		.live-tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent2); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.4rem; }
+		.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent2) 70%, transparent); animation: pulse 2s infinite; }
+		@keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent2) 60%, transparent); } 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+		.live-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 0.8rem; }
+
+		/* generic controls used inside demos */
+		.count { font-size: 3rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+		input, select, textarea { font: inherit; padding: 0.5rem 0.7rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; }
+		input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+		.row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+		.tabs { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; }
+		.tab { padding: 0.35rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); }
+		.tab.active { color: var(--accent); border-color: var(--accent); }
+
+		/* feature cards */
+		.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+		.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.3rem; transition: .2s; }
+		.card:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); transform: translateY(-2px); }
+		.card h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+		.card .icon { font-size: 1.4rem; }
+		.card p { color: var(--muted); font-size: 0.9rem; margin: 0.3rem 0 0; }
+
+		/* perf bars */
+		.bars { display: flex; flex-direction: column; gap: 0.7rem; }
+		.bar-row { display: grid; grid-template-columns: 150px 1fr 70px; align-items: center; gap: 0.8rem; font-size: 0.85rem; }
+		.bar-track { background: var(--surface2); border-radius: 6px; height: 22px; overflow: hidden; position: relative; }
+		.bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #ff8c00); border-radius: 6px; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+		.bar-num { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+		.reveal { opacity: 0; transform: translateY(24px); transition: .7s cubic-bezier(.2,.8,.2,1); }
+		.reveal.shown { opacity: 1; transform: none; }
+
+		footer { border-top: 1px solid var(--border); padding: 3rem 1.5rem; text-align: center; color: var(--muted); font-size: 0.9rem; }
+		.dim { color: var(--muted); }
+		table.qrp-table { font-size: 0.85rem; }
+		.toolbar { display: flex; gap: 0.6rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+		.pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.8rem; font-size: 0.82rem; color: var(--muted); }
+	</style>
+</head>
+<body>
+	<nav>
+		<div class="nav-inner">
+			<span class="brand">q<b>r</b>p</span>
+			<div class="nav-links">
+				<a href="#reactivity">Reactivity</a>
+				<a href="#markup">Markup</a>
+				<a href="#table">Table</a>
+				<a href="#perf">Performance</a>
+				<a href="#modules">Modules</a>
+				<a href="https://github.com/nemanjan00/qrp" target="_blank">GitHub</a>
+				<span class="dim" id="net"></span>
+			</div>
+		</div>
+	</nav>
+
+	<div id="app"></div>
+
+	<footer>
+		<p><b style="color:var(--accent)">qrp</b> — a data-first, declarative frontend framework.</p>
+		<p>Zero dependencies · zero build step · <span id="foot-stats"></span></p>
+		<p class="dim" style="margin-top:1.5rem">Named after QRP — the ham-radio practice of getting the job done with the least possible power. · This whole page is built with qrp.</p>
+	</footer>
+
+	<script type="module">
+		import { state, effect, el, mount, list, when, define, derive } from "./qrp/index.js";
+		import { html } from "./html/index.js";
+		import { table } from "./table/index.js";
+		import { form, registerInput, inputs } from "./forms/index.js";
+		import { toasts, notify } from "./toasts/index.js";
+		import { portal } from "./behaviors/portal.js";
+		import { trapFocus } from "./behaviors/trap-focus.js";
+		import { dismissable } from "./behaviors/dismissable.js";
+		import { disclosure } from "./behaviors/disclosure.js";
+		import { persisted, viewport, online, seen } from "./browser/index.js";
+
+		// mount the global toast stack (demos fire real toasts)
+		mount(document.body, toasts.component);
+
+		// live online indicator in the nav
+		const net = online();
+		effect(() => {
+			document.getElementById("net").innerHTML =
+				`<span class="online-dot" style="background:${net.online ? "var(--accent2)" : "#ff5f57"}"></span>`;
+		});
+
+		// tiny syntax highlighter for the code windows
+		const highlight = (code) => {
+			const esc = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+			return esc.replace(
+				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|define|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen)\b/g,
+				(m, c, s, k, fn) =>
+					c ? `<span class="c">${c}</span>`
+					: s ? `<span class="s">${s}</span>`
+					: k ? `<span class="k">${k}</span>`
+					: `<span class="fn">${fn}</span>`
+			);
+		};
+
+		// a code window
+		const codeWindow = (name, code) => {
+			const pre = el("pre");
+			pre.innerHTML = highlight(code.trim());
+			return el("div", { class: "window" },
+				el("div", { class: "window-bar" },
+					el("span", { class: "dot r" }), el("span", { class: "dot y" }), el("span", { class: "dot g" }),
+					el("span", { class: "window-name" }, name)),
+				pre);
+		};
+
+		// a live panel
+		const livePanel = (...children) => el("div", { class: "live" },
+			el("div", { class: "live-tag" }, el("span", { class: "pulse" }), "Running live"),
+			el("div", { class: "live-body" }, ...children));
+
+		// section scaffold with scroll-reveal (browser/seen)
+		const section = (id, eyebrow, title, lede, ...body) => {
+			const sec = el("section", { id, class: "reveal" },
+				el("div", { class: "eyebrow" }, eyebrow),
+				el("h2", {}, title),
+				lede ? el("p", { class: "lede" }, lede) : null,
+				...body);
+			const vis = seen(sec, { threshold: 0.12 });
+			effect(() => { if(vis.matches) { sec.classList.add("shown"); } });
+			return sec;
+		};
+
+		const app = document.getElementById("app");
+
+		// ============================================================ HERO
+		const hero = () => {
+			const counter = state({ n: 0 });
+			return el("section", { class: "hero" },
+				el("div", { class: "wordmark" }, "qrp"),
+				el("div", { class: "tagline" }, "Turn data into a dashboard. Nothing else."),
+				el("p", { class: "lede" },
+					"A data-first, declarative frontend framework. Reactivity is a ",
+					el("code", {}, "Proxy"), ", the DOM is real, the core is 11.5 KB — and there's no build step."),
+				el("div", { class: "badges" },
+					el("span", { class: "badge" }, el("b", {}, "0"), " dependencies"),
+					el("span", { class: "badge" }, el("b", {}, "0"), " build step"),
+					el("span", { class: "badge" }, el("b", {}, "11.5 KB"), " gzipped core"),
+					el("span", { class: "badge" }, el("b", {}, "191"), " tests"),
+					el("span", { class: "badge" }, el("b", {}, "0.9–1.3×"), " vanilla-DOM speed")),
+				el("div", { class: "cta" },
+					el("a", { class: "btn btn-primary", href: "#reactivity" }, "See it run →"),
+					el("a", { class: "btn", href: "https://github.com/nemanjan00/qrp", target: "_blank" }, "GitHub")),
+				el("div", { style: "max-width:520px;margin:3rem auto 0" },
+					el("div", { class: "live" },
+						el("div", { class: "live-tag" }, el("span", { class: "pulse" }), "This button is a live qrp app"),
+						el("div", { class: "row", style: "justify-content:center;gap:1.5rem" },
+							el("button", { class: "btn btn-primary", onclick: () => counter.n++ }, "clicked ",
+								() => `${counter.n}×`),
+							el("button", { class: "btn", onclick: () => counter.n = 0 }, "reset")))));
+		};
+		app.appendChild(hero());
+
+		// ============================================================ REACTIVITY
+		const reactivityDemo = () => {
+			const s = state({ first: "Ada", last: "Lovelace" });
+			const full = derive(() => `${s.first} ${s.last}`);
+			return livePanel(
+				el("div", { class: "row" },
+					el("input", { value: s.first, oninput: (e) => s.first = e.target.value }),
+					el("input", { value: s.last, oninput: (e) => s.last = e.target.value })),
+				el("div", {}, el("span", { class: "dim" }, "derived → "),
+					el("strong", { style: "color:var(--accent);font-size:1.2rem" }, () => full.value)));
+		};
+		app.appendChild(section("reactivity", "Reactivity", "State is a Proxy. The DOM follows.",
+			"Read a key inside an effect and it re-runs when the key changes — nothing else does. derive() computes values that stay in sync. Type below:",
+			el("div", { class: "demo" },
+				codeWindow("reactivity.js", `
+const s = state({ first: "Ada", last: "Lovelace" });
+const full = derive(() => \`\${s.first} \${s.last}\`);
+
+el("input", { value: s.first,
+  oninput: (e) => s.first = e.target.value });
+
+// updates automatically, per key:
+el("strong", {}, () => full.value);`),
+				reactivityDemo())));
+
+		// ============================================================ MARKUP (el vs html)
+		const markupDemo = () => {
+			const ui = state({ tab: "el", n: 3 });
+			const preview = () => el("button", { class: "btn btn-primary", onclick: () => ui.n++ },
+				"count: ", () => `${ui.n}`);
+			const elCode = `el("button", {
+  onclick: () => count.n++
+}, "count: ", () => \`\${count.n}\`);`;
+			const htmlCode = "html`<button onclick=${() => count.n++}>\n  count: ${() => count.n}\n</button>`;";
+			return el("div", {},
+				el("div", { class: "tabs" },
+					el("span", { class: () => `tab ${ui.tab === "el" ? "active" : ""}`, onclick: () => ui.tab = "el" }, "el()"),
+					el("span", { class: () => `tab ${ui.tab === "html" ? "active" : ""}`, onclick: () => ui.tab = "html" }, "html``")),
+				el("div", { class: "demo" },
+					(() => { const w = el("div"); effect(() => { w.replaceChildren(codeWindow(ui.tab === "el" ? "markup.js" : "markup.js", ui.tab === "el" ? elCode : htmlCode)); }); return w; })(),
+					livePanel(el("div", { class: "dim", style: "font-size:.8rem" }, "Both produce the same real DOM:"), preview())));
+		};
+		app.appendChild(section("markup", "Markup", "Two ways to write it. Both real DOM.",
+			"Prefer function calls, or prefer HTML — el() and html`` are both first-class. Switch the tab; the live button is the same either way.",
+			markupDemo()));
+
+		// ============================================================ STORABLE TEMPLATES
+		const templateDemo = () => {
+			const rowTpl = html.template("<div class='row'><strong>#{name}</strong><span class='dim'>#{email}</span></div>");
+			const data = state({ name: "Grace Hopper", email: "grace@navy.mil" });
+			return livePanel(
+				el("div", { class: "row" },
+					el("input", { value: data.name, oninput: (e) => data.name = e.target.value }),
+					el("input", { value: data.email, oninput: (e) => data.email = e.target.value })),
+				el("div", { class: "dim", style: "font-size:.8rem" }, "template filled from state, reactive:"),
+				rowTpl(data));
+		};
+		app.appendChild(section("templates", "Storable templates", "Templates as data — #{} survives.",
+			"html.template parses a string once and fills it from a data object. Because #{} isn't JS interpolation, you can keep the template in a file or config. Reactive when filled with state, and XSS-safe.",
+			el("div", { class: "demo" },
+				codeWindow("template.js", `
+const row = html.template(
+  "<div><b>#{name}</b> #{email}</div>");
+
+row(state({ name: "Grace Hopper",
+            email: "grace@navy.mil" }));
+// → live DOM, bound to the data`),
+				templateDemo())));
+
+		// ============================================================ CUSTOM ELEMENTS
+		define("qrp-clock", (host) => {
+			const now = state({ t: new Date().toLocaleTimeString() });
+			const timer = setInterval(() => now.t = new Date().toLocaleTimeString(), 1000);
+			host.addEventListener("qrp:disconnect", () => clearInterval(timer));
+			host.appendChild(el("strong", { style: "color:var(--accent);font-size:1.6rem;font-variant-numeric:tabular-nums" }, () => now.t));
+		});
+		app.appendChild(section("elements", "Custom elements", "Real custom elements. No classes.",
+			"define() registers a genuine Custom Element — built with objects and __proto__, no class extends. Observed attributes arrive as reactive state.",
+			el("div", { class: "demo" },
+				codeWindow("clock.js", `
+define("qrp-clock", (host) => {
+  const now = state({ t: time() });
+  setInterval(() => now.t = time(), 1000);
+  host.appendChild(
+    el("strong", {}, () => now.t));
+});
+
+// <qrp-clock></qrp-clock>`),
+				livePanel(
+					el("div", { class: "dim", style: "font-size:.8rem" }, "a live <qrp-clock> element:"),
+					el("qrp-clock")))));
+
+		// ============================================================ FORMS
+		registerInput("callsign", (settings, key, field) => {
+			const input = inputs.text(settings, key, field);
+			input.addEventListener("input", () => settings[key] = input.value.toUpperCase());
+			return input;
+		});
+		const formsDemo = () => {
+			const settings = state({ NICK: "Ada", CALL: "", MODE: "dmr" });
+			return livePanel(
+				form({ settings, fields: {
+					NICK: { name: "Nickname", type: "text" },
+					CALL: { name: "Callsign (auto-uppercase)", type: "callsign" },
+					MODE: { name: "Mode", type: "select", options: { dmr: "DMR", ysf: "YSF", p25: "P25" } }
+				}}),
+				el("div", { class: "dim", style: "font-size:.8rem;margin-top:.6rem" }, "live state: ",
+					el("code", {}, () => JSON.stringify({ NICK: settings.NICK, CALL: settings.CALL, MODE: settings.MODE }))));
+		};
+		app.appendChild(section("forms", "Forms", "Declarative forms, open input registry.",
+			"Describe fields as data; values live in one reactive object; inputs two-way bind. Register your own input types — the callsign field below uppercases as you type.",
+			el("div", { class: "demo" },
+				codeWindow("forms.js", `
+registerInput("callsign", (s, key, f) => {
+  const i = inputs.text(s, key, f);
+  i.oninput = () => s[key] = i.value.toUpperCase();
+  return i;
+});
+
+form({ settings, fields: {
+  NICK: { name: "Nickname", type: "text" },
+  CALL: { type: "callsign" },
+  MODE: { type: "select", options: {...} }
+}});`),
+				formsDemo())));
+
+		// ============================================================ TABLE (flagship)
+		const NAMES = ["Ada","Alan","Grace","Linus","Katherine","Dennis","Barbara","Tim","Margaret","Ken","Radia","Guido","Bjarne","Anita","John","Donald"];
+		const rows = NAMES.map((n, i) => ({ id: i + 1, name: n, signups: (i * 733 + 91) % 9000 + 100, status: ["active","idle","warning","active"][i % 4] }));
+		const tableDemo = () => {
+			const store = state({ rows });
+			const filter = state({ q: "" });
+			const page = state({ index: 0, size: 6 });
+			const badge = (st) => el("span", { class: `qrp-badge qrp-badge-${st === "active" ? "success" : st === "warning" ? "warning" : "info"}` }, st);
+			const t = table({
+				rows: () => store.rows, key: (r) => r.id, filter, page,
+				filterFn: (r, f) => !f.q || r.name.toLowerCase().includes(f.q.toLowerCase()),
+				sort: state({ key: "signups", dir: -1 }),
+				fields: [
+					{ key: "name", label: "Name", sortable: true },
+					{ key: "status", label: "Status", sortable: true, render: (r) => badge(r.status) },
+					{ key: "signups", label: "Signups", sortable: true, formatter: (v) => v.toLocaleString() }
+				]
+			});
+			return el("div", { class: "window", style: "padding:0" },
+				el("div", { class: "window-bar" }, el("span", { class: "dot r" }), el("span", { class: "dot y" }), el("span", { class: "dot g" }), el("span", { class: "window-name" }, "live · sortable · filtered · paginated")),
+				el("div", { style: "padding:1rem" },
+					el("div", { class: "toolbar" },
+						el("input", { type: "search", placeholder: "Filter names…", style: "flex:1", oninput: (e) => { filter.q = e.target.value; page.index = 0; } })),
+					t,
+					el("div", { class: "pager" },
+						el("button", { class: "btn", onclick: () => { if(page.index > 0) page.index--; } }, "‹"),
+						el("span", {}, () => `page ${page.index + 1} / ${t.view.pageCount()} — ${t.view.total()} people`),
+						el("button", { class: "btn", onclick: () => { if(page.index < t.view.pageCount() - 1) page.index++; } }, "›"))));
+		};
+		app.appendChild(section("table", "The flagship", "A data table in a dozen lines.",
+			"Sortable headers, live filter, pagination, and keyed row reuse — sort or filter and qrp moves the existing <tr> nodes instead of rebuilding them. Click the headers.",
+			tableDemo()));
+
+		// ============================================================ BEHAVIORS (modal + dropdown + accordion)
+		const openModal = () => {
+			const dialog = html`
+				<div class="qrp-modal" style="max-width:360px">
+					<h3 style="margin-top:0">Composed from primitives</h3>
+					<p class="dim">This modal is <code>portal</code> + <code>trapFocus</code> + <code>dismissable</code>. Press Esc or click outside.</p>
+					<button class="btn btn-primary">Close</button>
+				</div>`;
+			const backdrop = el("div", { class: "qrp-modal-backdrop" }, dialog);
+			const remove = portal(backdrop);
+			const untrap = trapFocus(dialog);
+			const undismiss = dismissable(dialog, () => close());
+			function close() { undismiss(); untrap(); remove(); }
+			dialog.querySelector("button").addEventListener("click", close);
+		};
+		const behaviorsDemo = () => {
+			const acc = disclosure(false);
+			const panel = el("div", { style: "padding:.6rem 0;color:var(--muted);font-size:.9rem" }, "Disclosure wires open/close state + ARIA. Tabs, dropdowns, and accordions are all this plus your markup.");
+			const trigger = el("button", { class: "btn", style: "width:100%;text-align:left" }, () => acc.state.open ? "▾ Accordion (open)" : "▸ Accordion (click)");
+			acc.connect(trigger, panel);
+			return livePanel(
+				el("button", { class: "btn btn-primary", onclick: openModal }, "Open a modal"),
+				el("div", { style: "margin-top:.4rem" }, trigger, panel));
+		};
+		app.appendChild(section("behaviors", "Behaviors", "Headless helpers, your markup.",
+			"qrp ships behaviors, not styled components — so building your own is trivial. A modal is portal + trapFocus + dismissable; a dropdown is anchored + dismissable + disclosure. You bring the CSS; they carry the platform and a11y hard parts.",
+			el("div", { class: "demo" },
+				codeWindow("modal.js", `
+const remove = portal(backdrop);      // → body
+const untrap = trapFocus(dialog);     // a11y
+const undismiss =
+  dismissable(dialog, () => close()); // Esc
+
+function close() {
+  undismiss(); untrap(); remove();
+}`),
+				behaviorsDemo())));
+
+		// ============================================================ EVENTS + TOASTS
+		app.appendChild(section("toasts", "Events & toasts", "Notifications off the global bus.",
+			"Any code raises a toast by emitting on the bus — it never imports the UI. Content is any renderable, so a toast can carry a link or a button.",
+			el("div", { class: "demo" },
+				codeWindow("toasts.js", `
+import { notify } from "./toasts/index.js";
+
+notify.success("Settings saved");
+notify.error("Could not reach host");
+
+// or emit on the bus from anywhere:
+bus.emit("error", { message: "…" });`),
+				livePanel(
+					el("div", { class: "dim", style: "font-size:.8rem" }, "fire a real toast (top-right):"),
+					el("div", { class: "row" },
+						el("button", { class: "btn", onclick: () => notify.success("Settings saved") }, "success"),
+						el("button", { class: "btn", onclick: () => notify.error("Could not reach host") }, "error"),
+						el("button", { class: "btn", onclick: () => notify.info(html`<span>New build — <a href="#" onclick=${(e)=>e.preventDefault()}>reload</a></span>`) }, "renderable"))))));
+
+		// ============================================================ BROWSER WRAPPERS
+		const browserDemo = () => {
+			const vp = viewport();
+			const prefs = persisted("qrp-site", { likes: 0 });
+			return livePanel(
+				el("div", {}, el("span", { class: "dim" }, "viewport() → "), el("strong", { style: "color:var(--accent)" }, () => `${vp.width} × ${vp.height}`), el("span", { class: "dim" }, " (resize the window)")),
+				el("div", { class: "row" },
+					el("button", { class: "btn btn-primary", onclick: () => prefs.likes++ }, "♥ ", () => `${prefs.likes}`),
+					el("span", { class: "dim", style: "font-size:.85rem" }, "persisted() → survives reload & syncs across tabs")));
+		};
+		app.appendChild(section("browser", "The platform, made reactive", "Native APIs everyone forgot.",
+			"qrp wraps the good parts of the platform as reactive state: the URL as a store, localStorage with cross-tab sync, matchMedia, viewport, online status, IntersectionObserver. Every section on this page reveals via seen().",
+			el("div", { class: "demo" },
+				codeWindow("browser.js", `
+const size = viewport();          // reactive
+const prefs =
+  persisted("app", { likes: 0 }); // + cross-tab
+
+el("span", {}, () => \`\${size.width}px\`);
+el("button", { onclick: () => prefs.likes++ });`),
+				browserDemo())));
+
+		// ============================================================ PERFORMANCE
+		const perfData = [
+			["create 1,000 rows", 0.9], ["replace all rows", 1.0], ["update every 10th", 0.9],
+			["swap 2 in 10,000", 1.3], ["remove a row", 1.2], ["select a row", 1.5]
+		];
+		const perfSection = () => {
+			const shown = state({ on: false });
+			const bars = el("div", { class: "bars" }, perfData.map(([label, ratio]) =>
+				el("div", { class: "bar-row" },
+					el("span", {}, label),
+					el("div", { class: "bar-track" }, el("div", { class: "bar-fill", style: () => `width:${shown.on ? Math.min(100, 100 / ratio) : 0}%` })),
+					el("span", { class: "bar-num" }, `${ratio}×`))));
+			const wrap = el("div", {}, bars);
+			const vis = seen(wrap, { threshold: 0.3 });
+			effect(() => { if(vis.matches) shown.on = true; });
+			return wrap;
+		};
+		app.appendChild(section("perf", "Performance", "At hand-written-DOM speed.",
+			"Paint-timed in real Chromium against a hand-written keyed vanilla-DOM control (the floor, not another framework). Bars show qrp / vanilla — closer to 100% is closer to raw DOM. There's no reconcile pass to pay for; updates are fine-grained.",
+			perfSection()));
+
+		// ============================================================ MODULES
+		const modules = [
+			["⚡", "qrp", "state, effect, derive, el, html, list, when, mount, router, define"],
+			["📝", "html``", "author DOM as HTML — inline ${}, storable #{} templates, ref()"],
+			["📋", "forms", "declarative forms + open input-type registry"],
+			["🗂️", "table", "sortable, keyed, paginated data table"],
+			["🔀", "collection", "reactive sort / filter / paginate over a dataset"],
+			["🌐", "http", "fetch client: auth headers, reactive loader, error bus"],
+			["📡", "events", "global event bus on native EventTarget"],
+			["🔔", "toasts", "notifications off the bus; content is any renderable"],
+			["🪟", "browser", "URL, localStorage, media, viewport, online — as reactive state"],
+			["🧩", "behaviors", "portal, dismissable, trapFocus, anchored, disclosure"],
+			["🛠️", "utils", "memoize, lru, cache, paginate — pure helpers"],
+			["🎨", "qrp.css", "optional minimal baseline (design tokens + classes)"]
+		];
+		app.appendChild(section("modules", "Modules", "Import only what you use.",
+			"Each module is an independent file — no bundler needed to pay only for what you touch. With one, unused exports tree-shake away.",
+			el("div", { class: "grid" }, list(() => modules, (m) => m[1], (m) =>
+				el("div", { class: "card" },
+					el("div", { class: "icon" }, m[0]),
+					el("h3", {}, m[1]),
+					el("p", {}, m[2]))))));
+
+		// footer stats
+		document.getElementById("foot-stats").textContent = "11.5 KB gzipped core · 191 tests · built with qrp";
+	</script>
+</body>
+</html>
