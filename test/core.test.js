@@ -183,6 +183,20 @@ test("scope disposes all effects created within it", () => {
 	assert.equal(reads, 4);
 });
 
+test("reactive region does not crash after its anchor's parent is cleared", () => {
+	const s = state({ n: 0 });
+	const inner = el("div", {}, () => `n=${s.n}`);
+	el("div", {}, inner); // parent wrapper
+
+	assert.equal(inner.textContent, "n=0");
+
+	// clear the region's direct parent, detaching the anchor
+	clear(inner);
+
+	// the next write must NOT throw (null insertBefore); it just no-ops the DOM
+	assert.doesNotThrow(() => { s.n = 1; });
+});
+
 test("clear empties a node", () => {
 	const parent = el("div", {}, el("span", {}, "a"), el("span", {}, "b"), "text");
 

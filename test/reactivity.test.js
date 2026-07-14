@@ -119,6 +119,45 @@ test("untracked reads inside an effect are not dependencies", () => {
 	assert.equal(runs, 2);
 });
 
+// --- array length tracking (CORE-1) ----------------------------------------
+
+test("push triggers effects that read only .length", () => {
+	const s = state({ arr: [1, 2] });
+
+	let seen;
+	effect(() => { seen = s.arr.length; });
+	assert.equal(seen, 2);
+
+	s.arr.push(3);
+	assert.equal(seen, 3); // length-only reader updated on push
+
+	s.arr.pop();
+	assert.equal(seen, 2);
+});
+
+// --- NaN write does not re-trigger (CORE-7) --------------------------------
+
+test("writing NaN over NaN does not re-run effects", () => {
+	const s = state({ n: NaN });
+
+	let runs = 0;
+	effect(() => { s.n; runs++; });
+	assert.equal(runs, 1);
+
+	s.n = NaN;
+	assert.equal(runs, 1); // Object.is(NaN, NaN) → no spurious re-run
+});
+
+// --- frozen root is not proxied (CORE-8) -----------------------------------
+
+test("state() on a frozen object returns it as-is (no proxy, no throw)", () => {
+	const frozen = Object.freeze({ a: 1 });
+	const s = state(frozen);
+
+	assert.equal(s, frozen);          // same object, not a proxy
+	assert.equal(Object.isFrozen(s), true);
+});
+
 // --- error inside an effect: boundary behavior -----------------------------
 
 test("a throw inside an effect propagates and does not corrupt the stack", () => {

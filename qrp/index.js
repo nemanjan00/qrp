@@ -111,6 +111,22 @@ const isReactable = (value) => {
  * same object twice returns the same proxy.
  */
 export const state = (obj) => {
+	// Only objects/arrays can be proxied. Return primitives (and null) as-is so
+	// callers like list() over primitive items don't hit "Cannot create proxy
+	// with a non-object" — a primitive is immutable, so there's no reactivity
+	// to lose anyway.
+	if(!obj || typeof obj !== "object") {
+		return obj;
+	}
+
+	// A frozen object can never change — return it as-is (matches the nested
+	// skip in isReactable and the documented "freeze to opt out" escape hatch).
+	// Proxying it would only add overhead and make writes throw a confusing
+	// "trap returned falsish" instead of the plain read-only error.
+	if(Object.isFrozen(obj)) {
+		return obj;
+	}
+
 	if(obj[RAW]) {
 		return obj; // already a proxy
 	}
@@ -140,6 +156,8 @@ export const state = (obj) => {
 
 		set(target, key, value, receiver) {
 			const isNew = !Object.prototype.hasOwnProperty.call(target, key);
+			const wasArray = Array.isArray(target);
+			const oldLength = wasArray ? target.length : 0;
 			const old = target[key];
 
 			// Store raw objects, not proxies, to keep identity stable.
@@ -147,7 +165,8 @@ export const state = (obj) => {
 
 			const result = Reflect.set(target, key, next, receiver);
 
-			if(old !== next) {
+			// Object.is so writing NaN over NaN does not spuriously re-trigger.
+			if(!Object.is(old, next)) {
 				trigger(target, key);
 			}
 
@@ -155,6 +174,14 @@ export const state = (obj) => {
 				// Iterating effects (Object.keys, spread, JSON.stringify)
 				// need to see new keys.
 				trigger(target, ITERATE);
+			}
+
+			// push()/index-assignment grows the array's length as a side effect;
+			// the trap never sees an explicit length write with a changed value,
+			// so length-only readers (items.length badges) would go stale. Fire
+			// length explicitly when it actually changed.
+			if(wasArray && key !== "length" && target.length !== oldLength) {
+				trigger(target, "length");
 			}
 
 			return result;
@@ -443,7 +470,16 @@ const appendChild = (parent, child) => {
 		let nodes = [];
 
 		effect(() => {
+			// Read child() first so the effect always tracks its deps, even if
+			// the anchor was detached (e.g. an ancestor cleared) — then bail out
+			// of the DOM work instead of crashing on a null parentNode.
 			const fresh = toNodes(child());
+
+			if(!anchor.parentNode) {
+				nodes = fresh;
+
+				return;
+			}
 
 			nodes.forEach(node => node.remove());
 			fresh.forEach(node => anchor.parentNode.insertBefore(node, anchor));
@@ -611,6 +647,15 @@ const setupList = (parent, marker) => {
 		items.forEach((item, index) => {
 			const key = marker.keyFn(item, index);
 
+			// A DOM node lives in one place, so two items with the same key
+			// would collapse to one row and silently drop data. Warn loudly —
+			// this is almost always a bad keyFn or duplicate IDs in a refetch.
+			if(next.has(key)) {
+				console.warn(`qrp list(): duplicate key ${JSON.stringify(key)} — row dropped. Keys must be unique.`);
+
+				return;
+			}
+
 			let entry = cache.get(key) || next.get(key);
 
 			if(!entry) {
@@ -736,6 +781,10 @@ export const list = (source, keyFn, render) => {
 export const el = (tag, props = {}, ...children) => {
 	const node = document.createElement(tag);
 
+	// Children FIRST: a <select bind> needs its <option>s present before the
+	// binding applies the initial value, otherwise value has nothing to match.
+	children.forEach(child => appendChild(node, child));
+
 	Object.entries(props).forEach(([key, value]) => {
 		if(key === "bind") {
 			bind(node, value[0], value[1]);
@@ -754,8 +803,6 @@ export const el = (tag, props = {}, ...children) => {
 
 		setAttr(node, key, value);
 	});
-
-	children.forEach(child => appendChild(node, child));
 
 	return node;
 };
@@ -944,15 +991,26 @@ export const define = (name, setup, options = {}) => {
 export const compilePath = (pattern) => {
 	const keys = [];
 
+	let wildcardIndex = 0;
+
+	// Single pass over :param, :param*, and bare * so emitted capture groups
+	// (which contain a literal *) are never re-scanned. Each construct is a
+	// capture group, so each pushes exactly one key — keeping groups and keys
+	// aligned (a bare * pushes a positional numeric key, path-to-regexp style).
 	const source = pattern
 		.replace(/\/+$/, "")               // no trailing slash
 		.replace(/[.\\+^${}()|[\]]/g, "\\$&") // escape regex metachars (not / : * ?)
-		.replace(/:(\w+)(\*)?/g, (_, name, star) => {
+		.replace(/:(\w+)(\*)?|\*/g, (match, name, star) => {
+			if(name === undefined) {
+				keys.push(wildcardIndex++);
+
+				return "(.*)";
+			}
+
 			keys.push(name);
 
 			return star ? "(.*)" : "([^/]+)";
-		})
-		.replace(/\*/g, "(.*)");
+		});
 
 	return {
 		keys,

@@ -61,3 +61,30 @@ test("online reflects navigator.onLine", () => {
 
 	assert.equal(o.online, navigator.onLine);
 });
+
+test("browser factories clean up their listeners on scope dispose", async () => {
+	const { scope } = await import("../qrp/index.js");
+
+	let added = 0;
+	let removed = 0;
+	const realAdd = window.addEventListener;
+	const realRemove = window.removeEventListener;
+	window.addEventListener = function(...args) { added++; return realAdd.apply(this, args); };
+	window.removeEventListener = function(...args) { removed++; return realRemove.apply(this, args); };
+
+	try {
+		const sc = scope(() => {
+			viewport();
+			online(); // online + offline = 2 window listeners
+		});
+
+		assert.ok(added >= 3, `expected listeners added, got ${added}`);
+
+		sc.dispose();
+
+		assert.equal(removed, added, "every added listener should be removed on dispose");
+	} finally {
+		window.addEventListener = realAdd;
+		window.removeEventListener = realRemove;
+	}
+});

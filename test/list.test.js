@@ -130,6 +130,33 @@ test("removed rows dispose their effects (no leak)", () => {
 	assert.ok(runs >= before); // new row rendered once; old effect gone
 });
 
+test("duplicate list keys drop the dupe with a warning (no crash)", () => {
+	const warnings = [];
+	const realWarn = console.warn;
+	console.warn = (msg) => warnings.push(msg);
+
+	try {
+		const store = state({ items: [{ id: 1 }, { id: 1 }, { id: 2 }] });
+		const ul = el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, String(i.id))));
+
+		// 2 unique keys → 2 rows, and a warning fired
+		assert.equal(ul.querySelectorAll("li").length, 2);
+		assert.ok(warnings.some((w) => /duplicate key/.test(w)));
+	} finally {
+		console.warn = realWarn;
+	}
+});
+
+test("list over primitive items does not throw", () => {
+	const store = state({ items: ["a", "b", "c"] });
+	const ul = el("ul", {}, list(() => store.items, (s) => s, (s) => el("li", {}, s)));
+
+	assert.deepEqual([...ul.querySelectorAll("li")].map((li) => li.textContent), ["a", "b", "c"]);
+
+	store.items = ["a", "c"];
+	assert.deepEqual([...ul.querySelectorAll("li")].map((li) => li.textContent), ["a", "c"]);
+});
+
 test("minimal-move reorder keeps correct order for swap, insert, shuffle", () => {
 	const store = state({ items: [1, 2, 3, 4, 5].map((n) => ({ id: n })) });
 	const ul = el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, () => String(i.id))));

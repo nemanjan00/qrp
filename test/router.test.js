@@ -37,6 +37,15 @@ test("compilePath tolerates a trailing slash", () => {
 	assert.deepEqual(matchPath(c, "/about/"), {});
 });
 
+test("compilePath keeps params aligned when a bare * precedes a :param", () => {
+	const c = compilePath("/a/*/b/:id");
+	const params = matchPath(c, "/a/xxx/b/42");
+
+	// :id must get 42, not the wildcard's xxx (positional key 0 gets xxx)
+	assert.equal(params.id, "42");
+	assert.equal(params[0], "xxx");
+});
+
 test("router renders the matching route with params and query", () => {
 	history.replaceState(null, "", "/user/7?tab=info");
 

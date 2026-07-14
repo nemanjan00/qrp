@@ -13,11 +13,19 @@
  *   visible()    Page Visibility API
  *   seen()       IntersectionObserver — "is this element on screen"
  *
- * All listeners are registered through effects/scopes where possible; the
- * window-level ones are one-per-call, so create these once per component.
+ * Every factory registers its listeners/observers/intervals through onDispose,
+ * so creating one inside a component (or scope) auto-cleans on unmount — no
+ * leak. Created at top level (no active scope), they live for the page, which
+ * is usually what you want for a global like online()/viewport().
  */
 
-import { state, effect, raw } from "../qrp/index.js";
+import { state, effect, raw, onDispose } from "../qrp/index.js";
+
+// Add a listener and auto-remove it when the enclosing scope disposes.
+const listen = (target, type, handler, opts) => {
+	target.addEventListener(type, handler, opts);
+	onDispose(() => target.removeEventListener(type, handler, opts));
+};
 
 /**
  * Reactive state persisted to localStorage under storageKey.
@@ -42,7 +50,7 @@ export const persisted = (storageKey, defaults = {}) => {
 		localStorage.setItem(storageKey, JSON.stringify(store));
 	});
 
-	window.addEventListener("storage", (event) => {
+	listen(window, "storage", (event) => {
 		if(event.key !== storageKey) {
 			return;
 		}
@@ -95,7 +103,7 @@ export const query = () => {
 		}
 	});
 
-	window.addEventListener("popstate", () => {
+	listen(window, "popstate", () => {
 		const incoming = parse();
 
 		Object.keys(raw(params)).forEach(key => {
@@ -124,7 +132,7 @@ export const hashState = () => {
 		}
 	});
 
-	window.addEventListener("hashchange", () => {
+	listen(window, "hashchange", () => {
 		store.hash = location.hash.slice(1);
 	});
 
@@ -140,7 +148,7 @@ export const media = (mediaQuery) => {
 	const list = window.matchMedia(mediaQuery);
 	const store = state({ matches: list.matches });
 
-	list.addEventListener("change", (event) => {
+	listen(list, "change", (event) => {
 		store.matches = event.matches;
 	});
 
@@ -151,7 +159,7 @@ export const media = (mediaQuery) => {
 export const viewport = () => {
 	const store = state({ width: window.innerWidth, height: window.innerHeight });
 
-	window.addEventListener("resize", () => {
+	listen(window, "resize", () => {
 		store.width = window.innerWidth;
 		store.height = window.innerHeight;
 	});
@@ -163,8 +171,8 @@ export const viewport = () => {
 export const online = () => {
 	const store = state({ online: navigator.onLine });
 
-	window.addEventListener("online", () => store.online = true);
-	window.addEventListener("offline", () => store.online = false);
+	listen(window, "online", () => store.online = true);
+	listen(window, "offline", () => store.online = false);
 
 	return store;
 };
@@ -173,7 +181,7 @@ export const online = () => {
 export const visible = () => {
 	const store = state({ visible: document.visibilityState === "visible" });
 
-	document.addEventListener("visibilitychange", () => {
+	listen(document, "visibilitychange", () => {
 		store.visible = document.visibilityState === "visible";
 	});
 
@@ -199,7 +207,12 @@ export const watch = (getter, callback, interval = 250) => {
 		}
 	}, interval);
 
-	return () => clearInterval(timer);
+	const stop = () => clearInterval(timer);
+
+	// Auto-stop on scope teardown (in addition to the returned stop()).
+	onDispose(stop);
+
+	return stop;
 };
 
 /**
@@ -253,6 +266,7 @@ export const seen = (element, options = {}) => {
 	}, options);
 
 	observer.observe(element);
+	onDispose(() => observer.disconnect());
 
 	return store;
 };

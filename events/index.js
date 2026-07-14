@@ -30,6 +30,9 @@ export const emitter = () => {
 	const target = new EventTarget();
 
 	// Map wrapped listeners back to originals so off() works with the same fn.
+	// handler -> Map(type -> wrapped). Keyed by BOTH so the same handler can be
+	// subscribed to several types (and to the same type more than once) without
+	// one registration clobbering another's wrapper.
 	const wrappers = new WeakMap();
 
 	const self = {
@@ -38,17 +41,26 @@ export const emitter = () => {
 		on: (type, handler) => {
 			const wrapped = (event) => handler(event.detail, event);
 
-			wrappers.set(handler, wrapped);
+			let byType = wrappers.get(handler);
+
+			if(!byType) {
+				byType = new Map();
+				wrappers.set(handler, byType);
+			}
+
+			byType.set(type, wrapped);
 			target.addEventListener(type, wrapped);
 
 			return () => self.off(type, handler);
 		},
 
 		off: (type, handler) => {
-			const wrapped = wrappers.get(handler);
+			const byType = wrappers.get(handler);
+			const wrapped = byType && byType.get(type);
 
 			if(wrapped) {
 				target.removeEventListener(type, wrapped);
+				byType.delete(type);
 			}
 		},
 

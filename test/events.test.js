@@ -30,6 +30,29 @@ test("off unsubscribes", () => {
 	assert.equal(count, 1);
 });
 
+test("one handler on two types: off removes only the named type", () => {
+	const e = emitter();
+
+	let a = 0;
+	let b = 0;
+	const handler = (n) => { if(n === "a") { a++; } else { b++; } };
+
+	e.on("typeA", handler);
+	e.on("typeB", handler);
+
+	e.emit("typeA", "a");
+	e.emit("typeB", "b");
+	assert.equal(a, 1);
+	assert.equal(b, 1);
+
+	e.off("typeA", handler); // must NOT also unsubscribe typeB
+
+	e.emit("typeA", "a");
+	e.emit("typeB", "b");
+	assert.equal(a, 1); // typeA removed
+	assert.equal(b, 2); // typeB still live
+});
+
 test("once resolves on the next event", async () => {
 	const e = emitter();
 
