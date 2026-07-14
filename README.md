@@ -230,10 +230,34 @@ unused exports tree-shake away.
 
 ## Performance
 
-Measured in real Chromium, **paint-timed** (time until the frame is painted, not
-just the synchronous write), median of 5 after warmup. The control is a
-hand-written keyed vanilla-DOM implementation of the same table — *"the floor"*,
-not another framework.
+### The headline: change one field in a 10,000-row table
+
+This is the operation where qrp's architecture is *categorically* different from
+a virtual-DOM framework — so it deserves its own measurement. Mutate one row's
+field; the `Proxy` setter fires exactly one tracked effect, which writes the one
+text node it already holds a reference to. Measured in real Chromium with a
+`MutationObserver` watching the whole table:
+
+> **1 DOM node touched, out of 40,002.** No diff. No component re-render. No
+> reconcile pass. The cost is **~0.8 µs** of reactivity bookkeeping — you could
+> do over a million single-cell updates per second.
+
+A virtual-DOM framework must re-run the component and reconcile its output even
+to change one cell, so its cost scales with the component and the tree. qrp's is
+O(1) and independent of table size.
+
+**Honest footnote:** this is a win over *virtual-DOM frameworks*, not over
+hand-written vanilla. A bare `textContent =` when you already hold the node
+reference is ~0.27 µs; finding the cell with `querySelector` first is ~0.46 µs.
+qrp's ~0.8 µs is slightly more — reactivity isn't free. What you get for it: qrp
+*derives* that node reference from the subscription automatically, so you never
+write or maintain the `id → node` map the fast vanilla depends on.
+
+### The rest of the suite
+
+Paint-timed (time until the frame is painted, not just the synchronous write),
+median of 5 after warmup, against a hand-written keyed vanilla-DOM control —
+*"the floor"*, not another framework.
 
 | Operation | qrp | vanilla DOM | ratio |
 |---|---|---|---|
@@ -246,13 +270,14 @@ not another framework.
 | select 1 row in 10,000 | 10 ms | 7 ms | 1.5× |
 | clear 10,000 rows | 40 ms | 22 ms | 1.8× |
 
-The headline: on create, replace, update, and remove, qrp is at **hand-written
-DOM parity (0.9–1.3×)** — there's no reconcile pass to pay for, because updates
-are fine-grained. The swap case was 5.9× before a longest-increasing-subsequence
+On create, replace, update, and remove, qrp is at **hand-written DOM parity
+(0.9–1.3×)** — there's no reconcile pass to pay for, because updates are
+fine-grained. The swap case was 5.9× before a longest-increasing-subsequence
 reconcile brought it to 1.3×. The remaining gaps (select, clear) are the cost of
-per-row subscriptions and scope disposal, and are the next things to sharpen.
+per-row subscriptions and scope disposal.
 
-Run it yourself: `examples/bench.html` exposes the suite on `window.bench`.
+Run it yourself: `examples/bench.html` exposes the suite on `window.bench`
+(`runAll()`, `updateOneNs()`, `mutationsForOne()`).
 
 ## Philosophy
 
