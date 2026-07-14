@@ -230,6 +230,21 @@ when<T>(cond: () => T, thenFn: (value: NonNullable<T>) => Renderable, elseFn?: (
 Conditionally render one of two subtrees, swapping on a reactive condition
 and disposing the old branch (effects + DOM) when it flips.
 
+IMPORTANT — `when` reacts to **truthiness, not value**. The branch swaps only
+when `cond()` crosses truthy⇄falsy; it does NOT re-render while the value
+changes but stays truthy, and `value` is captured at swap time (it does not
+update). So this does NOT switch tabs:
+
+  when(() => state.tab, (tab) => TABS[tab]())   // stuck on the first tab
+
+For a value-keyed switch, branch per value (each is its own truthy⇄falsy):
+
+  when(() => state.tab === "a", renderA)
+  when(() => state.tab === "b", renderB)
+
+A `WhenMarker` is only valid as an `el()`/`html` child; to nest one inside
+another branch, wrap it: `() => el("div", {}, when(...))`.
+
 ### `mount`
 
 ```ts
