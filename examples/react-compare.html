@@ -31,8 +31,20 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(h(Table));
 
 // Update ONE row: replace that row object (new ref) inside a new array, so
-// React.memo re-renders exactly that one row. flushSync makes it synchronous so
-// we can time the reconcile itself (not batching/scheduling).
+// React.memo re-renders exactly that one row.
+//
+// On flushSync (the expected objection: "that's not how React works, concurrent
+// mode defers"): flushSync does NOT add work. It only prevents batching from
+// smearing the reconcile across a later frame, so we can time it. The parent
+// render + reconciliation of 10,000 children happens either way — concurrent
+// mode can slice it and interleave it with other work, but the total CPU is the
+// same. We're measuring that CPU, not hiding it behind a frame boundary.
+//
+// The mechanism behind the ~800µs: React.memo stops each row's DOM from
+// re-rendering, but the PARENT (Table) still re-runs and allocates 10,000
+// element descriptors, and the reconciler still walks all 10,000 children to
+// find the one that changed. That walk is the cost. qrp has no walk — the
+// Proxy subscription already points at the one text node.
 const flushSync = ReactDOM.flushSync;
 let tick = 0;
 const updateOne = () => {

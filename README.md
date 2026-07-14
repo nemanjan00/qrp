@@ -257,23 +257,38 @@ That "1 of 40,002" is the important number — it's machine-independent and
 falsifiable: rerun it on any hardware and you get the same answer, because it's
 architectural, not a timing.
 
-**Measured against React 18** (memoized keyed rows, `flushSync`, the standard
-list pattern), same operation, same `MutationObserver`:
+**Measured against React 18**, same operation, same `MutationObserver`. The
+setup, stated precisely so the number defends itself: React 18.2 production
+build; rows are keyed and wrapped in `React.memo`; the update replaces one row
+object in a new array; `flushSync` makes the reconcile synchronous so it can be
+timed.
 
 | Change one cell in 10,000 rows | JS per update | DOM nodes touched |
 |---|---|---|
 | **qrp** | **~0.8 µs** | **1** of 40,002 |
 | React 18 | **~800 µs** | 1 of 40,002 |
 
-Both touch **exactly one DOM node**. React spends ~800 µs of JavaScript to figure
-out *which* node (re-run the component, build 10,000 element descriptors,
-reconcile 10,000 children); qrp spends ~0.8 µs because the subscription already
-points at it. Same DOM outcome, **~1000× the work** — that's the reconcile pass
-qrp doesn't have. It's O(1) and independent of table size. Reproduce it:
-`examples/react-compare.html`.
+Both touch **exactly one DOM node**. Where React's ~800 µs goes: `React.memo`
+stops each row's DOM from re-rendering, **but the parent still re-runs and
+allocates 10,000 element descriptors, and the reconciler still walks all 10,000
+children to find the one that changed** — that walk is the cost. qrp has no walk;
+the `Proxy` subscription already points at the one text node, so it spends
+~0.8 µs. Same DOM outcome, **~1000× the work** — the reconcile pass qrp doesn't
+have. It's O(1) and independent of table size.
 
-*(A React with per-row state stores narrows this — but that's the point: you
-have to restructure to avoid the reconcile; qrp is O(1) for free.)*
+Two things people rightly challenge, answered up front:
+
+- ***`flushSync` is cheating / concurrent mode defers.*** `flushSync` doesn't add
+  work — it stops batching from smearing the reconcile across a later frame so it
+  can be timed. Concurrent mode can slice that walk and interleave it, but the
+  total CPU is the same; we're measuring it, not hiding it behind a frame.
+- ***You wrote slow React.*** Colocating state per row (a store per row) does
+  narrow the gap — but that's the point: you have to restructure to avoid the
+  reconcile; qrp is O(1) for free with the ordinary "data in a parent array"
+  pattern.
+
+Reproduce it: `examples/react-compare.html` (the objections are answered in its
+comments too).
 
 To put ~0.8 µs in perspective without overclaiming: it's ~20,000 single-cell
 updates' worth of *bookkeeping* inside one 16 ms frame budget. In practice you'd
