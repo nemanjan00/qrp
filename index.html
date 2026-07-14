@@ -4,10 +4,10 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>qrp — turn data into a dashboard</title>
-	<meta name="description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step. Reactivity is a Proxy, the DOM is real, the core gzips to ~12 KB (~5 KB minified).">
+	<meta name="description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step. Reactivity is a Proxy, the DOM is real, the published core is ~3.7 KB min+gzip (~15 KB for the whole library).">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
 	<meta property="og:title" content="qrp — turn data into a dashboard">
-	<meta property="og:description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step, ~12 KB core (~5 KB minified).">
+	<meta property="og:description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step, ~3.7 KB min+gzip core (~15 KB whole library).">
 	<link rel="stylesheet" href="./qrp.css">
 	<style>
 		:root {
@@ -282,11 +282,11 @@
 				el("div", { class: "tagline" }, "Turn data into a dashboard. Nothing else."),
 				el("p", { class: "lede" },
 					"A data-first, declarative frontend framework. Reactivity is a ",
-					el("code", {}, "Proxy"), ", the DOM is real. The core gzips to ~12 KB as-loaded — over half of that is comments (~5 KB minified)."),
+					el("code", {}, "Proxy"), ", the DOM is real. The published core is ~3.7 KB min+gzip — the number comparable to Solid or React; ~15 KB for the whole library. (Ships minified, still zero build on your end.)"),
 				el("div", { class: "badges" },
 					el("span", { class: "badge" }, el("b", {}, "0"), " dependencies"),
 					el("span", { class: "badge" }, el("b", {}, "0"), " build step"),
-					el("span", { class: "badge" }, el("b", {}, "~12 KB"), " gzipped (5 KB min)"),
+					el("span", { class: "badge" }, el("b", {}, "~3.7 KB"), " min+gzip core"),
 					el("span", { class: "badge" }, el("b", {}, "192"), " tests"),
 					el("span", { class: "badge" }, el("b", {}, "vanilla-DOM"), " parity on hot paths")),
 				el("div", { class: "cta" },
@@ -792,7 +792,7 @@ effect(() => applyTheme(
 					el("p", {}, m[2]))))));
 
 		// footer stats
-		document.getElementById("foot-stats").textContent = "~12 KB gzipped core (5 KB minified) · 192 tests · built with qrp";
+		document.getElementById("foot-stats").textContent = "~3.7 KB min+gzip core · 192 tests · built with qrp";
 	</script>
 </body>
 </html>

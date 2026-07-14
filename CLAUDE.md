@@ -117,11 +117,18 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - **`docs/API.md`** — the API reference (curated). **`api.html`** renders it
   live with a qrp-built markdown renderer (single source — the site derives from
   the markdown; don't hand-duplicate API content into the page).
-- NOTE (future / "another day"): `.d.ts` and `API.md` could be *generated* from
-  JSDoc to make the code the single source — verified `tsc --declaration
-  --allowJs` emits `.d.ts` from JSDoc, but `any`-heavy without `@template`
-  generics. Enriching JSDoc + a JSDoc→md generator is the north star. Same bucket
-  as shipping a minified build (~5 KB vs ~12 KB as-loaded).
+- **`docs/API.md` is generated** from the `.d.ts` by `bin/gen-api.js` (`npm run
+  docs`) — the `.d.ts` are the single source; don't hand-edit `API.md`. Curated
+  module prose lives in `@module` doc-comments at the top of each `.d.ts`.
+- **Minified build**: `bin/build.js` (`npm run build`, also `prepack`) bundles +
+  code-splits each subpath into `dist/` with esbuild (shared core chunk). The npm
+  package ships `dist/` (minified) + the hand-written `.d.ts` — **not** the raw
+  source `.js`. Core is **~3.7 KB min+gzip**, whole library ~15 KB. `dist/` is
+  gitignored (rebuilt on pack/publish). The consumer still runs zero build.
+- NOTE (future / "another day"): `.d.ts` could be *generated* from JSDoc to make
+  the code the single source — verified `tsc --declaration --allowJs` emits
+  `.d.ts` from JSDoc, but `any`-heavy without `@template` generics. Enriching
+  JSDoc + keeping the JSDoc→md generator is the north star.
 
 Philosophy in practice: qrp ships **helpers to build (styled) components**, not
 components. Table = collection + list; modal = portal + dismissable + trapFocus;
@@ -161,6 +168,9 @@ optional sugar.
 
 - `npm test` — run the test suite (`node --test`, happy-dom).
 - `npm run lint` — ESLint (`eslint:recommended` + the style rules above).
+- `npm run typecheck` — `tsc --noEmit` over the `.d.ts` + `test/types.ts`.
+- `npm run docs` — regenerate `docs/API.md` from the `.d.ts`.
+- `npm run build` — build the minified `dist/` (esbuild; runs on `prepack`).
 
 Package manager: **npm** (a `package-lock.json` is present, so per the skill use
 npm, not yarn). ESLint is pinned to v8 with `@babel/eslint-parser@7` so the

@@ -1,65 +1,65 @@
 {
 	"name": "@nemanjan00/qrp",
 	"version": "0.1.1",
-	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step — the devDependencies below are only for tests, lint, and git hooks.",
+	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step \u2014 the devDependencies below are only for tests, lint, and git hooks.",
 	"type": "module",
 	"license": "MIT",
 	"exports": {
 		".": {
 			"types": "./qrp/index.d.ts",
-			"default": "./qrp/index.js"
+			"default": "./dist/qrp.js"
 		},
 		"./html": {
 			"types": "./html/index.d.ts",
-			"default": "./html/index.js"
+			"default": "./dist/html.js"
 		},
 		"./forms": {
 			"types": "./forms/index.d.ts",
-			"default": "./forms/index.js"
+			"default": "./dist/forms.js"
 		},
 		"./table": {
 			"types": "./table/index.d.ts",
-			"default": "./table/index.js"
+			"default": "./dist/table.js"
 		},
 		"./collection": {
 			"types": "./collection/index.d.ts",
-			"default": "./collection/index.js"
+			"default": "./dist/collection.js"
 		},
 		"./http": {
 			"types": "./http/index.d.ts",
-			"default": "./http/index.js"
+			"default": "./dist/http.js"
 		},
 		"./events": {
 			"types": "./events/index.d.ts",
-			"default": "./events/index.js"
+			"default": "./dist/events.js"
 		},
 		"./toasts": {
 			"types": "./toasts/index.d.ts",
-			"default": "./toasts/index.js"
+			"default": "./dist/toasts.js"
 		},
 		"./browser": {
 			"types": "./browser/index.d.ts",
-			"default": "./browser/index.js"
+			"default": "./dist/browser.js"
 		},
 		"./proto": {
 			"types": "./proto/index.d.ts",
-			"default": "./proto/index.js"
+			"default": "./dist/proto.js"
 		},
 		"./behaviors": {
 			"types": "./behaviors/index.d.ts",
-			"default": "./behaviors/index.js"
-		},
-		"./behaviors/*": {
-			"types": "./behaviors/*.d.ts",
-			"default": "./behaviors/*.js"
+			"default": "./dist/behaviors.js"
 		},
 		"./utils": {
 			"types": "./utils/index.d.ts",
-			"default": "./utils/index.js"
+			"default": "./dist/utils.js"
+		},
+		"./behaviors/*": {
+			"types": "./behaviors/*.d.ts",
+			"default": "./dist/behaviors/*.js"
 		},
 		"./utils/*": {
 			"types": "./utils/*.d.ts",
-			"default": "./utils/*.js"
+			"default": "./dist/utils/*.js"
 		},
 		"./qrp.css": "./qrp.css",
 		"./package.json": "./package.json"
@@ -88,24 +88,18 @@
 	],
 	"scripts": {
 		"test": "node --test 'test/*.test.js'",
+		"build": "node bin/build.js",
 		"lint": "eslint qrp forms browser events toasts proto http utils behaviors collection table html test",
+		"prepack": "node bin/build.js",
 		"prepare": "husky",
 		"typecheck": "tsc --noEmit",
 		"docs": "node bin/gen-api.js"
 	},
 	"files": [
-		"qrp",
-		"html",
-		"forms",
-		"table",
-		"collection",
-		"http",
-		"events",
-		"toasts",
-		"browser",
-		"behaviors",
-		"utils",
-		"proto",
+		"dist",
+		"*/index.d.ts",
+		"behaviors/*.d.ts",
+		"utils/*.d.ts",
 		"qrp.css"
 	],
 	"publishConfig": {
@@ -117,6 +111,7 @@
 	"devDependencies": {
 		"@babel/core": "^7.29.7",
 		"@babel/eslint-parser": "^7.29.7",
+		"esbuild": "^0.28.1",
 		"eslint": "^8.57.1",
 		"happy-dom": "^15.11.7",
 		"husky": "^9.1.7",

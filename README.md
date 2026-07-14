@@ -10,7 +10,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![CI](https://img.shields.io/github/actions/workflow/status/nemanjan00/qrp/ci.yml?branch=master&style=flat-square&labelColor=0a0d12&label=CI)](https://github.com/nemanjan00/qrp/actions/workflows/ci.yml)
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-none-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
-[![gzipped](https://img.shields.io/badge/gzipped-~12_KB-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
+[![core size](https://img.shields.io/badge/core-~3.7_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
 [![tests](https://img.shields.io/badge/tests-192_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
@@ -23,8 +23,14 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 
 Zero dependencies, zero build step — one `<script type="module">` and you're
 running. No compiler, no bundler, no `node_modules` at runtime. Reactivity is a
-`Proxy`, the DOM is real, and the core gzips to **~12 KB** as-loaded — over half
-of that is JSDoc comments (**~5 KB** minified).
+`Proxy`, the DOM is real, and the published core is **~3.7 KB min+gzip** — the
+number that lines up next to Solid (~7 KB) or React (~45 KB). The whole library,
+every module, is **~15 KB min+gzip**.
+
+> The npm package ships a minified, code-split build (esbuild), so a browser
+> pulls the small file — still no build step on *your* end. The readable source,
+> JSDoc and all, is ~12 KB gzipped if you load it raw; CDNs like esm.sh minify it
+> on the fly, so only the vendored-raw path serves the larger file.
 
 ```js
 import { state, el, mount } from "@nemanjan00/qrp";
