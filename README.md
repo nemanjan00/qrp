@@ -1,11 +1,27 @@
-# qrp
+<div align="center">
 
-**Turn data into a dashboard. Nothing else.**
+<img src="./assets/qrp-logo.svg" alt="qrp" width="420">
 
-A data-first, declarative frontend framework for the browser. Zero dependencies,
-zero build step — one `<script type="module">` and you're running. No compiler,
-no bundler, no `node_modules` at runtime. Reactivity is a `Proxy`, the DOM is
-real, and the core gzips to **~12 KB** as-loaded — over half of that is JSDoc comments (**~5 KB** minified).
+### Turn data into a dashboard. Nothing else.
+
+A data-first, declarative frontend framework for the browser — reactivity is a `Proxy`, the DOM is real, and there's no build step.
+
+[![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
+[![build step](https://img.shields.io/badge/build_step-none-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
+[![gzipped](https://img.shields.io/badge/gzipped-~12_KB-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
+[![tests](https://img.shields.io/badge/tests-192_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
+[![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
+
+**[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[🚀 5-minute example](#-5-minute-example)** · **[💡 Why it exists](#-why-it-exists)**
+
+</div>
+
+---
+
+Zero dependencies, zero build step — one `<script type="module">` and you're
+running. No compiler, no bundler, no `node_modules` at runtime. Reactivity is a
+`Proxy`, the DOM is real, and the core gzips to **~12 KB** as-loaded — over half
+of that is JSDoc comments (**~5 KB** minified).
 
 ```js
 import { state, el, mount } from "./qrp/index.js";
@@ -21,7 +37,7 @@ data, the DOM follows.
 
 ---
 
-## What is qrp?
+## 🧭 What is qrp?
 
 qrp does **one thing well**: it turns **data** into a **dashboard** — the
 settings panels, forms, tables, and control UIs that make up an admin or
@@ -39,7 +55,7 @@ are, at heart, *"render this data, let me edit it, reflect the changes."*
   fetch client, a toast system, an event bus — each an independent module you
   import only if you use it.
 
-## Why it exists
+## 💡 Why it exists
 
 Modern frontend split one app into two — a "frontend app" and a "backend app" —
 and in doing so **duplicated** state, validation, types, and auth across the wire.
@@ -57,7 +73,7 @@ qrp keeps the good ideas the platform already ships — the DOM, `URL`,
 reactive layer that ties them together. The result is small, fast, and boring in
 the way infrastructure should be.
 
-## 5-minute example
+## 🚀 5-minute example
 
 A live, sortable, filterable table with a modal — the whole thing, no build step:
 
@@ -115,7 +131,7 @@ function open(user) {
 Sorting, filtering, pagination, keyed row reuse, a focus-trapped modal, and
 toasts — with no framework runtime to boot and no bundler in sight.
 
-## Features
+## ✨ Features
 
 **Two ways to write markup.** Prefer functions, or prefer HTML — both are
 first-class and produce the same real DOM.
@@ -219,7 +235,7 @@ Plus: a global event bus, cross-tab persistence, HTML5 routing with `:param`
 patterns, real custom elements (no `class extends`), and headless behaviors for
 modals, dropdowns, tooltips, and disclosures.
 
-## Modules
+## 📦 Modules
 
 Each module is an independent file — import only what you use; with a bundler,
 unused exports tree-shake away.
@@ -237,10 +253,10 @@ unused exports tree-shake away.
 | `browser/index.js` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
 | `behaviors/*.js` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
 | `utils/*.js` | Pure data helpers for dashboards: `memoize`, `lru`, `cache` (`cacheForever`/`precache`/`precacheWithRefresh`), `paginate` |
-| `proto/index.js` | Prototype-level enhancement: `findProto`, `wrapMethod`, `delegate` |
+| `proto/index.js` | Prototype-level enhancement (objects & `__proto__`, no classes): `findProto`, `wrapMethod`, `onceOnly`, `delegate` |
 | `qrp.css` | Optional minimal baseline (design tokens + semantic classes). Link it yourself. |
 
-## Performance
+## 📊 Performance
 
 ### The headline: change one field in a 10,000-row table
 
@@ -334,7 +350,7 @@ children without visiting each dep-set would fix it; not done yet.
 Run it yourself: `examples/bench.html` exposes the suite on `window.bench`
 (`runAll()`, `updateOneNs()`, `mutationsForOne()`).
 
-## Philosophy
+## 🧠 Philosophy
 
 Four commitments gate every design decision:
 
@@ -353,7 +369,7 @@ And underneath all of it: **use the platform.** `URL`, `URLSearchParams`,
 `EventTarget`, `IntersectionObserver`, custom elements, the History API — qrp
 wraps them reactively instead of reinventing them.
 
-## Advanced implementation details
+## 🔬 Advanced implementation details
 
 **Reactivity is a `Proxy` with per-key dependency tracking.** `state()` wraps a
 plain object; the `get` trap records `(effect, key)` pairs, the `set` trap
@@ -389,7 +405,7 @@ interruptible the way React's concurrent renderer is. For a dashboard that's the
 right trade; if you need to coalesce a high-frequency stream, do it upstream of
 `state`.
 
-## Running the demos
+## ▶️ Running the demos
 
 The demos use HTML5 History routing, so serve over HTTP (not `file://`):
 
@@ -406,7 +422,7 @@ classic, built with `list()` + `when()`), `index.html` (forms, routing, toasts),
 > (e.g. `/settings/user`) 404s. That's expected for a History-API app, not a qrp
 > bug.
 
-## TypeScript
+## 🟦 TypeScript
 
 Types ship as `*.d.ts` next to each module, so importing `./qrp/index.js`
 resolves them automatically — no `@types` package, no build step, no change to
@@ -424,12 +440,12 @@ el("ul", {}, list(() => users.rows, (u) => u.id, (u) => el("li", {}, () => u.nam
 `npm run typecheck` runs `tsc --noEmit` over the declarations and a usage suite
 in strict mode.
 
-## API reference
+## 📖 API reference
 
 Full reference — every export, signature, and a usage snippet per module — in
 [`docs/API.md`](docs/API.md).
 
-## Tests & tooling
+## 🧪 Tests & tooling
 
 ```sh
 npm install     # dev-only: happy-dom (tests), eslint, typescript, husky

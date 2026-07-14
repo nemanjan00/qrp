@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 170" width="560" height="170" role="img" aria-label="qrp — turn data into a dashboard">
+	<rect x="1.5" y="1.5" width="557" height="167" rx="22" fill="#0a0d12" stroke="#232d3b" stroke-width="3"/>
+	<!-- QRP radio-wave motif: a transmitter dot with signal arcs -->
+	<g fill="none" stroke-linecap="round">
+		<path d="M 96 52 A 33 33 0 0 1 96 118" stroke="#ffb23e" stroke-width="7"/>
+		<path d="M 96 33 A 52 52 0 0 1 96 137" stroke="#ffb23e" stroke-width="7" opacity="0.55"/>
+		<path d="M 96 16 A 69 69 0 0 1 96 154" stroke="#ffb23e" stroke-width="7" opacity="0.28"/>
+	</g>
+	<circle cx="90" cy="85" r="9" fill="#34d399"/>
+	<!-- wordmark: q p in foreground, r in accent -->
+	<text x="176" y="120" font-family="'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="104" font-weight="800" letter-spacing="-5">
+		<tspan fill="#e8ebf0">q</tspan><tspan fill="#ffb23e">r</tspan><tspan fill="#e8ebf0">p</tspan>
+	</text>
+</svg>
