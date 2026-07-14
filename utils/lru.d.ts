@@ -1,3 +1,8 @@
+/**
+ * @module utils
+ * Pure data helpers a dashboard needs (one file each): `memoize`, `lru`,
+ * `cacheForever`/`precache`/`precacheWithRefresh`, `paginate`/`pageCount`.
+ */
 export interface LruStore<K = any, V = any> {
 	has(key: K): boolean;
 	get(key: K): V | undefined;

@@ -1,3 +1,9 @@
+/**
+ * @module events
+ * A global event bus on native `EventTarget`. `Emitter`: `on(type, handler) → off`,
+ * `off`, `once(type) → Promise`, `emit(type, detail)`, `request(type, payload,
+ * { timeout? }) → Promise`, `respond(type, handler) → off`.
+ */
 export type Handler<T = any> = (detail: T, event?: Event) => void;
 
 export interface RequestOptions {

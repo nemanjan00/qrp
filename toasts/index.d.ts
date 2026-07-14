@@ -1,3 +1,9 @@
+/**
+ * @module toasts
+ * Notifications driven by the global bus — any code raises one without importing
+ * the UI. `notify.success|error|info|warning(content)` where content is any
+ * renderable. Mount the singleton once: `mount(document.body, toasts.component)`.
+ */
 import type { Renderable } from "../qrp/index.js";
 import type { Emitter } from "../events/index.js";
 

@@ -1,318 +1,815 @@
 # qrp — API reference
 
-Every module is an independent ESM file; import only what you use. TypeScript
-declarations ship next to each module (`*.d.ts`), so editors give you types and
-autocomplete with no build step — see [TypeScript](#typescript) at the end.
+> **Generated from the TypeScript declarations (`*.d.ts`) — do not edit by hand.**
+> Run `npm run docs` to regenerate. The `.d.ts` are the single source of API
+> truth (rich types, verified by `npm run typecheck` against a usage suite),
+> and `api.html` renders this file live.
 
-- [`qrp` — core](#qrp--core)
-- [`html` — HTML templates](#html--html-templates)
-- [`forms`](#forms)
-- [`collection`](#collection)
-- [`table`](#table)
-- [`http`](#http)
-- [`events`](#events)
-- [`toasts`](#toasts)
-- [`browser`](#browser)
-- [`behaviors`](#behaviors)
-- [`utils`](#utils)
-- [`proto`](#proto)
+Every module is an independent ESM file — import only what you use. Types ship
+next to each module, so editors resolve them with no build step.
+
+- [qrp — core](#qrp-core)
+- [html — HTML templates](#html-html-templates)
+- [forms](#forms)
+- [collection](#collection)
+- [table](#table)
+- [http](#http)
+- [events](#events)
+- [toasts](#toasts)
+- [browser](#browser)
+- [behaviors](#behaviors)
+- [utils](#utils)
+- [proto](#proto)
 
 ---
 
-## `qrp` — core
+## qrp — core
 
-`import { … } from "./qrp/index.js"`
+```js
+import { … } from "./qrp/index.js"
+```
 
-### Reactivity
+Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
+keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
+custom elements (`define`), and HTML5 routing. `import … from "./qrp/index.js"`.
 
-| Export | Signature | Notes |
-|---|---|---|
-| `state` | `state<T>(obj: T): T` | Reactive `Proxy`. Reads inside `effect` track per key; writes re-run only dependent effects. Primitives, **frozen** objects, DOM nodes, `Map`/`Set`, class instances are returned as-is. |
-| `effect` | `effect(fn): EffectHandle` | Runs `fn` now, re-runs on change. `.dispose()` stops it. Owned by the enclosing scope/effect. |
-| `derive` | `derive<T>(fn: () => T): { value: T }` | Read-only reactive computed. |
-| `untracked` | `untracked<T>(fn: () => T): T` | Read state without creating a dependency. |
-| `raw` | `raw<T>(obj: T): T` | Unwrap a proxy to its raw object. |
-| `onDispose` | `onDispose(fn): void` | Register cleanup for the current effect/scope teardown. |
-| `scope` | `scope(fn): { dispose() }` | Ownership scope; `dispose()` kills its effects. |
+### `state`
+
+```ts
+state<T>(obj: T): T
+```
+
+Wrap a plain object/array in a reactive Proxy. Reads inside an effect track
+per key; writes re-run only the effects that read that key. Primitives,
+frozen objects, DOM nodes, Map/Set and class instances are returned as-is —
+so it's safe to stash a node or a `Map` in state, and `Object.freeze(data)`
+opts a value out of reactivity.
 
 ```js
 const s = state({ first: "Ada", last: "Lovelace" });
-const full = derive(() => `${s.first} ${s.last}`);
-effect(() => console.log(full.value));   // logs now, and on change
-s.first = "Grace";                        // → "Grace Lovelace"
+effect(() => console.log(s.first));   // logs now, and whenever `first` changes
+s.last = "Byron";                     // does NOT re-run the effect above
 ```
 
-### DOM
+### `raw`
 
-| Export | Signature | Notes |
-|---|---|---|
-| `el` | `el(tag, props?, ...children): HTMLElement` | Real element. Function props/children are reactive; `on*` add listeners; `bind: [state, key]` two-way. |
-| `reactive` | `reactive<T extends Node>(node: T): T` | Proxy a node so `node.prop = () => …` becomes a reactive binding. |
-| `bind` | `bind(node, state, key): Node` | Two-way binding for a form control. |
-| `clear` | `clear(node): void` | Empty a node (`replaceChildren()`). |
+```ts
+raw<T>(obj: T): T
+```
+
+Unwrap a reactive proxy back to its raw object (or return as-is).
+
+### `effect`
+
+```ts
+effect(fn: () => void): EffectHandle
+```
+
+Run fn now and re-run it whenever any state key it read changes. Effects
+created inside a component/scope are owned by it and disposed with it.
+
+Edge cases: writing `NaN` over `NaN` does not re-trigger (uses `Object.is`).
+An effect that reads and writes the *same* key runs once and settles (the
+trigger skips the currently-running effect) — it does not self-loop. An
+effect that **throws** is torn down (unsubscribed) and the error propagates
+to the caller (the write site, or `effect()` on first run); the rest of the
+system is unaffected. Two effects that write *each other's* keys will recurse
+synchronously with no depth guard — don't do that.
 
 ```js
-el("button", { class: () => (on.value ? "on" : ""), onclick: () => on.value = !on.value },
+const runner = effect(() => render(state.value));
+runner.dispose();   // stop it
+```
+
+### `untracked`
+
+```ts
+untracked<T>(fn: () => T): T
+```
+
+Read state inside fn WITHOUT tracking it as a dependency.
+
+### `derive`
+
+```ts
+derive<T>(fn: () => T): Derived<T>
+```
+
+A read-only reactive value derived from other state.
+
+```js
+const full = derive(() => `${s.first} ${s.last}`);
+el("span", {}, () => full.value);
+```
+
+### `onDispose`
+
+```ts
+onDispose(fn: () => void): void
+```
+
+Register a cleanup to run when the current effect/scope disposes.
+
+### `scope`
+
+```ts
+scope(fn: () => void): Scope
+```
+
+Run fn inside a fresh ownership scope; `dispose()` kills every effect created
+during it. `mount()` wraps this and also clears the DOM — reach for `scope()`
+directly only when you're managing effects **without** a DOM subtree to clear
+(e.g. a bundle of subscriptions you want to tear down together).
+
+### `el`
+
+```ts
+el<K extends keyof HTMLElementTagNameMap>(tag: K, props?: Props, ...children: Renderable[]): HTMLElementTagNameMap[K]
+el(tag: string, props?: Props, ...children: Renderable[]): HTMLElement
+```
+
+Create a real DOM element — the most-used function in the framework. Every
+prop is one of five kinds, and children follow their own rule:
+
+- **Static value** → set once (a property if it exists on the node, else an
+  attribute): `el("input", { type: "text", id: "name" })`.
+- **Function value** → a reactive binding, re-applied when its state changes:
+  `el("div", { class: () => active.on ? "on" : "" })`.
+- **`on*: fn`** → an event listener (`addEventListener`):
+  `el("button", { onclick: (e) => count.n++ })`.
+- **`bind: [state, key]`** → two-way binding for a form control (with
+  number/checkbox coercion): `el("input", { bind: [settings, "name"] })`.
+- **`class` / `style`** → `class` takes a string or function; `style` takes a
+  string or an object (`{ color: "red" }`), each static or reactive.
+- Properties like **`value` / `checked`** are set as node *properties* (not
+  attributes), so `checked: () => todo.done` works as expected.
+
+Children are `Renderable`: strings/numbers (text), Nodes, arrays, reactive
+functions (`() => …`), and `list()`/`when()` markers.
+
+```js
+el("button", { class: () => on.value ? "on" : "", onclick: () => on.value = !on.value },
   () => `toggled ${on.value}`);
 ```
 
-### Keyed lists
+### `clear`
 
-`list(source, keyFn, render): ListMarker` — one element per item identity, cached
-and reused/reordered on change (never rebuilt). Pass as an `el` child. The marker
-exposes `itemFor(elementOrEvent)` → the item that produced a node (leak-free via
-`WeakMap`) for one-listener event delegation.
+```ts
+clear(node: Node): void
+```
+
+Empty a node (remove all children) via replaceChildren().
+
+### `reactive`
+
+```ts
+reactive<T extends Node>(node: T): T
+```
+
+Wrap a DOM node in a Proxy so assigning a function to a property becomes a
+reactive binding (`node.textContent = () => state.x`). qrp unwraps it to the
+raw node on insert.
+
+### `bind`
+
+```ts
+bind(node: Node, state: Record<string, any>, key: string): Node
+```
+
+Two-way binding between a form control and a state key.
+
+### `list`
+
+```ts
+list<T>(source: () => readonly T[], keyFn: (item: T, index: number) => unknown, render: (item: T, index: number) => Renderable): ListMarker<T>
+```
+
+A keyed list with element reuse: one element per item identity, reused and
+reordered on change (never rebuilt). Pass as an el() child.
+
+`source` is a **thunk that returns the current array** — read reactive state
+inside it so the list re-runs when the data changes. For a plain reactive
+array that's `() => store.rows`; when the data comes from a `collection`,
+`items()` is a method, so it's `() => view.items()`. Both are the same
+contract (a function returning an array); `collection.items` just happens to
+be callable rather than a property.
+
+`keyFn` must return a **unique** key per item. Duplicate keys are dropped with
+a `console.warn` (two items can't share one element). If `render` throws, the
+error propagates out of the reconcile (like any effect that throws).
 
 ```js
 el("tbody", {}, list(
-  () => view.items(),          // reactive, ordered source
-  (row) => row.id,             // stable key
-  (row) => el("tr", {}, () => row.name)
+  () => store.rows,          // thunk → current array
+  (row) => row.id,           // stable, unique key
+  (row) => el("tr", {}, () => row.name)   // built once per key; self-updates
 ));
 ```
 
-### Conditionals
+### `when`
 
-`when(cond, thenFn, elseFn?): WhenMarker` — render one of two subtrees on a
-reactive condition, disposing the old branch (effects + DOM) on flip. The truthy
-value is passed to the branch.
-
-```js
-el("div", {}, when(
-  () => editing.on,
-  () => el("input", { bind: [row, "name"] }),
-  () => el("span", {}, () => row.name)
-));
+```ts
+when<T>(cond: () => T, thenFn: (value: NonNullable<T>) => Renderable, elseFn?: (value: T) => Renderable): WhenMarker
 ```
 
-### Components
+Conditionally render one of two subtrees, swapping on a reactive condition
+and disposing the old branch (effects + DOM) when it flips.
 
-| Export | Signature | Notes |
-|---|---|---|
-| `mount` | `mount(parent, component): { dispose() }` | Mount `(parent) => void` into `parent`. `dispose()` tears down effects **and** clears the DOM. |
-| `define` | `define(name, setup, options?): CustomElementConstructor` | Register a real Custom Element (no `class`). `setup(host, attrs)`; `options.attrs` are observed and reactive. |
+### `mount`
 
-### Routing
-
-| Export | Signature | Notes |
-|---|---|---|
-| `router` | `router(routes, outlet, options?): { navigate, render, dispose }` | Matches `location.pathname` against patterns → `component(outlet, ctx)`; intercepts same-origin links; disposes the previous route's scope on nav. |
-| `navigate` | `navigate(url, { replace? }?): void` | Programmatic navigation. |
-| `compilePath` | `compilePath(pattern): { keys, regexp }` | Compile `/user/:id`, `/files/:path*`, `*`. |
-| `matchPath` | `matchPath(compiled, path): Record<string,string> \| null` | Extract params. |
-
-`ctx` is `{ params, query, path }`. `options`: `{ notFound?, transitions?, linksRoot? }`.
-
----
-
-## `html` — HTML templates
-
-`import { html, ref } from "./html/index.js"`
-
-| Export | Signature | Notes |
-|---|---|---|
-| `` html`` `` / `html(str)` | `(strings, ...values) \| (markup) => Node \| DocumentFragment` | Inline (`${}`) or plain string. Text holes escaped; `${() => …}` reactive; `onX=${fn}` listener. |
-| `html.template` | `html.template(source): (data) => Node` | **Storable** `#{field}` template — parsed once, filled from a data object, reactive with state, dotted paths, escaped. |
-| `ref` | `ref(value): string` | Opt-in token to embed a live node/binding into a **plain** concatenated string. |
-
-**Escaping:** text holes are rendered as text (never touch `innerHTML` — can't
-inject elements/scripts). Attribute values are set verbatim (no breakout) **but
-URL schemes are not sanitized** — don't put untrusted data in `href`/`src`.
-Attack vectors live in `test/html-xss.test.js`.
-
----
-
-## `forms`
-
-`import { form, field, registerInput, inputs, parseKV, serializeKV } from "./forms/index.js"`
-
-| Export | Signature |
-|---|---|
-| `form` | `form({ settings, fields?, sections? }): HTMLElement` |
-| `field` | `field(settings, key, spec?): HTMLElement` |
-| `registerInput` | `registerInput(type, factory): InputFactory` |
-| `getInput` | `getInput(type): InputFactory \| undefined` |
-| `inputs` | registry addressable by type name (`inputs.text`, …) + `multichoice` |
-| `multichoice` | `multichoice(options): InputFactory` |
-| `textual` | `textual(settings): HTMLTextAreaElement` |
-| `parseKV` / `serializeKV` | `(text) => obj` / `(obj) => text` |
-
-A `FieldSpec` is `{ name?, description?, type?, input?, default?, options?, …attrs }`.
-Built-in types: every native `<input>` variant plus `textarea`, `select`, `radio`.
-
-```js
-registerInput("callsign", (settings, key, field) => {
-  const input = inputs.text(settings, key, field);
-  input.addEventListener("input", () => settings[key] = input.value.toUpperCase());
-  return input;
-});
-form({ settings, fields: { CALL: { name: "Callsign", type: "callsign" } } });
+```ts
+mount(parent: HTMLElement, component: (parent: HTMLElement) => void): Mounted
 ```
 
----
+Mount a component into a parent; returns a disposable.
 
-## `collection`
+### `define`
 
-`import { collection } from "./collection/index.js"`
-
-`collection(source, options?): Collection` — reactive sort/filter/paginate.
-
-- `options`: `{ sort?, page?, filter?, filterFn?, compare? }`
-- returns `{ sort, filter, page, items(), total(), pageCount(), toggleSort(key) }`
-- `items()` is reactive — feed it to `list()`.
-
----
-
-## `table`
-
-`import { table } from "./table/index.js"`
-
-`table(options): HTMLTableElement & { view: Collection }` — declarative data table
-over `collection` + `list`.
-
-- `options`: `{ rows, fields, key?, sort?, page?, filter?, filterFn?, rowClass?, class? }`
-- Column: `{ key, label?, accessor?, formatter?, render?, sortable?, sortByFormatted?, thClass?, tdClass? }`
-- `.view` is the underlying collection (for pagination UI).
-
-```js
-const t = table({
-  rows: () => store.rows, key: (r) => r.id, filter, page,
-  fields: [
-    { key: "name", label: "Name", sortable: true },
-    { key: "signups", label: "Signups", sortable: true, formatter: (v) => v.toLocaleString() },
-    { key: "actions", label: "", render: (r) => el("button", { onclick: () => open(r) }, "View") }
-  ]
-});
-t.view.pageCount();
+```ts
+define(name: string, setup: (host: HTMLElement & { attrs: Record<string, string | null> }, attrs: Record<string, string | null>) => void, options?: DefineOptions): CustomElementConstructor
 ```
 
----
+Register a Custom Element built with objects and __proto__ (no class).
+`setup(host, attrs)` builds its content; observed attrs arrive as reactive
+state. Effects created in setup are scoped to the element.
 
-## `http`
+### `compilePath`
 
-`import { createHttp } from "./http/index.js"`
-
-`createHttp(options?): HttpClient`
-
-- `options`: `{ baseUrl?, token?, client?, headers?, bus? }`
-- client: `loading` (reactive `{ pending }`), `request`, `get`, `delete`, `head`, `post`, `put`, `patch`
-- request `config`: `{ params?, body?, headers?, signal?, init? }`
-- **Errors reject with `{ status, data, response }`** and emit `error` on the bus; a 401 (or `Unauthorized` body) also emits `auth:unauthorized`. Nullish params are skipped; arrays repeat the key; `FormData`/`Blob`/etc. pass through; plain objects are JSON-encoded.
-
-```js
-const http = createHttp({ baseUrl: "/api", token: () => session.token });
-effect(() => bar.hidden = http.loading.pending === 0);   // spinner in one line
-http.get("/things", { params: { page: 2, ids: [1, 2, 3] } });
+```ts
+compilePath(pattern: string): CompiledPath
 ```
 
----
+Compile an Express-style path pattern (`/user/:id`, `/files/:path*`, `*`).
 
-## `events`
+### `matchPath`
 
-`import { bus, emitter, fromEvent, channel, broadcast } from "./events/index.js"`
+```ts
+matchPath(compiled: CompiledPath, path: string): Record<string, string> | null
+```
 
-| Export | Signature |
-|---|---|
-| `emitter` | `emitter(): Emitter` |
-| `bus` | the global `Emitter` |
-| `fromEvent` | `fromEvent(source, type, map?, initial?): { value }` |
-| `channel` | `channel(name): Channel` (cross-tab via BroadcastChannel) |
-| `broadcast` | `broadcast(emitter, type, store, key?)` |
+Match a compiled path against a pathname; returns params or null.
 
-`Emitter`: `on(type, handler) → off`, `off`, `once(type) → Promise`, `emit(type, detail)`,
-`request(type, payload, { timeout? }) → Promise`, `respond(type, handler) → off`.
+### `navigate`
 
----
+```ts
+navigate(url: string, options?: NavigateOptions): void
+```
 
-## `toasts`
+Programmatic navigation (pushes/replaces the URL; the router reacts).
 
-`import { notify, toasts, createToasts } from "./toasts/index.js"`
+### `router`
 
-- `notify.success|error|info|warning(content)` — fire through the global bus; content is any renderable.
-- `toasts` — the mountable singleton: `mount(document.body, toasts.component)`.
-- `createToasts({ bus?, timeout?, dedupeWindow? })` — a scoped controller with `push`, `dismiss`, and per-variant helpers.
+```ts
+router(routes: Record<string, (outlet: HTMLElement, ctx: RouteContext) => void>, outlet: HTMLElement, options?: RouterOptions): RouterHandle
+```
 
----
+HTML5 History router: path patterns → components.
 
-## `browser`
+**Supporting types:** `Renderable`, `Bind`, `Props`, `EffectHandle`, `Scope`, `Mounted`, `Derived`, `ListMarker`, `WhenMarker`, `Component`, `RouteContext`.
 
-`import { persisted, query, media, viewport, online, visible, cookies, seen, hashState, watch } from "./browser/index.js"`
 
-All return reactive state and self-clean via `onDispose`:
+## html — HTML templates
 
-| Export | Returns |
-|---|---|
-| `persisted(key, defaults?)` | state persisted to localStorage, synced across tabs |
-| `query()` | the URL query as two-way state |
-| `hashState()` | `{ hash }` two-way |
-| `media(q)` | `{ matches }` |
-| `viewport()` | `{ width, height }` |
-| `online()` | `{ online }` |
-| `visible()` | `{ visible }` |
-| `cookies(interval?)` | parsed `document.cookie` (polled) |
-| `seen(el, options?)` | `{ matches }` (IntersectionObserver) |
-| `watch(getter, cb, interval?)` | `stop()` — poll a value that has no event |
+```js
+import { … } from "./html/index.js"
+```
 
----
+Author DOM as HTML strings. Three forms: `` html`…` `` / `html("…")` (inline,
+`${}` holes), `html.template("…#{field}…")` (storable, filled from data), and
+`ref()` (inject a live node into a plain string).
 
-## `behaviors`
+**Escaping — the precise guarantee.** A value interpolated in **text** position
+(a child hole, `${}` or `#{}`) is rendered as a text node — it never touches
+`innerHTML`, so it can't inject an element, `<script>`, or event handler,
+whatever string it holds. Attribute values are set verbatim (via
+`setAttribute`/property — never re-parsed as HTML, so no breakout into a new
+attribute or tag), **but URL schemes are NOT sanitized**: a `javascript:` value
+in an `href` passes through, same as Lit. Don't put untrusted data in
+`href`/`src`/`style` without your own check. Attack vectors are in
+`test/html-xss.test.js`, verified in real Chromium.
 
-`import { portal } from "./behaviors/portal.js"` (one file each)
+### `html`
 
-| Export | Signature |
-|---|---|
-| `portal(node, target?)` | `() => void` (dispose) |
-| `dismissable(node, onDismiss, { escape?, outside? }?)` | `() => void` |
-| `trapFocus(node)` | `() => void` (restores focus on dispose) |
-| `anchored(trigger, floating, { placement?, gap? }?)` | dispose with `.update()` |
-| `disclosure(initial?)` | `{ state, toggle, open, close, connect }` |
-| `busyWhile()` | `{ state, run(promise), active }` |
+```ts
+html(strings: TemplateStringsArray, ...values: unknown[]): Node | DocumentFragment
+html(markup: string): Node | DocumentFragment
+```
 
-Compose them: a modal is `portal` + `trapFocus` + `dismissable`; a dropdown is
-`anchored` + `dismissable` + `disclosure`.
+Build DOM from an HTML template (tagged, `${}` holes) or a plain string.
+Text holes are escaped; `${() => …}` holes are reactive; `onX=${fn}` wires
+a listener. Returns the single root node, or a DocumentFragment.
 
----
+```js
+html`<button onclick=${() => count.n++}>${() => count.n}</button>`;
+```
 
-## `utils`
+### `ref`
 
-`import { memoize } from "./utils/memoize.js"` (one file each)
+```ts
+ref(value: Renderable): string
+```
 
-| Export | Signature |
-|---|---|
-| `memoize(fn, { key?, max?, store? }?)` | same-shape fn; async calls deduped in flight |
-| `lru(max)` | `{ has, get, set, delete, size }` |
-| `cacheForever(method)` | run once, cache result |
-| `precache(method)` | start eagerly, return a getter |
-| `precacheWithRefresh(method, refreshTime?, callback?)` | getter with `.refresh()`, `.stop()` |
-| `paginate(array, index, size)` / `pageCount(total, size)` | pure paging math |
+Register a value for embedding in a plain html() string; returns an opt-in
+token. html() swaps it for the real node/binding (consumed on use).
 
----
 
-## `proto`
+## forms
 
-`import { findProto, wrapMethod, onceOnly, delegate } from "./proto/index.js"`
+```js
+import { … } from "./forms/index.js"
+```
 
-| Export | Signature |
-|---|---|
-| `findProto(obj, name)` | walk the prototype chain by constructor name |
-| `wrapMethod(proto, method, make, tag?)` | idempotent method wrap; returns `restore()` |
-| `onceOnly(fn)` | run at most once |
-| `delegate(root, selector, handler, type?)` | one-listener event delegation |
+Declarative forms + an open input-type registry. A `FieldSpec` is
+`{ name?, description?, type?, input?, default?, options?, …native attrs }`.
+Built-in `type`s: every native `<input>` variant, plus `textarea`, `select`,
+`radio`. Register your own with `registerInput`.
+
+### `parseKV`
+
+```ts
+parseKV(text: string): Record<string, string>
+```
+
+Parse a KEY=value config string into an object.
+
+### `serializeKV`
+
+```ts
+serializeKV(settings: Record<string, any>): string
+```
+
+Serialize an object back to a KEY=value string.
+
+### `registerInput`
+
+```ts
+registerInput(type: string, factory: InputFactory): InputFactory
+```
+
+Register (or override) an input type by name; returns the factory.
+
+### `getInput`
+
+```ts
+getInput(type: string): InputFactory | undefined
+```
+
+Look up a registered input factory by name.
+
+### `multichoice`
+
+```ts
+multichoice(options: Record<string, string>): InputFactory
+```
+
+A select factory built from inline options (procedural style).
+
+### `inputs`
+
+```ts
+inputs: Record<string, InputFactory> & { multichoice: typeof multichoice }
+```
+
+The input registry, addressable by type name, plus `multichoice`.
+
+### `field`
+
+```ts
+field(settings: Record<string, any>, key: string, spec?: FieldSpec): HTMLElement
+```
+
+Render one labelled field (label + input + description).
+
+### `form`
+
+```ts
+form(spec: FormSpec): HTMLElement
+```
+
+Render a full settings form grouped into sections.
+
+### `textual`
+
+```ts
+textual(settings: Record<string, any>): HTMLTextAreaElement
+```
+
+A textarea editing the same settings state (KEY=value), both directions.
+
+**Supporting types:** `InputFactory`, `FieldSpec`.
+
+
+## collection
+
+```js
+import { … } from "./collection/index.js"
+```
+
+Reactive sort / filter / paginate over a dataset. `collection(source, options)`
+returns `{ sort, filter, page, items(), total(), pageCount(), toggleSort() }`;
+`items()` is reactive — feed it to `list()`. `options`:
+`{ sort?, page?, filter?, filterFn?, compare? }`.
+
+### `collection`
+
+```ts
+collection<T>(source: () => readonly T[], options?: CollectionOptions<T>): Collection<T>
+```
+
+Reactive sort / filter / paginate over a dataset.
+
+
+## table
+
+```js
+import { … } from "./table/index.js"
+```
+
+A declarative data table over `collection` + `list`: sortable headers, keyed
+row reuse, per-column config. A column is `{ key, label?, accessor?, formatter?,
+render?, sortable?, sortByFormatted?, thClass?, tdClass? }`. The returned table
+has `.view` (the underlying collection) for pagination UI.
+
+### `table`
+
+```ts
+table<T>(options: TableOptions<T>): TableElement<T>
+```
+
+Build a declarative, sortable, keyed, paginated data table.
+
+**Supporting types:** `Column`, `TableElement`.
+
+
+## http
+
+```js
+import { … } from "./http/index.js"
+```
+
+A fetch client for a JSON backend: URL shaping, auth headers, a reactive
+in-flight loader, and centralized errors on the bus. **A non-2xx response
+rejects with `{ status, data, response }`** (data is the parsed error body) and
+emits `error`; a 401 (or an `Unauthorized` body) also emits `auth:unauthorized`.
+Nullish params are skipped, arrays repeat the key, `FormData`/`Blob`/etc. pass
+through, plain objects are JSON-encoded.
+
+### `createHttp`
+
+```ts
+createHttp(options?: HttpOptions): HttpClient
+```
+
+Create a fetch client: URL shaping, auth headers, reactive loader, error bus.
+
+**Supporting types:** `HttpError`.
+
+
+## events
+
+```js
+import { … } from "./events/index.js"
+```
+
+A global event bus on native `EventTarget`. `Emitter`: `on(type, handler) → off`,
+`off`, `once(type) → Promise`, `emit(type, detail)`, `request(type, payload,
+{ timeout? }) → Promise`, `respond(type, handler) → off`.
+
+### `emitter`
+
+```ts
+emitter(): Emitter
+```
+
+Create an emitter backed by a native EventTarget.
+
+### `bus`
+
+```ts
+bus: Emitter
+```
+
+The global event bus.
+
+### `fromEvent`
+
+```ts
+fromEvent<T = any, R = T>(source: Emitter | EventTarget, type: string, map?: (detail: T) => R, initial?: R): { value: R }
+```
+
+Turn an event source into reactive state holding the latest mapped detail.
+
+### `channel`
+
+```ts
+channel(name: string): Channel
+```
+
+A cross-tab bus over BroadcastChannel (falls back to a local emitter).
+
+### `broadcast`
+
+```ts
+broadcast(emitter: Emitter, type: string, store: Record<string, any>, key?: string): { dispose(): void }
+```
+
+Mirror a piece of reactive state onto an emitter on every change.
+
+
+## toasts
+
+```js
+import { … } from "./toasts/index.js"
+```
+
+Notifications driven by the global bus — any code raises one without importing
+the UI. `notify.success|error|info|warning(content)` where content is any
+renderable. Mount the singleton once: `mount(document.body, toasts.component)`.
+
+### `createToasts`
+
+```ts
+createToasts(options?: ToastsOptions): ToastsController
+```
+
+Create a toast controller wired to an emitter.
+
+### `toasts`
+
+```ts
+toasts: ToastsController
+```
+
+The default toast controller wired to the global bus.
+
+### `notify`
+
+```ts
+notify: { success(content: Renderable): void; error(content: Renderable): void; info(content: Renderable): void; warning(content: Renderable): void; }
+```
+
+Fire-and-forget notifications through the global bus. Content is renderable.
+
+
+## browser
+
+```js
+import { … } from "./browser/index.js"
+```
+
+### `persisted`
+
+```ts
+persisted<T extends Record<string, any>>(storageKey: string, defaults?: T): T
+```
+
+localStorage-backed reactive state with cross-tab sync.
+
+### `query`
+
+```ts
+query(): Record<string, string>
+```
+
+The URL query string as two-way reactive state.
+
+### `hashState`
+
+```ts
+hashState(): { hash: string }
+```
+
+location.hash as reactive state: { hash }. Two-way.
+
+### `media`
+
+```ts
+media(mediaQuery: string): { matches: boolean }
+```
+
+matchMedia as reactive state: { matches }.
+
+### `viewport`
+
+```ts
+viewport(): { width: number; height: number }
+```
+
+Reactive window size: { width, height }.
+
+### `online`
+
+```ts
+online(): { online: boolean }
+```
+
+Reactive connectivity: { online }.
+
+### `visible`
+
+```ts
+visible(): { visible: boolean }
+```
+
+Reactive tab visibility: { visible }.
+
+### `watch`
+
+```ts
+watch(getter: () => unknown, callback: (value: unknown) => void, interval?: number): () => void
+```
+
+Poll a getter; fire callback when its value changes. Returns stop().
+
+### `cookies`
+
+```ts
+cookies(interval?: number): Record<string, string>
+```
+
+document.cookie as reactive, parsed state (polled).
+
+### `seen`
+
+```ts
+seen(element: Element, options?: IntersectionObserverInit): { matches: boolean }
+```
+
+IntersectionObserver as reactive state: { matches } (on screen).
+
+
+## behaviors
+
+```js
+import { … } from "./behaviors/<name>.js"
+```
+
+Headless helpers to build styled components (one file each). Compose them: a
+modal is `portal` + `trapFocus` + `dismissable`; a dropdown is `anchored` +
+`dismissable` + `disclosure`. You bring the markup and CSS; they carry the
+platform and a11y hard parts.
+
+### `portal`
+
+```ts
+portal(node: Node, target?: Node): () => void
+```
+
+Move `node` into `target` (default document.body); returns dispose().
+
+### `dismissable`
+
+```ts
+dismissable(node: Node, onDismiss: (event: Event) => void, options?: DismissableOptions): () => void
+```
+
+Call onDismiss on Escape or outside pointerdown; returns dispose().
+
+### `trapFocus`
+
+```ts
+trapFocus(node: Element): () => void
+```
+
+Trap Tab focus within node, focus its first focusable, restore on dispose.
+
+### `anchored`
+
+```ts
+anchored(trigger: Element, floating: HTMLElement, options?: AnchoredOptions): AnchoredDispose
+```
+
+Position `floating` next to `trigger`; returns dispose() (with .update()).
+
+### `disclosure`
+
+```ts
+disclosure(initial?: boolean): Disclosure
+```
+
+Reactive open/close state with optional ARIA wiring.
+
+### `busyWhile`
+
+```ts
+busyWhile(): BusyWhile
+```
+
+Track in-flight promises as reactive busy state (spinners/overlays).
+
+
+## utils
+
+```js
+import { … } from "./utils/<name>.js"
+```
+
+Pure data helpers a dashboard needs (one file each): `memoize`, `lru`,
+`cacheForever`/`precache`/`precacheWithRefresh`, `paginate`/`pageCount`.
+
+### `lru`
+
+```ts
+lru<K = any, V = any>(max: number): LruStore<K, V>
+```
+
+A bounded key/value store with least-recently-used eviction.
+
+### `memoize`
+
+```ts
+memoize<F extends (...args: any[]) => any>(fn: F, options?: MemoizeOptions): F
+```
+
+Memoize a sync/async function by its args (async calls deduped in flight).
+
+### `cacheForever`
+
+```ts
+cacheForever<T>(method: () => T): () => T
+```
+
+Run a zero-arg function at most once; later calls return the first result.
+
+### `precache`
+
+```ts
+precache<T>(method: () => Promise<T>): () => Promise<T>
+```
+
+Start an async producer immediately; returns a getter for its promise.
+
+### `precacheWithRefresh`
+
+```ts
+precacheWithRefresh<T>(method: () => Promise<T>, refreshTime?: number, callback?: (promise: Promise<T>) => void): RefreshingGetter<T>
+```
+
+Keep an async producer's result fresh on an interval.
+
+### `paginate`
+
+```ts
+paginate<T>(array: readonly T[], index: number, size: number): T[]
+```
+
+Return the slice of `array` for a zero-based page (size 0 = a copy of all).
+
+### `pageCount`
+
+```ts
+pageCount(total: number, size: number): number
+```
+
+Number of pages for `total` items at `size` per page.
+
+
+## proto
+
+```js
+import { … } from "./proto/index.js"
+```
+
+Prototype-level enhancement of native objects — find a prototype by name,
+wrap a method idempotently, run-once, and one-listener event delegation.
+
+### `findProto`
+
+```ts
+findProto(obj: object, protoName: string): object | undefined
+```
+
+Walk obj's prototype chain; return the prototype named protoName, or undefined.
+
+### `wrapMethod`
+
+```ts
+wrapMethod<T extends object>(proto: T, method: keyof T | string, make: (original: any) => any, tag?: string): () => void
+```
+
+Replace proto[method] with make(original), idempotently. Returns restore().
+
+### `onceOnly`
+
+```ts
+onceOnly<F extends (...args: any[]) => any>(fn: F): (...args: Parameters<F>) => ReturnType<F> | undefined
+```
+
+Wrap a fn so it runs at most once.
+
+### `delegate`
+
+```ts
+delegate(root: Element | Document, selector: string, handler: (event: Event, match: Element) => void, type?: string): () => void
+```
+
+One-listener event delegation by CSS selector. Returns dispose().
 
 ---
 
 ## TypeScript
 
 Declarations ship as `*.d.ts` next to each module, so importing `./qrp/index.js`
-resolves types automatically — no `@types` package, no build step:
-
-```ts
-import { state, el, list } from "./qrp/index.js";
-
-interface User { id: number; name: string; }
-const users = state<{ rows: User[] }>({ rows: [] });
-el("ul", {}, list(() => users.rows, (u) => u.id, (u) => el("li", {}, () => u.name)));
-```
-
-`npm run typecheck` runs `tsc --noEmit` over the declarations and a usage suite
-(`test/types.ts`) in strict mode.
+resolves types automatically — no `@types` package, no build step. Generics flow
+through (`state<T>`, `list<T>`, `collection<T>`, `table<T>`). `npm run typecheck`
+runs `tsc --noEmit` over the declarations and a usage suite in strict mode.

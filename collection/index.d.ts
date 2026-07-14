@@ -1,3 +1,10 @@
+/**
+ * @module collection
+ * Reactive sort / filter / paginate over a dataset. `collection(source, options)`
+ * returns `{ sort, filter, page, items(), total(), pageCount(), toggleSort() }`;
+ * `items()` is reactive — feed it to `list()`. `options`:
+ * `{ sort?, page?, filter?, filterFn?, compare? }`.
+ */
 export interface SortState {
 	key: string | null;
 	/** 1 ascending, -1 descending. */

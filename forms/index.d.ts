@@ -1,3 +1,17 @@
+/**
+ * @module forms
+ * Declarative forms + an open input-type registry. A `FieldSpec` is
+ * `{ name?, description?, type?, input?, default?, options?, …native attrs }`.
+ * Built-in `type`s: every native `<input>` variant, plus `textarea`, `select`,
+ * `radio`. Register your own with `registerInput`.
+ * @example
+ * registerInput("callsign", (settings, key, field) => {
+ *   const input = inputs.text(settings, key, field);
+ *   input.addEventListener("input", () => settings[key] = input.value.toUpperCase());
+ *   return input;
+ * });
+ * form({ settings, fields: { CALL: { name: "Callsign", type: "callsign" } } });
+ */
 /** An input factory: builds a two-way-bound control for settings[key]. */
 export type InputFactory = (
 	settings: Record<string, any>,

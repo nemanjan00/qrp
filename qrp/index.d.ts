@@ -1,6 +1,8 @@
 /**
- * qrp core — reactivity, DOM, components, custom elements, routing.
- * Hand-written declarations for the zero-build ESM modules.
+ * @module qrp
+ * Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
+ * keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
+ * custom elements (`define`), and HTML5 routing. `import … from "./qrp/index.js"`.
  */
 
 // --- shared types ----------------------------------------------------------
@@ -57,7 +59,13 @@ export interface Derived<T> {
 /**
  * Wrap a plain object/array in a reactive Proxy. Reads inside an effect track
  * per key; writes re-run only the effects that read that key. Primitives,
- * frozen objects, DOM nodes, Map/Set and class instances are returned as-is.
+ * frozen objects, DOM nodes, Map/Set and class instances are returned as-is —
+ * so it's safe to stash a node or a `Map` in state, and `Object.freeze(data)`
+ * opts a value out of reactivity.
+ * @example
+ * const s = state({ first: "Ada", last: "Lovelace" });
+ * effect(() => console.log(s.first));   // logs now, and whenever `first` changes
+ * s.last = "Byron";                     // does NOT re-run the effect above
  */
 export function state<T>(obj: T): T;
 
@@ -67,26 +75,66 @@ export function raw<T>(obj: T): T;
 /**
  * Run fn now and re-run it whenever any state key it read changes. Effects
  * created inside a component/scope are owned by it and disposed with it.
+ *
+ * Edge cases: writing `NaN` over `NaN` does not re-trigger (uses `Object.is`).
+ * An effect that reads and writes the *same* key runs once and settles (the
+ * trigger skips the currently-running effect) — it does not self-loop. An
+ * effect that **throws** is torn down (unsubscribed) and the error propagates
+ * to the caller (the write site, or `effect()` on first run); the rest of the
+ * system is unaffected. Two effects that write *each other's* keys will recurse
+ * synchronously with no depth guard — don't do that.
+ * @example
+ * const runner = effect(() => render(state.value));
+ * runner.dispose();   // stop it
  */
 export function effect(fn: () => void): EffectHandle;
 
 /** Read state inside fn WITHOUT tracking it as a dependency. */
 export function untracked<T>(fn: () => T): T;
 
-/** A read-only reactive value derived from other state. */
+/**
+ * A read-only reactive value derived from other state.
+ * @example
+ * const full = derive(() => `${s.first} ${s.last}`);
+ * el("span", {}, () => full.value);
+ */
 export function derive<T>(fn: () => T): Derived<T>;
 
 /** Register a cleanup to run when the current effect/scope disposes. */
 export function onDispose(fn: () => void): void;
 
-/** Run fn inside a fresh ownership scope; dispose() kills its effects. */
+/**
+ * Run fn inside a fresh ownership scope; `dispose()` kills every effect created
+ * during it. `mount()` wraps this and also clears the DOM — reach for `scope()`
+ * directly only when you're managing effects **without** a DOM subtree to clear
+ * (e.g. a bundle of subscriptions you want to tear down together).
+ */
 export function scope(fn: () => void): Scope;
 
 // --- DOM -------------------------------------------------------------------
 
 /**
- * Create a real DOM element. Function-valued props/children are reactive;
- * `on*` props add listeners; `bind: [state, key]` is two-way.
+ * Create a real DOM element — the most-used function in the framework. Every
+ * prop is one of five kinds, and children follow their own rule:
+ *
+ * - **Static value** → set once (a property if it exists on the node, else an
+ *   attribute): `el("input", { type: "text", id: "name" })`.
+ * - **Function value** → a reactive binding, re-applied when its state changes:
+ *   `el("div", { class: () => active.on ? "on" : "" })`.
+ * - **`on*: fn`** → an event listener (`addEventListener`):
+ *   `el("button", { onclick: (e) => count.n++ })`.
+ * - **`bind: [state, key]`** → two-way binding for a form control (with
+ *   number/checkbox coercion): `el("input", { bind: [settings, "name"] })`.
+ * - **`class` / `style`** → `class` takes a string or function; `style` takes a
+ *   string or an object (`{ color: "red" }`), each static or reactive.
+ * - Properties like **`value` / `checked`** are set as node *properties* (not
+ *   attributes), so `checked: () => todo.done` works as expected.
+ *
+ * Children are `Renderable`: strings/numbers (text), Nodes, arrays, reactive
+ * functions (`() => …`), and `list()`/`when()` markers.
+ * @example
+ * el("button", { class: () => on.value ? "on" : "", onclick: () => on.value = !on.value },
+ *   () => `toggled ${on.value}`);
  */
 export function el<K extends keyof HTMLElementTagNameMap>(
 	tag: K,
@@ -120,6 +168,23 @@ export interface ListMarker<T> {
 /**
  * A keyed list with element reuse: one element per item identity, reused and
  * reordered on change (never rebuilt). Pass as an el() child.
+ *
+ * `source` is a **thunk that returns the current array** — read reactive state
+ * inside it so the list re-runs when the data changes. For a plain reactive
+ * array that's `() => store.rows`; when the data comes from a `collection`,
+ * `items()` is a method, so it's `() => view.items()`. Both are the same
+ * contract (a function returning an array); `collection.items` just happens to
+ * be callable rather than a property.
+ *
+ * `keyFn` must return a **unique** key per item. Duplicate keys are dropped with
+ * a `console.warn` (two items can't share one element). If `render` throws, the
+ * error propagates out of the reconcile (like any effect that throws).
+ * @example
+ * el("tbody", {}, list(
+ *   () => store.rows,          // thunk → current array
+ *   (row) => row.id,           // stable, unique key
+ *   (row) => el("tr", {}, () => row.name)   // built once per key; self-updates
+ * ));
  */
 export function list<T>(
 	source: () => readonly T[],

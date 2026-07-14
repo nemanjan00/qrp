@@ -7,7 +7,8 @@
 		"test": "node --test 'test/*.test.js'",
 		"lint": "eslint qrp forms browser events toasts proto http utils behaviors collection table html test",
 		"prepare": "husky",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"docs": "node bin/gen-api.js"
 	},
 	"lint-staged": {
 		"*.js": "eslint --fix"

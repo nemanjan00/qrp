@@ -1,3 +1,8 @@
+/**
+ * @module proto
+ * Prototype-level enhancement of native objects — find a prototype by name,
+ * wrap a method idempotently, run-once, and one-listener event delegation.
+ */
 /** Walk obj's prototype chain; return the prototype named protoName, or undefined. */
 export function findProto(obj: object, protoName: string): object | undefined;
 /** Replace proto[method] with make(original), idempotently. Returns restore(). */

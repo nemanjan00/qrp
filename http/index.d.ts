@@ -1,3 +1,16 @@
+/**
+ * @module http
+ * A fetch client for a JSON backend: URL shaping, auth headers, a reactive
+ * in-flight loader, and centralized errors on the bus. **A non-2xx response
+ * rejects with `{ status, data, response }`** (data is the parsed error body) and
+ * emits `error`; a 401 (or an `Unauthorized` body) also emits `auth:unauthorized`.
+ * Nullish params are skipped, arrays repeat the key, `FormData`/`Blob`/etc. pass
+ * through, plain objects are JSON-encoded.
+ * @example
+ * const http = createHttp({ baseUrl: "/api", token: () => session.token });
+ * effect(() => bar.hidden = http.loading.pending === 0);   // spinner in one line
+ * http.get("/things", { params: { page: 2, ids: [1, 2, 3] } });
+ */
 import type { Emitter } from "../events/index.js";
 
 export interface HttpOptions {

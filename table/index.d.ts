@@ -1,3 +1,19 @@
+/**
+ * @module table
+ * A declarative data table over `collection` + `list`: sortable headers, keyed
+ * row reuse, per-column config. A column is `{ key, label?, accessor?, formatter?,
+ * render?, sortable?, sortByFormatted?, thClass?, tdClass? }`. The returned table
+ * has `.view` (the underlying collection) for pagination UI.
+ * @example
+ * const t = table({
+ *   rows: () => store.rows, key: (r) => r.id, filter, page,
+ *   fields: [
+ *     { key: "name", label: "Name", sortable: true },
+ *     { key: "signups", label: "Signups", sortable: true, formatter: (v) => v.toLocaleString() },
+ *     { key: "actions", label: "", render: (r) => el("button", { onclick: () => open(r) }, "View") }
+ *   ]
+ * });
+ */
 import type { Renderable } from "../qrp/index.js";
 import type { Collection, SortState, PageState } from "../collection/index.js";
 
