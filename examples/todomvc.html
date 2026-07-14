@@ -38,7 +38,7 @@
 	<p style="text-align:center;opacity:.5;font-size:.8rem" id="stats"></p>
 
 	<script type="module">
-		import { state, effect, el, mount, clear } from "../qrp/index.js";
+		import { state, effect, el, mount, list, when } from "../qrp/index.js";
 		import { persisted } from "../browser/index.js";
 		import { router } from "../qrp/index.js";
 
@@ -79,48 +79,42 @@
 			store.items = store.items.map(t => ({ ...t, done }));
 		};
 
-		// --- a single todo row (editable) ----------------------------------
-		const todoRow = (todo, editing) => {
-			const li = el("li", { class: () => `todo ${todo.done ? "completed" : ""}` });
-
-			effect(() => {
-				clear(li);
-
-				if(editing.id === todo.id) {
-					const input = el("input", {
-						class: "edit",
-						value: todo.title,
-						onkeydown: (e) => {
-							if(e.key === "Enter") { rename(todo.id, input.value); editing.id = null; }
-							if(e.key === "Escape") { editing.id = null; }
-						},
-						onblur: () => { rename(todo.id, input.value); editing.id = null; }
-					});
-
-					li.appendChild(input);
-					input.focus();
-					return;
-				}
-
-				li.appendChild(el("input", {
-					type: "checkbox",
-					checked: todo.done,
-					onchange: (e) => setDone(todo.id, e.target.checked)
-				}));
-
-				li.appendChild(el("label", {
-					ondblclick: () => { editing.id = todo.id; }
-				}, todo.title));
-
-				li.appendChild(el("button", {
-					class: "destroy",
-					onclick: () => remove(todo.id),
-					title: "Delete"
-				}, "✕"));
+		// --- a single todo row: edit vs. display via when(), no DOM surgery -
+		const editView = (todo, editing) => {
+			const input = el("input", {
+				class: "edit",
+				value: todo.title,
+				onkeydown: (e) => {
+					if(e.key === "Enter") { rename(todo.id, input.value); editing.id = null; }
+					if(e.key === "Escape") { editing.id = null; }
+				},
+				onblur: () => { rename(todo.id, input.value); editing.id = null; }
 			});
 
-			return li;
+			// focus once the node is live
+			requestAnimationFrame(() => input.focus());
+
+			return input;
 		};
+
+		const displayView = (todo, editing) => el("span", { class: "row" },
+			el("input", {
+				type: "checkbox",
+				checked: () => todo.done,
+				onchange: (e) => setDone(todo.id, e.target.checked)
+			}),
+			el("label", { ondblclick: () => { editing.id = todo.id; } }, () => todo.title),
+			el("button", { class: "destroy", onclick: () => remove(todo.id), title: "Delete" }, "✕")
+		);
+
+		const todoRow = (todo, editing) => el("li",
+			{ class: () => `todo ${todo.done ? "completed" : ""}` },
+			when(
+				() => editing.id === todo.id,
+				() => editView(todo, editing),
+				() => displayView(todo, editing)
+			)
+		);
 
 		// --- the app view (filter comes from the route) --------------------
 		const app = (filter) => (view) => {

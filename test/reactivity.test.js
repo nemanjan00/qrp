@@ -1,0 +1,159 @@
+import "./setup.js";
+
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { state, effect, derive, untracked } from "../qrp/index.js";
+
+// These tests pin down qrp's reactivity SEMANTICS — the questions a
+// reactivity-literate reader asks first. They are the spec, in code.
+
+// --- diamond: one source → two paths → one sink ----------------------------
+
+test("diamond dependency: sink sees consistent values (may run per-path)", () => {
+	const s = state({ a: 1 });
+	const b = derive(() => s.a + 1);
+	const c = derive(() => s.a + 2);
+
+	const seen = [];
+	effect(() => { seen.push(b.value + c.value); });
+
+	// initial: (1+1)+(1+2) = 5
+	assert.equal(seen[0], 5);
+
+	s.a = 10;
+
+	// final value must be consistent: (10+1)+(10+2) = 23
+	assert.equal(seen[seen.length - 1], 23);
+
+	// qrp is glitch-PRONE by design (synchronous, no scheduler): the sink may
+	// run twice (once per derived path). We assert the FINAL value is correct;
+	// intermediate glitch values may appear. Documented, not hidden.
+});
+
+// --- write to state during an effect ---------------------------------------
+
+test("writing state inside an effect propagates to other effects", () => {
+	const s = state({ a: 1, b: 0 });
+
+	// effect 1 derives b from a
+	effect(() => { s.b = s.a * 2; });
+
+	let seenB;
+	effect(() => { seenB = s.b; });
+
+	assert.equal(seenB, 2);
+
+	s.a = 5;
+	assert.equal(seenB, 10); // write-during-effect cascaded
+});
+
+test("an effect writing a key it also reads does not self-trigger", () => {
+	const s = state({ n: 0 });
+
+	let runs = 0;
+	effect(() => {
+		runs++;
+		// read then write the same key. trigger() skips the currently-active
+		// effect, so the write does NOT re-run this effect — it runs exactly
+		// once and settles. (This is the safe semantic that prevents self-loops;
+		// it also means a reducer-style read+write self-update is a one-shot.)
+		if(s.n < 3) {
+			s.n = s.n + 1;
+		}
+	});
+
+	assert.equal(runs, 1);
+	assert.equal(s.n, 1);
+});
+
+// --- deep mutation during an effect ----------------------------------------
+
+test("mutating a nested object during an effect is reactive", () => {
+	const s = state({ user: { name: "R2", tags: [] } });
+
+	let name;
+	effect(() => { name = s.user.name; });
+	assert.equal(name, "R2");
+
+	s.user.name = "C3PO";
+	assert.equal(name, "C3PO");
+
+	// replacing the nested object entirely also tracks
+	s.user = { name: "BB8", tags: [] };
+	assert.equal(name, "BB8");
+});
+
+// --- re-entrancy: effect triggering itself via a dependency ----------------
+
+test("re-entrant trigger during propagation is handled without corruption", () => {
+	const s = state({ a: 0, b: 0 });
+
+	const log = [];
+	effect(() => { log.push("A:" + s.a); if(s.a === 1) { s.b = s.b + 1; } });
+	effect(() => { log.push("B:" + s.b); });
+
+	log.length = 0;
+	s.a = 1; // A runs, writes b, which triggers B
+
+	assert.ok(log.includes("A:1"));
+	assert.ok(log.some((l) => l.startsWith("B:")));
+});
+
+// --- untracked inside effect -----------------------------------------------
+
+test("untracked reads inside an effect are not dependencies", () => {
+	const s = state({ tracked: 0, hidden: 0 });
+
+	let runs = 0;
+	effect(() => {
+		runs++;
+		s.tracked;
+		untracked(() => s.hidden);
+	});
+
+	assert.equal(runs, 1);
+	s.hidden = 99;
+	assert.equal(runs, 1); // hidden was read untracked → no re-run
+	s.tracked = 1;
+	assert.equal(runs, 2);
+});
+
+// --- error inside an effect: boundary behavior -----------------------------
+
+test("a throw inside an effect propagates and does not corrupt the stack", () => {
+	const s = state({ n: 0 });
+
+	// An effect that throws on first run: the error propagates to the caller
+	// (qrp does not swallow it — no silent failure). The effect stack must be
+	// restored so subsequent effects still work.
+	assert.throws(() => {
+		effect(() => { s.n; throw new Error("boom"); });
+	}, /boom/);
+
+	// The reactive system is still usable afterwards.
+	let ok;
+	effect(() => { ok = s.n + 1; });
+	assert.equal(ok, 1);
+
+	s.n = 5;
+	assert.equal(ok, 6);
+});
+
+test("a throw on RE-RUN propagates on the triggering write", () => {
+	const s = state({ n: 0 });
+
+	effect(() => {
+		if(s.n === 2) {
+			throw new Error("bad value");
+		}
+	});
+
+	// writing the bad value surfaces the error at the write site
+	assert.throws(() => { s.n = 2; }, /bad value/);
+
+	// system remains usable; effect stack was unwound in the finally block
+	let seen;
+	effect(() => { seen = s.n; });
+	assert.equal(seen, 2);
+});

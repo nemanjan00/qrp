@@ -209,7 +209,22 @@ const cleanupEffect = (runner) => {
 
 const disposeEffect = (runner) => {
 	cleanupEffect(runner);
+	runner.disposers.forEach(fn => fn());
+	runner.disposers.length = 0;
 	runner.disposed = true;
+};
+
+/**
+ * Register a cleanup to run when the current owner (effect or component scope)
+ * is disposed. Used by primitives that create detached sub-scopes (when, list)
+ * so those sub-scopes are torn down on unmount, not just on their own churn.
+ */
+export const onDispose = (fn) => {
+	if(activeEffect) {
+		activeEffect.disposers.push(fn);
+	} else if(currentScope) {
+		currentScope.disposers.push(fn);
+	}
 };
 
 /**
@@ -228,6 +243,15 @@ export const effect = (fn) => {
 
 		try {
 			fn();
+		} catch(error) {
+			// Error boundary: an effect that throws is TORN DOWN — its (possibly
+			// partial) subscriptions are removed so it can't re-run or re-throw
+			// on a later write. The error still propagates to the caller (the
+			// write site, or effect() itself on first run); the rest of the
+			// reactive system is unaffected. No silent failures.
+			disposeEffect(runner);
+
+			throw error;
 		} finally {
 			effectStack.pop();
 			activeEffect = effectStack[effectStack.length - 1] || null;
@@ -236,6 +260,7 @@ export const effect = (fn) => {
 
 	runner.deps = [];
 	runner.children = [];
+	runner.disposers = [];
 	runner.disposed = false;
 	runner.dispose = () => disposeEffect(runner);
 
@@ -302,9 +327,12 @@ export const scope = (fn) => {
 
 	const self = {
 		effects: [],
+		disposers: [],
 		dispose: () => {
 			self.effects.forEach(runner => disposeEffect(runner));
 			self.effects.length = 0;
+			self.disposers.forEach(fn => fn());
+			self.disposers.length = 0;
 		}
 	};
 
@@ -400,6 +428,13 @@ const appendChild = (parent, child) => {
 		return;
 	}
 
+	// A when() marker: swap a subtree on a condition, with scope disposal.
+	if(child && child.__qrpWhen) {
+		setupWhen(parent, child);
+
+		return;
+	}
+
 	if(typeof child === "function") {
 		// Reactive region: re-render just this slice when its state changes.
 		const anchor = document.createComment("qrp");
@@ -422,10 +457,93 @@ const appendChild = (parent, child) => {
 	toNodes(child).forEach(node => parent.appendChild(node));
 };
 
-// Wire a keyed list() marker into `parent`: one element per item identity,
-// cached and REUSED across changes. A filter/sort/paginate only reorders the
-// cached elements (minimal DOM moves); each row updates itself through its own
-// reactive bindings, so surviving rows are never rebuilt.
+// Wire a when() marker into `parent`: render one of two branches based on a
+// reactive condition, disposing the previous branch's scope (and DOM) whenever
+// the condition flips. This is the conditional-subtree primitive — edit vs.
+// display, loading vs. loaded, permission-gated panels — without hand-rolled
+// DOM surgery or leaked effects.
+const setupWhen = (parent, marker) => {
+	const anchor = document.createComment("qrp-when");
+	parent.appendChild(anchor);
+
+	let branchScope = null;
+	let nodes = [];
+	let last;
+	let first = true;
+
+	// Dispose the live branch when the enclosing owner (mount/scope) tears down.
+	onDispose(() => {
+		if(branchScope) {
+			branchScope.dispose();
+		}
+	});
+
+	effect(() => {
+		const value = marker.cond();
+		const truthy = !!value;
+
+		// Only rebuild when the branch actually changes (guarded so state read
+		// inside a branch's own effects doesn't re-run the whole subtree).
+		if(!first && truthy === last) {
+			return;
+		}
+
+		first = false;
+		last = truthy;
+
+		if(branchScope) {
+			branchScope.dispose();
+			branchScope = null;
+		}
+
+		nodes.forEach((node) => node.remove());
+		nodes = [];
+
+		const render = truthy ? marker.thenFn : marker.elseFn;
+
+		if(!render) {
+			return;
+		}
+
+		// Build the branch in its own ownership scope, untracked so the outer
+		// effect only depends on cond() — not on whatever the branch reads.
+		let built;
+
+		untracked(() => {
+			branchScope = scope(() => {
+				built = toNodes(render(value));
+			});
+		});
+
+		built.forEach((node) => anchor.parentNode.insertBefore(node, anchor));
+		nodes = built;
+	});
+};
+
+/**
+ * Conditionally render one of two subtrees, swapping on a reactive condition
+ * and disposing the old branch (effects + DOM) when it flips. Use as an el()
+ * child:
+ *
+ *   el("div", {}, when(
+ *     () => editing.on,
+ *     () => el("input", { bind: [state, "name"] }),   // then
+ *     () => el("span", {}, () => state.name)          // else (optional)
+ *   ));
+ *
+ * The condition's truthy value is passed to the branch, so `when(() => user,
+ * u => ...)` works as a presence guard. Only re-renders when truthiness flips,
+ * so a branch's own reactive updates happen in place.
+ *
+ * @param {Function} cond () => any (reactive)
+ * @param {Function} thenFn (value) => renderable, shown when cond is truthy
+ * @param {Function} [elseFn] (value) => renderable, shown when falsy
+ * @returns {object} when marker (pass as an el child)
+ */
+export const when = (cond, thenFn, elseFn) => {
+	return { __qrpWhen: true, cond, thenFn, elseFn };
+};
+
 // Indices of a longest strictly-increasing subsequence of `arr`, as a Set.
 // Entries with value < 0 (new nodes) are ignored. Used to find the "stable
 // backbone" of reused rows that need not move during reconciliation.
@@ -475,6 +593,9 @@ const setupList = (parent, marker) => {
 
 	// key -> { element, scope }; scope owns the row's effects for disposal.
 	let cache = new Map();
+
+	// Dispose every row scope when the enclosing owner (mount/scope) tears down.
+	onDispose(() => cache.forEach((entry) => entry.scope.dispose()));
 
 	effect(() => {
 		// Track that the array changed (identity/length), then iterate the RAW
