@@ -196,9 +196,21 @@ const fillChild = (comment, rawValue) => {
 		let nodes = [];
 
 		effect(() => {
-			// Read value() first so deps are always tracked, then bail if the
-			// anchor was detached (parent cleared) instead of crashing on null.
-			const fresh = toNodes(value());
+			const v = value();
+
+			// Fast path: update the existing text node in place (see qrp core).
+			if(nodes.length === 1 && nodes[0].nodeType === 3
+				&& (typeof v === "string" || typeof v === "number")) {
+				const next = String(v);
+
+				if(nodes[0].data !== next) {
+					nodes[0].data = next;
+				}
+
+				return;
+			}
+
+			const fresh = toNodes(v);
 			const parent = comment.parentNode;
 
 			if(!parent) {

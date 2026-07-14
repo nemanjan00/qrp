@@ -8,8 +8,6 @@ import assert from "node:assert/strict";
 import { lru } from "../utils/lru.js";
 import { memoize } from "../utils/memoize.js";
 import { cacheForever, precache, precacheWithRefresh } from "../utils/cache.js";
-import { roundRobinByKey } from "../utils/round-robin.js";
-import { weightedPool } from "../utils/weighted-pool.js";
 import { paginate, pageCount } from "../utils/paginate.js";
 
 // --- lru --------------------------------------------------------------------
@@ -133,49 +131,6 @@ test("precacheWithRefresh serves current and swaps on refresh, stop() clears", (
 	});
 });
 
-// --- roundRobinByKey --------------------------------------------------------
-
-test("roundRobinByKey interleaves buckets, preserving input order within each", () => {
-	const items = [
-		{ team: "a", n: 1 }, { team: "a", n: 2 },
-		{ team: "b", n: 3 }, { team: "c", n: 4 }, { team: "a", n: 5 }
-	];
-
-	const picked = roundRobinByKey(items, 4, (i) => i.team).map((i) => i.n);
-
-	// round 1: a(1), b(3), c(4); round 2: a(2)
-	assert.deepEqual(picked, [1, 3, 4, 2]);
-});
-
-test("roundRobinByKey respects the limit and empty edge", () => {
-	assert.deepEqual(roundRobinByKey([1, 2, 3], 0, (x) => x), []);
-	assert.equal(roundRobinByKey([1, 2, 3, 4], 2, (x) => x % 2).length, 2);
-});
-
-// --- weightedPool -----------------------------------------------------------
-
-test("weightedPool picks by weight (deterministic with seed)", () => {
-	const pool = weightedPool();
-	pool.push("light", 1);
-	pool.push("heavy", 9); // caps: [1, 10], max 10
-
-	assert.equal(pool.pick(0), "light");   // 0 < 1
-	assert.equal(pool.pick(5), "heavy");   // 1 <= 5 < 10
-	assert.deepEqual(pool.all(), ["light", "heavy"]);
-});
-
-test("weightedPool delete recalculates and empty pick is undefined", () => {
-	const pool = weightedPool();
-	assert.equal(pool.pick(), undefined);
-
-	pool.push("a", 1);
-	pool.push("b", 1);
-	pool.delete("a");
-
-	assert.deepEqual(pool.all(), ["b"]);
-	assert.equal(pool.pick(0), "b");
-});
-
 // --- paginate ---------------------------------------------------------------
 
 test("paginate slices by page, size 0 returns a copy of all", () => {
@@ -194,29 +149,6 @@ test("paginate clamps negative index to the first page", () => {
 
 	assert.deepEqual(paginate(data, -1, 3), [1, 2, 3]); // not a wrap-slice from the end
 	assert.deepEqual(paginate(data, -5, 2), [1, 2]);
-});
-
-test("roundRobinByKey handles Object.prototype bucket keys", () => {
-	const items = [
-		{ k: "constructor" }, { k: "__proto__" }, { k: "constructor" }, { k: "toString" }
-	];
-
-	const picked = roundRobinByKey(items, 4, (i) => i.k).map((i) => i.k);
-	// interleaved: constructor, __proto__, toString, constructor
-	assert.deepEqual(picked, ["constructor", "__proto__", "toString", "constructor"]);
-});
-
-test("weightedPool weight 0 is never picked; negatives throw", () => {
-	const pool = weightedPool();
-	pool.push("never", 0);
-	pool.push("always", 5); // caps: [0, 5], max 5
-
-	// every seed lands in [0,5) → "always"; "never" has an empty slice
-	for(let seed = 0; seed < 5; seed++) {
-		assert.equal(pool.pick(seed), "always");
-	}
-
-	assert.throws(() => weightedPool().push("bad", -1), />= 0/);
 });
 
 test("memoize max:0 retains nothing (not unbounded)", () => {

@@ -224,7 +224,7 @@ unused exports tree-shake away.
 | `toasts/index.js` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
 | `browser/index.js` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
 | `behaviors/*.js` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
-| `utils/*.js` | Pure data helpers: `memoize`, `lru`, `cache`, `paginate`, `roundRobinByKey`, `weightedPool` |
+| `utils/*.js` | Pure data helpers for dashboards: `memoize`, `lru`, `cache` (`cacheForever`/`precache`/`precacheWithRefresh`), `paginate` |
 | `proto/index.js` | Prototype-level enhancement: `findProto`, `wrapMethod`, `delegate` |
 | `qrp.css` | Optional minimal baseline (design tokens + semantic classes). Link it yourself. |
 

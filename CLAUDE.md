@@ -86,11 +86,12 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   reactive in-flight loader, centralized errors → bus (`error`,
   `auth:unauthorized`). Auth-agnostic: takes a `token()` getter, emits
   `auth:unauthorized` rather than knowing about logout.
-- `utils/*.js` — pure data helpers, **one file per concept** (not a single
-  grab-bag) so file-level import = pay-for-what-you-use with no bundler:
-  `memoize.js`, `lru.js`, `cache.js`, `round-robin.js`, `weighted-pool.js`,
-  `paginate.js`; `index.js` is an opt-in barrel. Rule of thumb: unrelated
-  helpers → separate files; a cohesive whole-module (core, http) → one file.
+- `utils/*.js` — pure data helpers **that a dashboard actually needs**, one file
+  per concept so file-level import = pay-for-what-you-use with no bundler:
+  `memoize.js`, `lru.js`, `cache.js`, `paginate.js`; `index.js` is an opt-in
+  barrel. (Keep this tight — "do one thing well." round-robin / weighted-pool
+  style load-balancer helpers were removed because they don't serve dashboards;
+  don't re-add general-purpose utilities that aren't dashboard-shaped.)
 - `behaviors/*.js` — headless behaviors to build styled components (one file
   each): `portal`, `dismissable`, `trap-focus`, `anchored`, `disclosure`,
   `busy-while`. Carry platform/a11y hard parts; caller brings markup + CSS.

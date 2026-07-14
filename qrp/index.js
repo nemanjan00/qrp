@@ -417,6 +417,8 @@ const setAttr = (node, key, value) => {
 	}
 };
 
+const TEXT_NODE = 3;
+
 const toNodes = (value) => {
 	if(value == null || value === false) {
 		return [];
@@ -470,10 +472,27 @@ const appendChild = (parent, child) => {
 		let nodes = [];
 
 		effect(() => {
-			// Read child() first so the effect always tracks its deps, even if
-			// the anchor was detached (e.g. an ancestor cleared) — then bail out
-			// of the DOM work instead of crashing on a null parentNode.
-			const fresh = toNodes(child());
+			const value = child();
+
+			// Fast path — the common case for a reactive text hole. The effect
+			// closure already HOLDS the text node (no lookup, no query), so when
+			// the value is a primitive and we're already a single text node, we
+			// just write its data in place: no allocation, no remove/insert, one
+			// characterData mutation. This is the O(1) "update the one node and
+			// nothing else" the whole design is arguing for.
+			if(nodes.length === 1 && nodes[0].nodeType === TEXT_NODE
+				&& (typeof value === "string" || typeof value === "number")) {
+				const next = String(value);
+
+				if(nodes[0].data !== next) {
+					nodes[0].data = next;
+				}
+
+				return;
+			}
+
+			// General path: value is a node/array/empty, or the shape changed.
+			const fresh = toNodes(value);
 
 			if(!anchor.parentNode) {
 				nodes = fresh;

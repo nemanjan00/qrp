@@ -56,6 +56,7 @@
 		// ==================================================================
 		// qrp implementation
 		// ==================================================================
+		let qTick = 0;
 		const qrp = (() => {
 			const store = state({ rows: [] });
 			const selected = state({ id: 0 });
@@ -78,6 +79,17 @@
 				assignPrebuilt: (data) => { store.rows = data; },                     // build HOISTED (pure diff)
 				append: (n) => { store.rows = [...store.rows, ...buildData(n)]; },
 				update10th: () => { const rows = store.rows; for(let i = 0; i < rows.length; i += 10) { rows[i].label += " !!!"; } },
+				// THE headline op: change ONE field in a huge table. Mutating the
+				// row's reactive property fires exactly one text-node effect — no
+				// list re-run, no diff. This is the categorical difference from a
+				// virtual-DOM framework (which re-runs a component + reconciles).
+				// Assign a small CHANGING value (not += growth, which would time
+				// O(n) string concat instead of the update path).
+				updateOne: () => { const mid = Math.floor(store.rows.length / 2); store.rows[mid].label = "v" + (qTick++); },
+				// realistic single-cell update: you hold the row (e.g. from an
+				// event handler). Mutating it fires one effect that writes the one
+				// text node the subscription already references — no lookup at all.
+				prepUpdateOne: () => { const row = store.rows[Math.floor(store.rows.length / 2)]; return () => { row.label = "v" + (qTick++); }; },
 				select: () => { selected.id = store.rows.length ? store.rows[Math.floor(store.rows.length / 2)].id : 0; },
 				swap: () => { const a = store.rows.slice(); if(a.length > 3) { const t = a[1]; a[1] = a[a.length - 2]; a[a.length - 2] = t; } store.rows = a; },
 				remove: () => { store.rows = store.rows.filter((_, i) => i !== 1); },
@@ -89,6 +101,7 @@
 		// ==================================================================
 		// vanilla control — a hand-written KEYED table (the floor)
 		// ==================================================================
+		let vTick = 0;
 		const vanilla = (() => {
 			const root = document.getElementById("van-root");
 			const table = document.createElement("table");
@@ -102,8 +115,9 @@
 
 			const makeTr = (row) => {
 				const tr = document.createElement("tr");
+				tr.id = "v" + row.id;                        // so a query can find it
 				const idTd = document.createElement("td"); idTd.textContent = row.id;
-				const labelTd = document.createElement("td"); labelTd.textContent = row.label;
+				const labelTd = document.createElement("td"); labelTd.className = "label"; labelTd.textContent = row.label;
 				const actionTd = document.createElement("td"); actionTd.textContent = "x";
 				tr.append(idTd, labelTd, actionTd);
 				byId.set(row.id, { tr, labelNode: labelTd, data: row });
@@ -130,6 +144,14 @@
 					rows = [...rows, ...data];
 				},
 				update10th: () => { for(let i = 0; i < rows.length; i += 10) { rows[i].label += " !!!"; byId.get(rows[i].id).labelNode.textContent = rows[i].label; } },
+				// hand-written optimum: find the one label node, set textContent
+				updateOne: () => { const row = rows[Math.floor(rows.length / 2)]; row.label = "v" + (vTick++); byId.get(row.id).labelNode.textContent = row.label; },
+				// vanilla holding a DIRECT node ref (the absolute floor — you kept
+				// your own id→node map). qrp gives this class of speed for free.
+				prepUpdateOne: () => { const row = rows[Math.floor(rows.length / 2)]; const node = byId.get(row.id).labelNode; return () => { node.textContent = "v" + (vTick++); }; },
+				// vanilla that has to FIND the cell each time (querySelector) — the
+				// realistic case when you don't hoard node references.
+				prepUpdateOneQuery: () => { const row = rows[Math.floor(rows.length / 2)]; const sel = "#v" + row.id + " .label"; return () => { tbody.parentNode.querySelector(sel).textContent = "v" + (vTick++); }; },
 				select: () => {
 					if(!rows.length) { return; }
 					const row = rows[Math.floor(rows.length / 2)];
@@ -173,6 +195,25 @@
 			"clear 10k":        { setup: () => impl.create(10000),    run: () => impl.clear() }
 		});
 
+		// Synchronous per-op cost. For a single-cell update the payload (one
+		// text node) is trivial and paint latency is a fixed ~frame regardless
+		// of framework — so paint-timing would hide the difference. What differs
+		// from a virtual-DOM framework is the JS done BEFORE paint: qrp fires one
+		// tracked effect and one textContent set (no diff, no component re-run).
+		// Measure that, in nanoseconds per update, over many reps.
+		// Time a prepared single-cell updater (refs already resolved) over many
+		// reps; returns nanoseconds per update.
+		const microPerOp = (impl, prepName, reps) => {
+			impl.clear(); impl.create(10000);
+			const update = impl[prepName]();
+			for(let i = 0; i < 2000; i++) { update(); } // warm the JIT
+			const t = performance.now();
+			for(let i = 0; i < reps; i++) { update(); }
+			const ms = performance.now() - t;
+			impl.clear();
+			return (ms / reps) * 1e6;
+		};
+
 		window.bench = {
 			runAll: async () => {
 				const out = {};
@@ -188,6 +229,43 @@
 				}
 
 				return out;
+			},
+
+			// The headline: synchronous cost of changing ONE cell in 10,000 rows.
+			// qrp holds the node ref via the subscription (no lookup); vanilla is
+			// measured both holding a direct ref (the floor) and having to find
+			// the cell by querySelector (realistic when you don't keep a map).
+			updateOneNs: () => {
+				const reps = 20000;
+				return {
+					qrp_ns: Math.round(microPerOp(qrp, "prepUpdateOne", reps)),
+					vanilla_directref_ns: Math.round(microPerOp(vanilla, "prepUpdateOne", reps)),
+					vanilla_query_ns: Math.round(microPerOp(vanilla, "prepUpdateOneQuery", 5000)),
+					reps
+				};
+			},
+
+			// Prove "and nothing else": count the DOM mutations one cell-change
+			// produces across the whole 10,000-row table. The Proxy set fires one
+			// tracked effect that writes the ONE referenced text node — every
+			// other node is untouched.
+			mutationsForOne: () => {
+				qrp.clear(); qrp.create(10000);
+				const root = document.getElementById("qrp-root");
+				const totalNodes = root.querySelectorAll("*").length;
+				const obs = new MutationObserver(() => {});
+				obs.observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
+				qrp.updateOne();
+				const recs = obs.takeRecords();   // pending records, synchronously
+				obs.disconnect();
+				const touched = new Set();
+				recs.forEach((m) => {
+					touched.add(m.target);
+					m.addedNodes.forEach((n) => touched.add(n));
+					m.removedNodes.forEach((n) => touched.add(n));
+				});
+				qrp.clear();
+				return { mutationRecords: recs.length, nodesTouched: touched.size, tableNodes: totalNodes };
 			}
 		};
 	</script>
