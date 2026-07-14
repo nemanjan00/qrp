@@ -259,7 +259,7 @@ front and back can share them verbatim.
 
 | File | What it gives you |
 |------|-------------------|
-| `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `mount`, `scope`, `define`, `router`, `navigate`, `compilePath`, `matchPath` |
+| `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `clear`, `mount`, `scope`, `define`, `router`, `navigate`, `compilePath`, `matchPath` |
 | `forms/index.js` | Declarative settings forms over reactive state; an open input-type registry (`registerInput`); `parseKV`/`serializeKV`; live "textual mode" editing the same state |
 | `browser/index.js` | Reactive facades over browser APIs everyone forgot: `persisted` (localStorage + cross-tab sync), `query` (URL as state), `hashState`, `media`, `viewport`, `online`, `visible`, `seen` (IntersectionObserver), `cookies`, `watch` |
 | `events/index.js` | Global event bus on native `EventTarget`: `emitter`, `bus`, `request`/`respond`, `fromEvent`, `channel` (cross-tab via BroadcastChannel), `broadcast` |

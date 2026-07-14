@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state, effect, derive, raw, el, mount, scope } from "../qrp/index.js";
+import { state, effect, derive, raw, el, mount, scope, clear } from "../qrp/index.js";
 
 test("effect runs once immediately", () => {
 	let runs = 0;
@@ -181,6 +181,17 @@ test("scope disposes all effects created within it", () => {
 
 	s.a = 3;
 	assert.equal(reads, 4);
+});
+
+test("clear empties a node", () => {
+	const parent = el("div", {}, el("span", {}, "a"), el("span", {}, "b"), "text");
+
+	assert.equal(parent.childNodes.length, 3);
+
+	clear(parent);
+
+	assert.equal(parent.childNodes.length, 0);
+	assert.equal(parent.innerHTML, "");
 });
 
 test("el sets attributes, props and events", () => {

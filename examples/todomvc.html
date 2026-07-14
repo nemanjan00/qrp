@@ -38,7 +38,7 @@
 	<p style="text-align:center;opacity:.5;font-size:.8rem" id="stats"></p>
 
 	<script type="module">
-		import { state, effect, el, mount } from "../qrp/index.js";
+		import { state, effect, el, mount, clear } from "../qrp/index.js";
 		import { persisted } from "../browser/index.js";
 		import { router } from "../qrp/index.js";
 
@@ -84,7 +84,7 @@
 			const li = el("li", { class: () => `todo ${todo.done ? "completed" : ""}` });
 
 			effect(() => {
-				li.innerHTML = "";
+				clear(li);
 
 				if(editing.id === todo.id) {
 					const input = el("input", {

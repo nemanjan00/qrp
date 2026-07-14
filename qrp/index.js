@@ -330,7 +330,7 @@ export const mount = (parent, component) => {
 	return {
 		dispose: () => {
 			inner.dispose();
-			parent.innerHTML = "";
+			clear(parent);
 		}
 	};
 };
@@ -382,6 +382,15 @@ const toNodes = (value) => {
 
 	return [document.createTextNode(String(value))];
 };
+
+/**
+ * Empty a node — remove all its children. The high-level, reads-like-intent
+ * alternative to `node.innerHTML = ""`, using the platform's replaceChildren().
+ * (Dispose component scopes first if they own effects; this only touches DOM.)
+ *
+ * @param {Node} node
+ */
+export const clear = (node) => node.replaceChildren();
 
 const appendChild = (parent, child) => {
 	// A keyed list() marker: reconcile with element reuse (see setupList).
@@ -729,7 +738,7 @@ export const define = (name, setup, options = {}) => {
 				this._qrpScope = null;
 			}
 
-			this.innerHTML = "";
+			clear(this);
 		},
 
 		attributeChangedCallback(attr, _old, value) {
@@ -890,7 +899,7 @@ export const router = (routes, outlet, options = {}) => {
 				link.classList.toggle("active", href === ctx.path);
 			});
 
-			outlet.innerHTML = "";
+			clear(outlet);
 			current = mount(outlet, (view) => component(view, ctx));
 		};
 
