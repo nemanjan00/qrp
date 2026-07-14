@@ -2,94 +2,193 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>qrp • benchmark</title>
+	<title>qrp • benchmark (paint-timed)</title>
+	<style>
+		/* so a selected row is visible AND forces real style/layout work */
+		tr.danger td { background: #fdd; }
+		body { font: 13px system-ui, sans-serif; }
+		table { border-collapse: collapse; }
+		td { padding: 2px 8px; border-bottom: 1px solid #eee; }
+	</style>
 </head>
 <body>
-	<h1>qrp benchmark harness</h1>
-	<div id="root"></div>
+	<div style="display:flex; gap:2rem">
+		<div><h4>qrp</h4><div id="qrp-root"></div></div>
+		<div><h4>vanilla</h4><div id="van-root"></div></div>
+	</div>
 
 	<script type="module">
-		import { state, el, list, mount } from "../qrp/index.js";
+		import { state, el, list, mount, clear } from "../qrp/index.js";
 
+		// --- data -----------------------------------------------------------
 		let seq = 1;
 		const A = ["pretty", "large", "big", "small", "tall", "short", "long", "handsome", "plain", "quaint", "clean", "elegant", "easy", "angry", "crazy", "helpful", "mushy", "odd", "unsightly", "adorable"];
 		const N = ["table", "chair", "house", "bbq", "desk", "car", "pony", "cookie", "sandwich", "burger", "pizza", "mouse", "keyboard"];
-		const pick = (arr, i) => arr[i % arr.length];
-
-		// deterministic-ish builder (no Math.random dependency for stability)
-		let r = 12345;
+		let r = 999;
 		const rnd = (m) => { r = (r * 48271) % 2147483647; return r % m; };
-		const build = (n) => Array.from({ length: n }, () => ({
-			id: seq++,
-			label: pick(A, rnd(A.length)) + " " + pick(N, rnd(N.length))
-		}));
+		const buildData = (n) => Array.from({ length: n }, () => ({ id: seq++, label: A[rnd(A.length)] + " " + N[rnd(N.length)] }));
 
-		const store = state({ rows: [] });
-		const selected = state({ id: 0 });
-
-		const tableEl = el("table", {},
-			el("tbody", {}, list(
-				() => store.rows,
-				(row) => row.id,
-				(row) => el("tr", { class: () => (selected.id === row.id ? "danger" : "") },
-					el("td", {}, () => row.id),
-					el("td", {}, el("a", { onclick: () => { selected.id = row.id; } }, () => row.label)),
-					el("td", {}, el("button", { onclick: () => remove(row.id) }, "x"))
-				)
-			))
-		);
-
-		mount(document.getElementById("root"), (view) => view.appendChild(tableEl));
-
-		const remove = (id) => { store.rows = store.rows.filter((row) => row.id !== id); };
-
-		const timed = (fn) => {
+		// --- paint-timed stopwatch: return time until the frame is painted ---
+		const timed = async (fn) => {
 			const t = performance.now();
 			fn();
+			await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 			return performance.now() - t;
 		};
 
-		// median of repeated runs
-		const median = (fn, reps) => {
-			const runs = [];
-			for(let i = 0; i < reps; i++) { runs.push(fn()); }
-			runs.sort((a, b) => a - b);
-			return Math.round(runs[Math.floor(runs.length / 2)] * 10) / 10;
+		// --- setup/run/teardown runner: warmup discard + reset each rep ------
+		const runBench = async ({ setup, run }, { reps = 5, warmup = 2 } = {}) => {
+			const times = [];
+
+			for(let i = 0; i < warmup + reps; i++) {
+				if(setup) { await new Promise((res) => { setup(); requestAnimationFrame(() => setTimeout(res, 0)); }); }
+
+				const ms = await timed(run);
+
+				if(i >= warmup) { times.push(ms); }
+			}
+
+			times.sort((a, b) => a - b);
+
+			return Math.round(times[Math.floor(times.length / 2)] * 10) / 10;
 		};
 
+		// ==================================================================
+		// qrp implementation
+		// ==================================================================
+		const qrp = (() => {
+			const store = state({ rows: [] });
+			const selected = state({ id: 0 });
+
+			mount(document.getElementById("qrp-root"), (view) => {
+				view.appendChild(el("table", {}, el("tbody", {}, list(
+					() => store.rows,
+					(row) => row.id,
+					(row) => el("tr", { class: () => (selected.id === row.id ? "danger" : "") },
+						el("td", {}, () => row.id),
+						el("td", {}, () => row.label),
+						el("td", {}, "x")
+					)
+				))));
+			});
+
+			return {
+				setRows: (data) => { store.rows = data; },
+				create: (n) => { store.rows = buildData(n); },                       // build INCLUDED (jsfwbench-style)
+				assignPrebuilt: (data) => { store.rows = data; },                     // build HOISTED (pure diff)
+				append: (n) => { store.rows = [...store.rows, ...buildData(n)]; },
+				update10th: () => { const rows = store.rows; for(let i = 0; i < rows.length; i += 10) { rows[i].label += " !!!"; } },
+				select: () => { selected.id = store.rows.length ? store.rows[Math.floor(store.rows.length / 2)].id : 0; },
+				swap: () => { const a = store.rows.slice(); if(a.length > 3) { const t = a[1]; a[1] = a[a.length - 2]; a[a.length - 2] = t; } store.rows = a; },
+				remove: () => { store.rows = store.rows.filter((_, i) => i !== 1); },
+				clear: () => { store.rows = []; },
+				count: () => document.querySelectorAll("#qrp-root tr").length
+			};
+		})();
+
+		// ==================================================================
+		// vanilla control — a hand-written KEYED table (the floor)
+		// ==================================================================
+		const vanilla = (() => {
+			const root = document.getElementById("van-root");
+			const table = document.createElement("table");
+			const tbody = document.createElement("tbody");
+			table.appendChild(tbody);
+			root.appendChild(table);
+
+			let rows = [];
+			let selectedTr = null;
+			const byId = new Map(); // id -> { tr, labelNode, data }
+
+			const makeTr = (row) => {
+				const tr = document.createElement("tr");
+				const idTd = document.createElement("td"); idTd.textContent = row.id;
+				const labelTd = document.createElement("td"); labelTd.textContent = row.label;
+				const actionTd = document.createElement("td"); actionTd.textContent = "x";
+				tr.append(idTd, labelTd, actionTd);
+				byId.set(row.id, { tr, labelNode: labelTd, data: row });
+				return tr;
+			};
+
+			const renderAll = (data) => {
+				byId.clear(); selectedTr = null;
+				const frag = document.createDocumentFragment();
+				data.forEach((row) => frag.appendChild(makeTr(row)));
+				tbody.replaceChildren(frag);
+				rows = data;
+			};
+
+			return {
+				setRows: renderAll,
+				create: (n) => renderAll(buildData(n)),
+				assignPrebuilt: (data) => renderAll(data),
+				append: (n) => {
+					const data = buildData(n);
+					const frag = document.createDocumentFragment();
+					data.forEach((row) => frag.appendChild(makeTr(row)));
+					tbody.appendChild(frag);
+					rows = [...rows, ...data];
+				},
+				update10th: () => { for(let i = 0; i < rows.length; i += 10) { rows[i].label += " !!!"; byId.get(rows[i].id).labelNode.textContent = rows[i].label; } },
+				select: () => {
+					if(!rows.length) { return; }
+					const row = rows[Math.floor(rows.length / 2)];
+					if(selectedTr) { selectedTr.classList.remove("danger"); }
+					selectedTr = byId.get(row.id).tr;
+					selectedTr.classList.add("danger");                               // O(1) — touch two nodes
+				},
+				swap: () => {
+					if(rows.length <= 3) { return; }
+					const a = rows, i = 1, j = rows.length - 2;
+					const ti = byId.get(a[i].id).tr, tj = byId.get(a[j].id).tr;
+					const after = tj.nextSibling;
+					tbody.insertBefore(tj, ti);
+					tbody.insertBefore(ti, after);
+					const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+				},
+				remove: () => {
+					if(rows.length < 2) { return; }
+					const row = rows[1];
+					byId.get(row.id).tr.remove();
+					byId.delete(row.id);
+					rows = rows.filter((_, i) => i !== 1);
+				},
+				clear: () => { tbody.replaceChildren(); byId.clear(); rows = []; selectedTr = null; },
+				count: () => root.querySelectorAll("tr").length
+			};
+		})();
+
+		// ==================================================================
+		// the suite: setup resets to a clean state; run is timed
+		// ==================================================================
+		const suite = (impl) => ({
+			"create 1k":        { setup: () => impl.clear(),          run: () => impl.create(1000) },
+			"create 10k":       { setup: () => impl.clear(),          run: () => impl.create(10000) },
+			"replace all 1k":   { setup: () => impl.create(1000),     run: () => impl.create(1000) },      // zero key overlap
+			"update every 10th":{ setup: () => impl.create(1000),     run: () => impl.update10th() },
+			"select (10k)":     { setup: () => impl.create(10000),    run: () => impl.select() },
+			"swap (10k)":       { setup: () => impl.create(10000),    run: () => impl.swap() },
+			"remove (10k)":     { setup: () => impl.create(10000),    run: () => impl.remove() },
+			"append 1k to 10k": { setup: () => impl.create(10000),    run: () => impl.append(1000) },
+			"clear 10k":        { setup: () => impl.create(10000),    run: () => impl.clear() }
+		});
+
 		window.bench = {
-			create1k: () => timed(() => { store.rows = build(1000); }),
-			create10k: () => timed(() => { store.rows = build(10000); }),
-			append1k: () => timed(() => { store.rows = [...store.rows, ...build(1000)]; }),
+			runAll: async () => {
+				const out = {};
+				const qSuite = suite(qrp);
+				const vSuite = suite(vanilla);
 
-			// update every 10th row's label IN PLACE (mutation → fine-grained)
-			updateEvery10th: () => timed(() => {
-				const rows = store.rows;
-				for(let i = 0; i < rows.length; i += 10) { rows[i].label = rows[i].label + " !!!"; }
-			}),
-
-			selectRow: () => timed(() => { selected.id = store.rows[1] ? store.rows[1].id : 0; }),
-
-			swapRows: () => timed(() => {
-				const rows = store.rows.slice();
-				if(rows.length > 998) {
-					const tmp = rows[1]; rows[1] = rows[998]; rows[998] = tmp;
+				for(const name of Object.keys(qSuite)) {
+					const q = await runBench(qSuite[name], { reps: 5, warmup: 2 });
+					vanilla.clear(); qrp.clear();
+					const v = await runBench(vSuite[name], { reps: 5, warmup: 2 });
+					qrp.clear(); vanilla.clear();
+					out[name] = { qrp: q, vanilla: v, ratio: Math.round((q / v) * 10) / 10 };
 				}
-				store.rows = rows;
-			}),
 
-			removeRow: () => timed(() => { store.rows = store.rows.filter((_, i) => i !== 1); }),
-
-			clear: () => timed(() => { store.rows = []; }),
-
-			// live ticker: mutate EVERY row's label once (one full pass)
-			tickAll: () => timed(() => {
-				const rows = store.rows;
-				for(let i = 0; i < rows.length; i++) { rows[i].label = rows[i].label + "."; }
-			}),
-
-			rowCount: () => document.querySelectorAll("tbody tr").length,
-			median
+				return out;
+			}
 		};
 	</script>
 </body>
