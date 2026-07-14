@@ -1,7 +1,7 @@
 {
 	"name": "@nemanjan00/qrp",
-	"version": "0.1.1",
-	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step \u2014 the devDependencies below are only for tests, lint, and git hooks.",
+	"version": "0.2.0",
+	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step — the devDependencies below are only for tests, lint, and git hooks.",
 	"type": "module",
 	"license": "MIT",
 	"exports": {
