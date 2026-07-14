@@ -301,6 +301,13 @@ export interface RouterOptions {
 	transitions?: boolean;
 	/** Where link clicks are captured (default document). */
 	linksRoot?: Element | Document;
+	/**
+	 * Force a full teardown + remount on EVERY navigation. By default the router
+	 * keeps the mounted page when the matched route PATTERN is unchanged (a
+	 * param/query change like a tab switch) — in-pane state survives and the
+	 * handler reacts through `currentRoute`. Set true for the old always-remount.
+	 */
+	remount?: boolean;
 }
 
 export interface RouterHandle {

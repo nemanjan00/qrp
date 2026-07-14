@@ -139,3 +139,52 @@ test("currentRoute is reactive and tracks navigation", () => {
 	runner.dispose();
 	app.dispose();
 });
+
+test("same-pattern navigation does not remount (keeps in-pane state) but updates currentRoute", () => {
+	history.replaceState(null, "", "/users/7/info");
+
+	const outlet = document.createElement("div");
+	document.body.appendChild(outlet);
+
+	let mounts = 0;
+
+	const app = router({
+		"/users/:pk/:tab": (view) => {
+			mounts++;
+			// in-pane state that must survive a tab switch
+			const scratch = el("input", { class: "scratch" });
+			view.appendChild(scratch);
+			// the tab label reacts through currentRoute (no remount needed)
+			view.appendChild(el("span", { class: "tab" }, () => currentRoute.params.tab));
+		}
+	}, outlet);
+
+	assert.equal(mounts, 1);
+	assert.equal(outlet.querySelector(".tab").textContent, "info");
+
+	// mark the in-pane state
+	outlet.querySelector(".scratch").value = "typed";
+
+	// switch tab: SAME pattern → no remount
+	navigate("/users/7/stats");
+	assert.equal(mounts, 1, "handler not re-run");
+	assert.equal(outlet.querySelector(".scratch").value, "typed", "in-pane state preserved");
+	assert.equal(outlet.querySelector(".tab").textContent, "stats", "currentRoute updated in place");
+
+	// different pattern → full remount
+	history.replaceState(null, "", "/users/7/stats");
+	app.dispose();
+});
+
+test("router option remount:true forces a full remount on every navigation", () => {
+	history.replaceState(null, "", "/p/1");
+
+	const outlet = document.createElement("div");
+	let mounts = 0;
+	const app = router({ "/p/:id": (view) => { mounts++; view.appendChild(el("h1", {}, "p")); } }, outlet, { remount: true });
+
+	assert.equal(mounts, 1);
+	navigate("/p/2");
+	assert.equal(mounts, 2, "forced remount");
+	app.dispose();
+});

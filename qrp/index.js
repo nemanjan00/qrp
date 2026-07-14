@@ -1232,6 +1232,7 @@ export const router = (routes, outlet, options = {}) => {
 	});
 
 	let current = null;
+	let currentRouteObj = null;
 
 	const resolve = () => {
 		const path = location.pathname;
@@ -1241,15 +1242,21 @@ export const router = (routes, outlet, options = {}) => {
 			const params = matchPath(route, path);
 
 			if(params) {
-				return { component: route.component, ctx: { params, query, path } };
+				return { route, component: route.component, ctx: { params, query, path } };
 			}
 		}
 
-		return { component: notFound, ctx: { params: {}, query, path } };
+		return { route: null, component: notFound, ctx: { params: {}, query, path } };
+	};
+
+	const updateLinks = (path) => {
+		outlet.ownerDocument.querySelectorAll("a[href]").forEach(link => {
+			link.classList.toggle("active", link.getAttribute("href") === path);
+		});
 	};
 
 	const render = () => {
-		const { component, ctx } = resolve();
+		const { route, component, ctx } = resolve();
 
 		// publish the active route as reactive state before mounting, so a navbar
 		// (or anything outside the handler) reacts to navigation.
@@ -1257,19 +1264,25 @@ export const router = (routes, outlet, options = {}) => {
 		currentRoute.params = ctx.params;
 		currentRoute.query = ctx.query;
 
+		// Same route pattern (a param/query change within the same page, e.g. a
+		// tab switch): DON'T tear the page down and remount — just refresh links
+		// and let the handler react through currentRoute. Keeps in-pane state and
+		// avoids refetch churn. Set options.remount to force a full remount.
+		if(current && route && route === currentRouteObj && !options.remount) {
+			updateLinks(ctx.path);
+
+			return;
+		}
+
 		const swap = () => {
 			if(current) {
 				current.dispose();
 			}
 
-			// Reflect active state on any [href] link that matches the path.
-			outlet.ownerDocument.querySelectorAll("a[href]").forEach(link => {
-				const href = link.getAttribute("href");
-
-				link.classList.toggle("active", href === ctx.path);
-			});
+			updateLinks(ctx.path);
 
 			clear(outlet);
+			currentRouteObj = route;
 			current = mount(outlet, (view) => component(view, ctx));
 		};
 
