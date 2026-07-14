@@ -48,6 +48,23 @@ const declEnd = (text, start) => {
 	return text.length;
 };
 
+// Capture a full `interface Name { … }` declaration (brace-matched) from start.
+const captureBraceBlock = (text, start) => {
+	const open = text.indexOf("{", start);
+	if(open < 0) { return text.slice(start, declEnd(text, start) + 1); }
+
+	let depth = 0;
+	for(let i = open; i < text.length; i++) {
+		if(text[i] === "{") { depth++; }
+		else if(text[i] === "}") {
+			depth--;
+			if(depth === 0) { return text.slice(start, i + 1); }
+		}
+	}
+
+	return text.slice(start);
+};
+
 // Strip a /** */ block to { description, examples[] }.
 const parseDoc = (block) => {
 	const body = block
@@ -90,7 +107,17 @@ const parseFile = (file) => {
 		const name = decl[2];
 
 		if(kind === "interface" || kind === "type") {
-			if(!types.includes(name)) { types.push(name); }
+			// Capture the FULL definition so the docs SHOW the shape, not just the
+			// name (a named-but-undefined type is how the disclosure bug shipped).
+			const src = kind === "interface"
+				? captureBraceBlock(text, after)
+				: text.slice(after, declEnd(text, after) + 1);
+			const def = src.replace(/^export\s+/, "").trim();
+
+			if(!types.find((t) => t.name === name)) {
+				types.push({ name, def, description: doc.description });
+			}
+
 			continue;
 		}
 
@@ -117,6 +144,26 @@ const parseFile = (file) => {
 			entries.push({ name, sig, description: doc.description, examples: doc.examples });
 		}
 	}
+
+	// Second pass: capture EVERY exported interface/type, including ones with no
+	// doc comment (the doc-comment loop above only sees documented ones). Without
+	// this an undocumented supporting type is named-but-never-shown — the class of
+	// gap that shipped the disclosure() bug.
+	const typeRe = /export\s+(interface|type)\s+([A-Za-z0-9_]+)/g;
+	let tm;
+	while((tm = typeRe.exec(text))) {
+		const kind = tm[1];
+		const name = tm[2];
+
+		if(types.find((t) => t.name === name)) { continue; }
+
+		const src = kind === "interface"
+			? captureBraceBlock(text, tm.index)
+			: text.slice(tm.index, declEnd(text, tm.index) + 1);
+
+		types.push({ name, def: src.replace(/^export\s+/, "").trim(), description: "" });
+	}
+
 	return { overview, entries, types };
 };
 
@@ -143,7 +190,7 @@ MODULES.forEach((mod) => {
 		const p = parseFile(f);
 		if(p.overview && !merged.overview) { merged.overview = p.overview; }
 		merged.entries.push(...p.entries);
-		p.types.forEach((t) => { if(!merged.types.includes(t)) { merged.types.push(t); } });
+		p.types.forEach((t) => { if(!merged.types.find((x) => x.name === t.name)) { merged.types.push(t); } });
 	});
 
 	out += `\n## ${mod.title}\n\n`;
@@ -158,7 +205,11 @@ MODULES.forEach((mod) => {
 	});
 
 	if(merged.types.length) {
-		out += "**Supporting types:** " + merged.types.map((t) => "`" + t + "`").join(", ") + ".\n\n";
+		out += "#### Supporting types\n\n";
+		merged.types.forEach((t) => {
+			out += "```ts\n" + t.def + "\n```\n\n";
+			if(t.description) { out += t.description + "\n\n"; }
+		});
 	}
 });
 

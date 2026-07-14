@@ -173,7 +173,7 @@
 					continue;
 				}
 				// headings
-				const hm = line.match(/^(#{1,3})\s+(.*)$/);
+				const hm = line.match(/^(#{1,4})\s+(.*)$/);
 				if(hm) {
 					const level = hm[1].length;
 					const id = slug(hm[2]);
@@ -219,7 +219,7 @@
 				// paragraph (gather until blank / block start)
 				const buf = [line];
 				i++;
-				while(i < lines.length && !/^\s*$/.test(lines[i]) && !/^(#{1,3}\s|```|\||>|---+\s*$|\s*([-*]|\d+\.)\s)/.test(lines[i])) {
+				while(i < lines.length && !/^\s*$/.test(lines[i]) && !/^(#{1,4}\s|```|\||>|---+\s*$|\s*([-*]|\d+\.)\s)/.test(lines[i])) {
 					buf.push(lines[i++]);
 				}
 				nodes.push(el("p", {}, ...inline(buf.join(" "))));

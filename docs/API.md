@@ -323,7 +323,155 @@ router(routes: Record<string, (outlet: HTMLElement, ctx: RouteContext) => void>,
 
 HTML5 History router: path patterns → components.
 
-**Supporting types:** `Renderable`, `Bind`, `Props`, `EffectHandle`, `Scope`, `Mounted`, `Derived`, `ListMarker`, `WhenMarker`, `Component`, `RouteContext`.
+#### Supporting types
+
+```ts
+type Renderable =
+	| string
+	| number
+	| boolean
+	| null
+	| undefined
+	| Node
+	| ListMarker<any>
+	| WhenMarker
+	| Renderable[]
+	| (() => Renderable);
+```
+
+Anything qrp can render as an el()/html child. Functions are reactive;
+ list()/when() markers are valid children too.
+
+```ts
+type Bind = [Record<string, any>, string];
+```
+
+A two-way binding tuple passed as the `bind` prop: [state, key].
+
+```ts
+interface Props {
+	/** Two-way bind a form control to a state key: `bind: [settings, "name"]`. */
+	bind?: Bind;
+	[key: string]: any;
+}
+```
+
+Props accepted by el(): attributes/properties, `on*` handlers, `bind`,
+ and function values (reactive). Kept permissive by design.
+
+```ts
+interface EffectHandle {
+	(): void;
+	dispose(): void;
+	disposed: boolean;
+}
+```
+
+The handle returned by effect() — dispose to stop it re-running.
+
+```ts
+interface Scope {
+	dispose(): void;
+}
+```
+
+An ownership scope (from scope()/mount()); dispose tears down its effects.
+
+```ts
+interface Mounted {
+	dispose(): void;
+}
+```
+
+A mounted component; dispose tears down its effects AND clears the DOM.
+
+```ts
+interface Derived<T> {
+	readonly value: T;
+}
+```
+
+A reactive computed value produced by derive().
+
+```ts
+interface ListMarker<T> {
+	readonly __qrpList: true;
+	/** Map an element (or an event) back to the item that produced it. */
+	itemFor(target: Element | Event | EventTarget | null): T | undefined;
+}
+```
+
+A keyed list() marker — pass as an el() child.
+
+```ts
+interface WhenMarker {
+	readonly __qrpWhen: true;
+}
+```
+
+A when() marker — pass as an el() child.
+
+```ts
+type Component<C = unknown> = (parent: HTMLElement, ctx: C) => void;
+```
+
+A component is a function that populates a parent element.
+
+```ts
+interface RouteContext {
+	params: Record<string, string>;
+	query: Record<string, string>;
+	path: string;
+}
+```
+
+Context passed to a matched route component.
+
+```ts
+interface DefineOptions {
+	/** Attribute names to observe and expose as reactive `attrs` state. */
+	attrs?: string[];
+}
+```
+
+```ts
+interface CompiledPath {
+	keys: (string | number)[];
+	regexp: RegExp;
+}
+```
+
+```ts
+interface NavigateOptions {
+	/** replaceState instead of pushState. */
+	replace?: boolean;
+}
+```
+
+```ts
+interface RouterOptions {
+	notFound?: (outlet: HTMLElement, ctx: RouteContext) => void;
+	/** Set false to disable View Transitions. */
+	transitions?: boolean;
+	/** Where link clicks are captured (default document). */
+	linksRoot?: Element | Document;
+	/**
+	 * Force a full teardown + remount on EVERY navigation. By default the router
+	 * keeps the mounted page when the matched route PATTERN is unchanged (a
+	 * param/query change like a tab switch) — in-pane state survives and the
+	 * handler reacts through `currentRoute`. Set true for the old always-remount.
+	 */
+	remount?: boolean;
+}
+```
+
+```ts
+interface RouterHandle {
+	navigate: typeof navigate;
+	render(): void;
+	dispose(): void;
+}
+```
 
 
 ## html — HTML templates
@@ -454,7 +602,57 @@ textual(settings: Record<string, any>): HTMLTextAreaElement
 
 A textarea editing the same settings state (KEY=value), both directions.
 
-**Supporting types:** `InputFactory`, `FieldSpec`.
+#### Supporting types
+
+```ts
+type InputFactory = (
+	settings: Record<string, any>,
+	key: string,
+	field?: FieldSpec
+) => Element;
+```
+
+An input factory: builds a two-way-bound control for settings[key].
+
+```ts
+interface FieldSpec {
+	name?: string;
+	description?: string;
+	/** A registered input type name (e.g. "text", "select", "email"). */
+	type?: string;
+	/** A procedural input factory (wins over `type`). */
+	input?: InputFactory;
+	default?: unknown;
+	/** For select/radio types. */
+	options?: Record<string, string>;
+	/** Passthrough native attributes. */
+	placeholder?: string;
+	min?: number | string;
+	max?: number | string;
+	step?: number | string;
+	pattern?: string;
+	required?: boolean;
+	autocomplete?: string;
+	[key: string]: any;
+}
+```
+
+A field descriptor in a form()/field() config.
+
+```ts
+interface Section {
+	name: string;
+	filter: (key: string, value?: unknown) => boolean;
+}
+```
+
+```ts
+interface FormSpec {
+	settings: Record<string, any>;
+	fields?: Record<string, FieldSpec>;
+	sections?: Section[];
+}
+```
 
 
 ## collection
@@ -476,6 +674,50 @@ collection<T>(source: () => readonly T[], options?: CollectionOptions<T>): Colle
 
 Reactive sort / filter / paginate over a dataset.
 
+#### Supporting types
+
+```ts
+interface SortState {
+	key: string | null;
+	/** 1 ascending, -1 descending. */
+	dir?: number;
+}
+```
+
+```ts
+interface PageState {
+	index: number;
+	/** items per page; 0 = no paging. */
+	size: number;
+}
+```
+
+```ts
+interface CollectionOptions<T> {
+	sort?: SortState;
+	page?: PageState;
+	filter?: Record<string, any>;
+	filterFn?: (item: T, filter: Record<string, any>) => boolean;
+	compare?: (a: T, b: T, sort: SortState) => number;
+}
+```
+
+```ts
+interface Collection<T> {
+	sort: SortState;
+	filter: Record<string, any>;
+	page: PageState;
+	/** Reactive: sorted → filtered → paged items. Feed to list(). */
+	items(): T[];
+	/** Count after filtering (before paging). */
+	total(): number;
+	/** Number of pages at the current size. */
+	pageCount(): number;
+	/** Toggle sort direction on the same key, else sort by it ascending. */
+	toggleSort(key: string): void;
+}
+```
+
 
 ## table
 
@@ -496,7 +738,52 @@ table<T>(options: TableOptions<T>): TableElement<T>
 
 Build a declarative, sortable, keyed, paginated data table.
 
-**Supporting types:** `Column`, `TableElement`.
+#### Supporting types
+
+```ts
+interface Column<T> {
+	/** Unique id and default value path (item[key]). */
+	key: string;
+	label?: string;
+	/** item => raw value (default item[key]); supports nesting. */
+	accessor?: (item: T) => unknown;
+	/** (rawValue, item) => display text. */
+	formatter?: (value: any, item: T) => Renderable;
+	/** item => Element — a custom cell (overrides formatter). */
+	render?: (item: T) => Renderable;
+	sortable?: boolean;
+	/** Sort by the formatter output instead of the raw value. */
+	sortByFormatted?: boolean;
+	thClass?: string;
+	tdClass?: string;
+}
+```
+
+A column descriptor for table().
+
+```ts
+type TableElement<T> = HTMLTableElement & { view: Collection<T> };
+```
+
+The table element, with `.view` exposing the underlying collection.
+
+```ts
+interface TableOptions<T> {
+	rows: (() => readonly T[]) | readonly T[];
+	fields: Column<T>[];
+	/** item => stable key (the :key equivalent; default item.id). */
+	key?: (item: T) => unknown;
+	sort?: SortState;
+	page?: PageState;
+	filter?: Record<string, any>;
+	filterFn?: (item: T, filter: Record<string, any>) => boolean;
+	rowClass?: (item: T) => string;
+	/** Extra class(es) for the <table>. */
+	class?: string;
+	sortField?: string;
+	sortDesc?: boolean;
+}
+```
 
 
 ## http
@@ -520,7 +807,63 @@ createHttp(options?: HttpOptions): HttpClient
 
 Create a fetch client: URL shaping, auth headers, reactive loader, error bus.
 
-**Supporting types:** `HttpError`.
+#### Supporting types
+
+```ts
+interface HttpError {
+	status: number;
+	data: any;
+	response: Response;
+}
+```
+
+Rejection value for a non-2xx response.
+
+```ts
+interface HttpOptions {
+	baseUrl?: string;
+	/** () => bearer token, attached as Authorization. */
+	token?: () => string | null | undefined;
+	/** () => value for the x-authorization-client header. */
+	client?: () => string | null | undefined;
+	/** Headers merged into every request. */
+	headers?: Record<string, string>;
+	/** Emitter for loader/error/auth events (default the global bus). */
+	bus?: Emitter;
+}
+```
+
+```ts
+interface RequestConfig {
+	params?: Record<string, any>;
+	body?: unknown;
+	headers?: Record<string, string>;
+	signal?: AbortSignal;
+	/**
+	 * How to read a successful response body. Default "json" (parsed). Use
+	 * "text" for plain text, "arraybuffer"/"blob" for binary (msgpack, downloads),
+	 * or "response" to get the raw Response untouched. Non-2xx always rejects
+	 * with { status, data, response } regardless.
+	 */
+	responseType?: "json" | "text" | "arraybuffer" | "blob" | "response";
+	/** Any other fetch init (credentials, mode, cache, …). */
+	init?: RequestInit;
+}
+```
+
+```ts
+interface HttpClient {
+	/** Reactive in-flight counter: read loading.pending in an effect. */
+	loading: { pending: number };
+	request(method: string, path: string, config?: RequestConfig): Promise<any>;
+	get(path: string, config?: RequestConfig): Promise<any>;
+	delete(path: string, config?: RequestConfig): Promise<any>;
+	head(path: string, config?: RequestConfig): Promise<any>;
+	post(path: string, body?: unknown, config?: RequestConfig): Promise<any>;
+	put(path: string, body?: unknown, config?: RequestConfig): Promise<any>;
+	patch(path: string, body?: unknown, config?: RequestConfig): Promise<any>;
+}
+```
 
 
 ## events
@@ -573,6 +916,44 @@ broadcast(emitter: Emitter, type: string, store: Record<string, any>, key?: stri
 
 Mirror a piece of reactive state onto an emitter on every change.
 
+#### Supporting types
+
+```ts
+type Handler<T = any> = (detail: T, event?: Event) => void;
+```
+
+```ts
+interface RequestOptions {
+	timeout?: number;
+}
+```
+
+```ts
+interface Emitter {
+	target: EventTarget;
+	/** Subscribe; returns an unsubscribe function. */
+	on<T = any>(type: string, handler: Handler<T>): () => void;
+	off(type: string, handler: Handler): void;
+	/** Promise for the next event of this type. */
+	once<T = any>(type: string): Promise<T>;
+	emit(type: string, detail?: any): Emitter;
+	/** Fire a request and await a matching response (see respond). */
+	request<T = any>(type: string, payload?: any, options?: RequestOptions): Promise<T>;
+	/** Answer request()s of a given type. */
+	respond(type: string, handler: (payload: any) => any): () => void;
+}
+```
+
+```ts
+interface Channel {
+	on<T = any>(type: string, handler: Handler<T>): () => void;
+	off(type: string, handler: Handler): void;
+	once<T = any>(type: string): Promise<T>;
+	emit(type: string, detail?: any): unknown;
+	close(): void;
+}
+```
+
 
 ## toasts
 
@@ -607,6 +988,42 @@ notify: { success(content: Renderable): void; error(content: Renderable): void; 
 ```
 
 Fire-and-forget notifications through the global bus. Content is renderable.
+
+#### Supporting types
+
+```ts
+type Variant = "success" | "error" | "info" | "warning";
+```
+
+```ts
+interface ToastMeta {
+	title?: string;
+}
+```
+
+```ts
+interface ToastsOptions {
+	bus?: Emitter;
+	/** Auto-dismiss delay in ms (0 = sticky). */
+	timeout?: number;
+	/** Identical-message suppression window in ms. */
+	dedupeWindow?: number;
+}
+```
+
+```ts
+interface ToastsController {
+	/** Mount this once near the root: mount(document.body, toasts.component). */
+	component: (view: HTMLElement) => void;
+	store: { items: any[] };
+	push(variant: Variant | string, content: Renderable, meta?: ToastMeta): void;
+	dismiss(id: number): void;
+	success(content: Renderable, meta?: ToastMeta): void;
+	error(content: Renderable, meta?: ToastMeta): void;
+	info(content: Renderable, meta?: ToastMeta): void;
+	warning(content: Renderable, meta?: ToastMeta): void;
+}
+```
 
 
 ## browser
@@ -755,6 +1172,38 @@ busyWhile(): BusyWhile
 
 Track in-flight promises as reactive busy state (spinners/overlays).
 
+#### Supporting types
+
+```ts
+interface DismissableOptions { escape?: boolean; outside?: boolean; }
+```
+
+```ts
+interface AnchoredOptions { placement?: "bottom" | "top"; gap?: number; }
+```
+
+```ts
+interface AnchoredDispose { (): void; update(): void; }
+```
+
+```ts
+interface Disclosure {
+	state: { open: boolean };
+	toggle(): void;
+	open(): void;
+	close(): void;
+	connect(trigger: Element, panel: HTMLElement): void;
+}
+```
+
+```ts
+interface BusyWhile {
+	state: { pending: number };
+	run<T>(promise: Promise<T>): Promise<T>;
+	readonly active: boolean;
+}
+```
+
 
 ## utils
 
@@ -847,7 +1296,68 @@ throttle<A extends any[]>(fn: (...args: A) => any, ms?: number): RateLimited<A>
 
 Call fn at most once per `ms` (leading + trailing). Scope-aware: auto-cancels on dispose.
 
-**Supporting types:** `Memoized`, `RateLimited`.
+#### Supporting types
+
+```ts
+interface LruStore<K = any, V = any> {
+	has(key: K): boolean;
+	get(key: K): V | undefined;
+	set(key: K, value: V): void;
+	delete(key: K): boolean;
+	clear(): void;
+	readonly size: number;
+}
+```
+
+```ts
+type Memoized<F extends (...args: any[]) => any> = F & {
+	/** Clear one entry (by the same args) or the whole cache (no args). */
+	invalidate(...args: Parameters<F>): void;
+```
+
+A memoized function with imperative cache invalidation.
+
+```ts
+interface MemoizeOptions {
+	/** args => cache key (default JSON.stringify). */
+	key?: (args: any[]) => unknown;
+	/** LRU bound (omit for unbounded; 0 = retain nothing). */
+	max?: number;
+	/** ms an entry stays fresh; for a promise the clock starts when it resolves. */
+	ttl?: number;
+	/** Custom { has, get, set, delete?, clear? } store. */
+	store?: Partial<LruStore> & { has(k: any): boolean; get(k: any): any; set(k: any, v: any): void };
+}
+```
+
+```ts
+interface RefreshingGetter<T> {
+	(): Promise<T>;
+	refresh(): Promise<T>;
+	stop(): void;
+}
+```
+
+```ts
+interface LimitOptions {
+	/** Max concurrent in-flight calls (default 1). */
+	max?: number;
+	/** Max calls STARTED per second (default: unlimited). */
+	perSecond?: number;
+	/** Per-call timeout in ms; rejects with Error("timeout") (default: none). */
+	timeout?: number;
+}
+```
+
+```ts
+interface RateLimited<A extends any[]> {
+	(...args: A): void;
+	/** Drop any pending trailing call. */
+	cancel(): void;
+}
+```
+
+A rate-limited wrapper with an imperative cancel for its pending timer.
 
 
 ## proto
