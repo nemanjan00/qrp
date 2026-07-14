@@ -7,3 +7,6 @@ dist
 
 # esp32 example: intermediate gzip (regenerate with node build.js)
 examples/esp32/dashboard.html.gz
+
+# local-only field notes — never commit or publish
+rewrite_notes.md
