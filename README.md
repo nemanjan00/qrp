@@ -329,7 +329,7 @@ unused exports tree-shake away.
 | `@nemanjan00/qrp/toasts` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
 | `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
 | `@nemanjan00/qrp/behaviors/*` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
-| `@nemanjan00/qrp/utils/*` | Pure data helpers for dashboards: `memoize`, `lru`, `cache` (`cacheForever`/`precache`/`precacheWithRefresh`), `paginate`, `limit` (concurrency/rate/timeout), `debounce`/`throttle` |
+| `@nemanjan00/qrp/utils/*` | Pure data helpers for dashboards: `memoize` (+ttl/invalidate), `lru`, `cache`, `paginate`, `limit` (concurrency/rate/timeout), `debounce`/`throttle`, `validate`, `loadScript` |
 | `@nemanjan00/qrp/proto` | Prototype-level enhancement (objects & `__proto__`, no classes): `findProto`, `wrapMethod`, `onceOnly`, `delegate` |
 | `qrp.css` | Optional minimal baseline (design tokens + semantic classes). Link it yourself. |
 
@@ -520,7 +520,7 @@ in strict mode.
 ## 📖 API reference
 
 Full reference — every export, signature, and a usage snippet per module — in
-[`docs/API.md`](docs/API.md).
+[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md).
 
 ## 🧪 Tests & tooling
 

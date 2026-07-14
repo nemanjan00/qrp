@@ -92,7 +92,8 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   per concept so file-level import = pay-for-what-you-use with no bundler:
   `memoize.js`, `lru.js`, `cache.js`, `paginate.js`, `limit.js` (concurrency /
   rate / timeout — the `queue-promised` wrapper core, dependency-free),
-  `debounce.js` (`debounce`/`throttle`, scope-aware); `index.js` is an opt-in
+  `debounce.js` (`debounce`/`throttle`, scope-aware), `validate.js` (schema
+  checker), `load-script.js` (reactive UMD loader); `index.js` is an opt-in
   barrel. (Keep this tight — "do one thing well." round-robin / weighted-pool
   style load-balancer helpers were removed because they don't serve dashboards;
   don't re-add general-purpose utilities that aren't dashboard-shaped.)
