@@ -1,0 +1,220 @@
+/**
+ * qrp core — reactivity, DOM, components, custom elements, routing.
+ * Hand-written declarations for the zero-build ESM modules.
+ */
+
+// --- shared types ----------------------------------------------------------
+
+/** Anything qrp can render as an el()/html child. Functions are reactive;
+ *  list()/when() markers are valid children too. */
+export type Renderable =
+	| string
+	| number
+	| boolean
+	| null
+	| undefined
+	| Node
+	| ListMarker<any>
+	| WhenMarker
+	| Renderable[]
+	| (() => Renderable);
+
+/** A two-way binding tuple passed as the `bind` prop: [state, key]. */
+export type Bind = [Record<string, any>, string];
+
+/** Props accepted by el(): attributes/properties, `on*` handlers, `bind`,
+ *  and function values (reactive). Kept permissive by design. */
+export interface Props {
+	/** Two-way bind a form control to a state key: `bind: [settings, "name"]`. */
+	bind?: Bind;
+	[key: string]: any;
+}
+
+/** The handle returned by effect() — dispose to stop it re-running. */
+export interface EffectHandle {
+	(): void;
+	dispose(): void;
+	disposed: boolean;
+}
+
+/** An ownership scope (from scope()/mount()); dispose tears down its effects. */
+export interface Scope {
+	dispose(): void;
+}
+
+/** A mounted component; dispose tears down its effects AND clears the DOM. */
+export interface Mounted {
+	dispose(): void;
+}
+
+/** A reactive computed value produced by derive(). */
+export interface Derived<T> {
+	readonly value: T;
+}
+
+// --- reactivity ------------------------------------------------------------
+
+/**
+ * Wrap a plain object/array in a reactive Proxy. Reads inside an effect track
+ * per key; writes re-run only the effects that read that key. Primitives,
+ * frozen objects, DOM nodes, Map/Set and class instances are returned as-is.
+ */
+export function state<T>(obj: T): T;
+
+/** Unwrap a reactive proxy back to its raw object (or return as-is). */
+export function raw<T>(obj: T): T;
+
+/**
+ * Run fn now and re-run it whenever any state key it read changes. Effects
+ * created inside a component/scope are owned by it and disposed with it.
+ */
+export function effect(fn: () => void): EffectHandle;
+
+/** Read state inside fn WITHOUT tracking it as a dependency. */
+export function untracked<T>(fn: () => T): T;
+
+/** A read-only reactive value derived from other state. */
+export function derive<T>(fn: () => T): Derived<T>;
+
+/** Register a cleanup to run when the current effect/scope disposes. */
+export function onDispose(fn: () => void): void;
+
+/** Run fn inside a fresh ownership scope; dispose() kills its effects. */
+export function scope(fn: () => void): Scope;
+
+// --- DOM -------------------------------------------------------------------
+
+/**
+ * Create a real DOM element. Function-valued props/children are reactive;
+ * `on*` props add listeners; `bind: [state, key]` is two-way.
+ */
+export function el<K extends keyof HTMLElementTagNameMap>(
+	tag: K,
+	props?: Props,
+	...children: Renderable[]
+): HTMLElementTagNameMap[K];
+export function el(tag: string, props?: Props, ...children: Renderable[]): HTMLElement;
+
+/** Empty a node (remove all children) via replaceChildren(). */
+export function clear(node: Node): void;
+
+/**
+ * Wrap a DOM node in a Proxy so assigning a function to a property becomes a
+ * reactive binding (`node.textContent = () => state.x`). qrp unwraps it to the
+ * raw node on insert.
+ */
+export function reactive<T extends Node>(node: T): T;
+
+/** Two-way binding between a form control and a state key. */
+export function bind(node: Node, state: Record<string, any>, key: string): Node;
+
+// --- keyed lists -----------------------------------------------------------
+
+/** A keyed list() marker — pass as an el() child. */
+export interface ListMarker<T> {
+	readonly __qrpList: true;
+	/** Map an element (or an event) back to the item that produced it. */
+	itemFor(target: Element | Event | EventTarget | null): T | undefined;
+}
+
+/**
+ * A keyed list with element reuse: one element per item identity, reused and
+ * reordered on change (never rebuilt). Pass as an el() child.
+ */
+export function list<T>(
+	source: () => readonly T[],
+	keyFn: (item: T, index: number) => unknown,
+	render: (item: T, index: number) => Renderable
+): ListMarker<T>;
+
+// --- conditionals ----------------------------------------------------------
+
+/** A when() marker — pass as an el() child. */
+export interface WhenMarker {
+	readonly __qrpWhen: true;
+}
+
+/**
+ * Conditionally render one of two subtrees, swapping on a reactive condition
+ * and disposing the old branch (effects + DOM) when it flips.
+ */
+export function when<T>(
+	cond: () => T,
+	thenFn: (value: NonNullable<T>) => Renderable,
+	elseFn?: (value: T) => Renderable
+): WhenMarker;
+
+// --- components / mount ----------------------------------------------------
+
+/** A component is a function that populates a parent element. */
+export type Component<C = unknown> = (parent: HTMLElement, ctx: C) => void;
+
+/** Mount a component into a parent; returns a disposable. */
+export function mount(parent: HTMLElement, component: (parent: HTMLElement) => void): Mounted;
+
+// --- custom elements -------------------------------------------------------
+
+export interface DefineOptions {
+	/** Attribute names to observe and expose as reactive `attrs` state. */
+	attrs?: string[];
+}
+
+/**
+ * Register a Custom Element built with objects and __proto__ (no class).
+ * `setup(host, attrs)` builds its content; observed attrs arrive as reactive
+ * state. Effects created in setup are scoped to the element.
+ */
+export function define(
+	name: string,
+	setup: (host: HTMLElement & { attrs: Record<string, string | null> }, attrs: Record<string, string | null>) => void,
+	options?: DefineOptions
+): CustomElementConstructor;
+
+// --- routing ---------------------------------------------------------------
+
+export interface CompiledPath {
+	keys: (string | number)[];
+	regexp: RegExp;
+}
+
+/** Compile an Express-style path pattern (`/user/:id`, `/files/:path*`, `*`). */
+export function compilePath(pattern: string): CompiledPath;
+
+/** Match a compiled path against a pathname; returns params or null. */
+export function matchPath(compiled: CompiledPath, path: string): Record<string, string> | null;
+
+export interface NavigateOptions {
+	/** replaceState instead of pushState. */
+	replace?: boolean;
+}
+
+/** Programmatic navigation (pushes/replaces the URL; the router reacts). */
+export function navigate(url: string, options?: NavigateOptions): void;
+
+/** Context passed to a matched route component. */
+export interface RouteContext {
+	params: Record<string, string>;
+	query: Record<string, string>;
+	path: string;
+}
+
+export interface RouterOptions {
+	notFound?: (outlet: HTMLElement, ctx: RouteContext) => void;
+	/** Set false to disable View Transitions. */
+	transitions?: boolean;
+	/** Where link clicks are captured (default document). */
+	linksRoot?: Element | Document;
+}
+
+export interface RouterHandle {
+	navigate: typeof navigate;
+	render(): void;
+	dispose(): void;
+}
+
+/** HTML5 History router: path patterns → components. */
+export function router(
+	routes: Record<string, (outlet: HTMLElement, ctx: RouteContext) => void>,
+	outlet: HTMLElement,
+	options?: RouterOptions
+): RouterHandle;
