@@ -112,8 +112,16 @@ const fillChild = (comment, value) => {
 		let nodes = [];
 
 		effect(() => {
+			// Read value() first so deps are always tracked, then bail if the
+			// anchor was detached (parent cleared) instead of crashing on null.
 			const fresh = toNodes(value());
 			const parent = comment.parentNode;
+
+			if(!parent) {
+				nodes = fresh;
+
+				return;
+			}
 
 			nodes.forEach((node) => node.remove());
 			fresh.forEach((node) => parent.insertBefore(node, comment));
@@ -130,17 +138,33 @@ const fillChild = (comment, value) => {
 	comment.remove();
 };
 
+const COMMENT_NODE = 8;
+
+// Collect every comment node under root (recursive; TreeWalker's numeric
+// whatToShow is unreliable across DOM implementations).
+const collectComments = (node, out) => {
+	node.childNodes.forEach((child) => {
+		if(child.nodeType === COMMENT_NODE) {
+			out.push(child);
+		} else if(child.childNodes) {
+			collectComments(child, out);
+		}
+	});
+
+	return out;
+};
+
 const fillChildren = (root, values) => {
-	const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+	const comments = collectComments(root, []);
 	const found = [];
 
-	while(walker.nextNode()) {
-		const match = walker.currentNode.nodeValue.match(/^qrp-hole:(\d+)$/);
+	comments.forEach((comment) => {
+		const match = comment.nodeValue.match(/^qrp-hole:(\d+)$/);
 
 		if(match) {
-			found.push([walker.currentNode, Number(match[1])]);
+			found.push([comment, Number(match[1])]);
 		}
-	}
+	});
 
 	found.forEach(([comment, index]) => fillChild(comment, values[index]));
 };
