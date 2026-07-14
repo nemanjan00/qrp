@@ -82,7 +82,11 @@ export const collection = (source, options = {}) => {
 				return all;
 			}
 
-			const start = page.index * page.size;
+			// Clamp the page into range so a filter that shrinks the set below
+			// the current page doesn't render a blank table with a phantom page.
+			const pages = Math.max(1, Math.ceil(all.length / page.size));
+			const index = Math.min(Math.max(0, page.index), pages - 1);
+			const start = index * page.size;
 
 			return all.slice(start, start + page.size);
 		},

@@ -1029,7 +1029,16 @@ export const matchPath = (compiled, path) => {
 	const params = {};
 
 	compiled.keys.forEach((key, index) => {
-		params[key] = decodeURIComponent(match[index + 1] ?? "");
+		const raw = match[index + 1] ?? "";
+
+		// Malformed percent-encoding (e.g. /user/%zz) makes decodeURIComponent
+		// throw a URIError; fall back to the raw segment instead of breaking
+		// navigation.
+		try {
+			params[key] = decodeURIComponent(raw);
+		} catch {
+			params[key] = raw;
+		}
 	});
 
 	return params;
@@ -1160,13 +1169,24 @@ export const router = (routes, outlet, options = {}) => {
 
 		const link = event.target.closest && event.target.closest("a[href]");
 
-		if(!link || link.target === "_blank" || link.hasAttribute("download")) {
+		// Let the browser handle: framed links, downloads, and rel=external.
+		if(!link || (link.target && link.target !== "_self") || link.hasAttribute("download")) {
+			return;
+		}
+
+		if((link.getAttribute("rel") || "").split(/\s+/).includes("external")) {
 			return;
 		}
 
 		const url = new URL(link.href, location.href);
 
 		if(url.origin !== location.origin) {
+			return;
+		}
+
+		// Same-page hash link (same path, only a #fragment): let the browser
+		// do native scroll-to-anchor instead of remounting the whole route.
+		if(url.pathname === location.pathname && url.search === location.search && url.hash) {
 			return;
 		}
 

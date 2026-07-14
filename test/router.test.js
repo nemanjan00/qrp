@@ -37,6 +37,14 @@ test("compilePath tolerates a trailing slash", () => {
 	assert.deepEqual(matchPath(c, "/about/"), {});
 });
 
+test("matchPath falls back to raw segment on malformed encoding", () => {
+	const c = compilePath("/user/:id");
+
+	// %zz is invalid percent-encoding — must not throw
+	assert.doesNotThrow(() => matchPath(c, "/user/%zz"));
+	assert.equal(matchPath(c, "/user/%zz").id, "%zz");
+});
+
 test("compilePath keeps params aligned when a bare * precedes a :param", () => {
 	const c = compilePath("/a/*/b/:id");
 	const params = matchPath(c, "/a/xxx/b/42");

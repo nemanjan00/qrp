@@ -64,6 +64,22 @@ test("collection paginates and reports pageCount", () => {
 	assert.equal(view.items().length, 1); // last page has the remainder
 });
 
+test("page index clamps when a filter shrinks the set", () => {
+	const source = state({ items: rows() }); // 3 rows
+	const page = state({ index: 2, size: 2 });   // page 2 (0-based) — beyond range
+	const filter = state({ q: "" });
+	const view = collection(() => source.items, {
+		page,
+		filter,
+		filterFn: (r, f) => r.name.indexOf(f.q) !== -1
+	});
+
+	// filter to 1 row while parked on page 2 → clamp to the last valid page, not blank
+	filter.q = "alice";
+	assert.equal(view.items().length, 1);
+	assert.equal(view.items()[0].name, "alice");
+});
+
 test("collection.items drives a keyed list reactively", () => {
 	const source = state({ items: rows() });
 	const filter = state({ q: "" });
