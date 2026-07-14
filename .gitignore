@@ -4,3 +4,6 @@ node_modules
 
 # built distribution (generated on pack/publish)
 dist
+
+# esp32 example: intermediate gzip (regenerate with node build.js)
+examples/esp32/dashboard.html.gz

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device Settings</title>
+<style>
+	:root { --bg:#0a0d12; --fg:#e8ebf0; --muted:#8894a6; --line:#232d3b; --accent:#ffb23e; --ok:#34d399; }
+	* { box-sizing:border-box; }
+	body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,sans-serif; }
+	main { max-width:480px; margin:0 auto; padding:2rem 1.25rem; }
+	h1 { font-size:1.3rem; margin:0 0 .25rem; }
+	p.sub { color:var(--muted); margin:0 0 1.5rem; font-size:.9rem; }
+	label { display:block; margin:.9rem 0 .3rem; font-size:.85rem; color:var(--muted); }
+	input, select { width:100%; padding:.55rem .7rem; background:#121821; color:var(--fg);
+		border:1px solid var(--line); border-radius:8px; font:inherit; }
+	input:focus, select:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+	.actions { display:flex; align-items:center; gap:1rem; margin-top:1.5rem; }
+	.save { padding:.6rem 1.2rem; border:0; border-radius:8px; background:var(--accent);
+		color:#1a1206; font:inherit; font-weight:700; cursor:pointer; }
+	.status { color:var(--ok); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+	<h1>Device Settings</h1>
+	<p class="sub">Served from this device's flash — no internet required.</p>
+	<div id="app"></div>
+</main>
+<script type="module">/*__APP__*/</script>
+</body>
+</html>

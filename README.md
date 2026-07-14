@@ -46,6 +46,38 @@ data, the DOM follows.
 
 ---
 
+## 🛰️ Small enough to run on a microcontroller
+
+Because the whole library is ~15 KB min+gzip, a useful qrp app doesn't need a
+server or a CDN — it fits **in flash on an ESP32**. The `forms` module *is* a
+settings dashboard: a device's config is data, and `form()` renders it as a live,
+two-way-bound UI.
+
+**[▶ Live demo](https://qrp-xdl4.onrender.com/examples/esp32/dashboard.html)** ·
+**[full example →](examples/esp32/)** (PlatformIO project + build)
+
+| what the browser loads | size |
+|---|---|
+| qrp core + `forms` + the app, minified | ~7.3 KB |
+| the whole self-contained HTML page | ~8.6 KB |
+| **gzipped — the total baked into flash** | **~4 KB** |
+
+`react-dom` alone is ~45 KB gzipped — **10× this entire dashboard**, before one
+field. The chip serves the page from PROGMEM over its own WiFi AP: no filesystem,
+no internet, no build step on the device. This is the zero-dependency premise at
+its literal limit — the "server" is an $8 microcontroller and the "build
+pipeline" is `gzip | xxd -i`.
+
+```cpp
+// the entire web app, served straight from flash:
+void handleRoot() {
+  server.sendHeader("Content-Encoding", "gzip");
+  server.send_P(200, "text/html", dashboard_html_gz, dashboard_html_gz_len);
+}
+```
+
+---
+
 ## 📥 Install
 
 ```sh
@@ -245,7 +277,7 @@ form({ settings, fields: {
 
 ```js
 el("tbody", {}, list(
-  () => view.items,                       // reactive source
+  () => view.items(),                     // reactive source (items() is a method)
   (row) => row.id,                         // stable key
   (row) => html`<tr><td>${() => row.name}</td></tr>`  // built once per key
 ));
