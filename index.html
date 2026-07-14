@@ -218,6 +218,7 @@
 		import { table } from "@nemanjan00/qrp/table";
 		import { form, registerInput, inputs } from "@nemanjan00/qrp/forms";
 		import { toasts, notify } from "@nemanjan00/qrp/toasts";
+		import { bus } from "@nemanjan00/qrp/events";
 		import { portal } from "@nemanjan00/qrp/behaviors/portal";
 		import { trapFocus } from "@nemanjan00/qrp/behaviors/trap-focus";
 		import { dismissable } from "@nemanjan00/qrp/behaviors/dismissable";
@@ -568,23 +569,50 @@ function close() {
 				behaviorsDemo())));
 
 		// ============================================================ EVENTS + TOASTS
-		app.appendChild(section("toasts", "Events & toasts", "Notifications off the global bus.",
-			"Any code raises a toast by emitting on the bus — it never imports the UI. Content is any renderable, so a toast can carry a link or a button.",
+		const toastsDemo = () => {
+			const store = state({ items: ["Sensor A", "Sensor B", "Sensor C"] });
+
+			// A toast whose content is a LIVE, interactive el() node — not a
+			// string. It carries its own state and a working button, and it
+			// travels to the toast UI over the event bus. Build a fresh node per
+			// emit: a DOM node lives in exactly one place.
+			const undoToast = (name, restore) => el("span", { class: "row", style: "gap:.6rem" },
+				el("span", {}, el("strong", {}, name), " deleted"),
+				el("button", { class: "btn", style: "padding:.2rem .6rem;font-size:.8rem",
+					onclick: () => { restore(); notify.success(`${name} restored`); } }, "Undo"));
+
+			const del = () => {
+				if(!store.items.length) { return; }
+				const name = store.items[store.items.length - 1];
+				const idx = store.items.length - 1;
+				store.items = store.items.slice(0, -1);
+				// emit the live node over the bus — the toast layer renders it as-is
+				bus.emit("warning", undoToast(name, () => { store.items = [...store.items.slice(0, idx), name, ...store.items.slice(idx)]; }));
+			};
+
+			return livePanel(
+				el("div", { class: "dim", style: "font-size:.8rem" }, "delete one — the toast (top-right) carries a live Undo button, sent over the bus:"),
+				el("div", { style: "font-variant-numeric:tabular-nums" }, () => `${store.items.length} devices: `,
+					() => store.items.join(", ") || "—"),
+				el("div", { class: "row" },
+					el("button", { class: "btn btn-primary", onclick: del }, "Delete last"),
+					el("button", { class: "btn", onclick: () => notify.success("Settings saved") }, "success"),
+					el("button", { class: "btn", onclick: () => notify.error("Could not reach host") }, "error")));
+		};
+		app.appendChild(section("toasts", "Events & toasts", "Renderables over the bus.",
+			"Any code raises a toast by emitting on the bus — it never imports the UI. And content is any renderable, so a toast can carry a live, interactive DOM node: here the Undo button is a real el() with a working handler, sent over the bus and rendered as-is. A string couldn't do that.",
 			el("div", { class: "demo" },
 				codeWindow("toasts.js", `
-import { notify } from "@nemanjan00/qrp/toasts";
+// the toast content is a LIVE element, not text:
+const undo = el("span", {},
+  el("strong", {}, name), " deleted ",
+  el("button", { onclick: () => restore() },
+    "Undo"));
 
-notify.success("Settings saved");
-notify.error("Could not reach host");
-
-// or emit on the bus from anywhere:
-bus.emit("error", { message: "…" });`),
-				livePanel(
-					el("div", { class: "dim", style: "font-size:.8rem" }, "fire a real toast (top-right):"),
-					el("div", { class: "row" },
-						el("button", { class: "btn", onclick: () => notify.success("Settings saved") }, "success"),
-						el("button", { class: "btn", onclick: () => notify.error("Could not reach host") }, "error"),
-						el("button", { class: "btn", onclick: () => notify.info(html`<span>New build — <a href="#" onclick=${(e)=>e.preventDefault()}>reload</a></span>`) }, "renderable"))))));
+// send the node over the bus — the toast
+// layer renders it, handler and all:
+bus.emit("warning", undo);`),
+				toastsDemo())));
 
 		// ============================================================ BROWSER WRAPPERS
 		const browserDemo = () => {
