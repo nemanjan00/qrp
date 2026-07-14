@@ -3,6 +3,7 @@
 	"version": "0.1.0",
 	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step — the devDependencies below are only for tests, lint, and git hooks.",
 	"type": "module",
+	"license": "MIT",
 	"exports": {
 		".": { "types": "./qrp/index.d.ts", "default": "./qrp/index.js" },
 		"./html": { "types": "./html/index.d.ts", "default": "./html/index.js" },

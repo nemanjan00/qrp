@@ -6,14 +6,16 @@
 
 A data-first, declarative frontend framework for the browser — reactivity is a `Proxy`, the DOM is real, and there's no build step.
 
+[![npm](https://img.shields.io/npm/v/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=ffb23e&logo=npm)](https://www.npmjs.com/package/@nemanjan00/qrp)
 [![CI](https://img.shields.io/github/actions/workflow/status/nemanjan00/qrp/ci.yml?branch=master&style=flat-square&labelColor=0a0d12&label=CI)](https://github.com/nemanjan00/qrp/actions/workflows/ci.yml)
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-none-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
 [![gzipped](https://img.shields.io/badge/gzipped-~12_KB-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
 [![tests](https://img.shields.io/badge/tests-192_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
+[![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
 
-**[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[🚀 5-minute example](#-5-minute-example)** · **[💡 Why it exists](#-why-it-exists)**
+**[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[🚀 5-minute example](#-5-minute-example)** · **[💡 Why it exists](#-why-it-exists)**
 
 </div>
 
@@ -489,6 +491,10 @@ npm run typecheck  # tsc --noEmit over the .d.ts + a usage suite (strict)
 The framework has **zero runtime dependencies**; everything in `devDependencies`
 is for tests, lint, types, and the pre-commit hook. Nothing is required to *use*
 qrp — just load the modules.
+
+## 📄 License
+
+[MIT](LICENSE) © Nemanja Nedeljkovic
 
 ---
 
