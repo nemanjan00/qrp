@@ -1119,10 +1119,13 @@ IntersectionObserver as reactive state: { matches } (on screen).
 import { … } from "@nemanjan00/qrp/behaviors/<name>"
 ```
 
-Headless helpers to build styled components (one file each). Compose them: a
-modal is `portal` + `trapFocus` + `dismissable`; a dropdown is `anchored` +
+Headless helpers to build styled components (one file each, or the whole set
+via the `@nemanjan00/qrp/behaviors` barrel): `portal`, `dismissable`,
+`trapFocus`, `anchored`, `disclosure`, `busyWhile`. Compose them: a modal is
+`portal` + `trapFocus` + `dismissable`; a dropdown is `anchored` +
 `dismissable` + `disclosure`. You bring the markup and CSS; they carry the
-platform and a11y hard parts.
+platform and a11y hard parts. UI built outside a render (a modal from an
+onclick) should wrap its build in `scoped()` so its effects are owned.
 
 ### `portal`
 
@@ -1216,8 +1219,11 @@ interface BusyWhile {
 import { … } from "@nemanjan00/qrp/utils/<name>"
 ```
 
-Pure data helpers a dashboard needs (one file each): `memoize`, `lru`,
-`cacheForever`/`precache`/`precacheWithRefresh`, `paginate`/`pageCount`.
+Pure data helpers a dashboard needs (one file each, or the whole set via the
+`@nemanjan00/qrp/utils` barrel): `memoize` (with `ttl`/`invalidate`), `lru`,
+`cacheForever`/`precache`/`precacheWithRefresh`, `paginate`/`pageCount`,
+`limit` (concurrency + rate + timeout), `debounce`/`throttle` (scope-aware),
+`validate` (schema checker), and `loadScript` (reactive UMD loader).
 
 ### `lru`
 

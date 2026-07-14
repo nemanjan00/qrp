@@ -1,7 +1,10 @@
 /**
  * @module utils
- * Pure data helpers a dashboard needs (one file each): `memoize`, `lru`,
- * `cacheForever`/`precache`/`precacheWithRefresh`, `paginate`/`pageCount`.
+ * Pure data helpers a dashboard needs (one file each, or the whole set via the
+ * `@nemanjan00/qrp/utils` barrel): `memoize` (with `ttl`/`invalidate`), `lru`,
+ * `cacheForever`/`precache`/`precacheWithRefresh`, `paginate`/`pageCount`,
+ * `limit` (concurrency + rate + timeout), `debounce`/`throttle` (scope-aware),
+ * `validate` (schema checker), and `loadScript` (reactive UMD loader).
  */
 export interface LruStore<K = any, V = any> {
 	has(key: K): boolean;
