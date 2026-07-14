@@ -426,6 +426,49 @@ const appendChild = (parent, child) => {
 // cached and REUSED across changes. A filter/sort/paginate only reorders the
 // cached elements (minimal DOM moves); each row updates itself through its own
 // reactive bindings, so surviving rows are never rebuilt.
+// Indices of a longest strictly-increasing subsequence of `arr`, as a Set.
+// Entries with value < 0 (new nodes) are ignored. Used to find the "stable
+// backbone" of reused rows that need not move during reconciliation.
+const lisIndices = (arr) => {
+	const predecessor = new Array(arr.length).fill(-1);
+	const tails = []; // tails[k] = index of the smallest tail of an LIS of length k+1
+
+	for(let i = 0; i < arr.length; i++) {
+		if(arr[i] < 0) {
+			continue;
+		}
+
+		let lo = 0;
+		let hi = tails.length;
+
+		while(lo < hi) {
+			const mid = (lo + hi) >> 1;
+
+			if(arr[tails[mid]] < arr[i]) {
+				lo = mid + 1;
+			} else {
+				hi = mid;
+			}
+		}
+
+		if(lo > 0) {
+			predecessor[i] = tails[lo - 1];
+		}
+
+		tails[lo] = i;
+	}
+
+	const result = new Set();
+	let k = tails.length ? tails[tails.length - 1] : -1;
+
+	while(k !== -1) {
+		result.add(k);
+		k = predecessor[k];
+	}
+
+	return result;
+};
+
 const setupList = (parent, marker) => {
 	const anchor = document.createComment("qrp-list");
 	parent.appendChild(anchor);
@@ -442,6 +485,7 @@ const setupList = (parent, marker) => {
 
 		const next = new Map();
 		const desired = [];
+		const keys = [];
 
 		items.forEach((item, index) => {
 			const key = marker.keyFn(item, index);
@@ -469,6 +513,7 @@ const setupList = (parent, marker) => {
 			next.set(key, entry);
 			marker._elemToItem.set(entry.element, item);
 			desired.push(entry.element);
+			keys.push(key);
 		});
 
 		// Remove rows whose keys are gone; dispose their effects.
@@ -479,14 +524,28 @@ const setupList = (parent, marker) => {
 			}
 		});
 
-		// Reorder to match `desired`, moving only elements that are out of
-		// place (each node's nextSibling should be the following desired node).
+		// Minimal-move reorder. Map each new position to the row's OLD position
+		// (cache is still the previous order here); the longest increasing run
+		// of old positions is the stable backbone that need not move. Only new
+		// rows and out-of-order rows are inserted — so a 2-row swap does 1 move,
+		// not O(n) (the cascading nextSibling approach moved ~every node).
+		const previousIndex = new Map();
+		let position = 0;
+
+		cache.forEach((_entry, key) => {
+			previousIndex.set(key, position);
+			position += 1;
+		});
+
+		const sources = keys.map((key) => (previousIndex.has(key) ? previousIndex.get(key) : -1));
+		const stable = lisIndices(sources);
+
 		let ref = anchor;
 
 		for(let i = desired.length - 1; i >= 0; i--) {
 			const node = desired[i];
 
-			if(node.nextSibling !== ref) {
+			if(sources[i] === -1 || !stable.has(i)) {
 				anchor.parentNode.insertBefore(node, ref);
 			}
 

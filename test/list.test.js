@@ -130,6 +130,32 @@ test("removed rows dispose their effects (no leak)", () => {
 	assert.ok(runs >= before); // new row rendered once; old effect gone
 });
 
+test("minimal-move reorder keeps correct order for swap, insert, shuffle", () => {
+	const store = state({ items: [1, 2, 3, 4, 5].map((n) => ({ id: n })) });
+	const ul = el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, () => String(i.id))));
+
+	const order = () => [...ul.querySelectorAll("li")].map((li) => li.textContent);
+	const nodeFor = (id) => [...ul.querySelectorAll("li")].find((li) => li.textContent === String(id));
+
+	assert.deepEqual(order(), ["1", "2", "3", "4", "5"]);
+
+	// swap ends
+	const n1 = nodeFor(1);
+	const n5 = nodeFor(5);
+	store.items = [store.items[4], store.items[1], store.items[2], store.items[3], store.items[0]];
+	assert.deepEqual(order(), ["5", "2", "3", "4", "1"]);
+	assert.equal(nodeFor(1), n1); // same nodes, moved
+	assert.equal(nodeFor(5), n5);
+
+	// insert in the middle
+	store.items = [store.items[0], store.items[1], { id: 99 }, store.items[2], store.items[3], store.items[4]];
+	assert.deepEqual(order(), ["5", "2", "99", "3", "4", "1"]);
+
+	// full shuffle
+	store.items = [{ id: 3 }, { id: 1 }, { id: 99 }, { id: 5 }, { id: 2 }, { id: 4 }].map((x) => store.items.find((i) => i.id === x.id) || x);
+	assert.deepEqual(order(), ["3", "1", "99", "5", "2", "4"]);
+});
+
 test("filter/sort scenario reuses the same nodes across passes", () => {
 	const store = state({ items: [{ id: 1, n: "a" }, { id: 2, n: "b" }, { id: 3, n: "c" }] });
 	const query = state({ q: "" });
