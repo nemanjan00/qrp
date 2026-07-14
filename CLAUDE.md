@@ -66,9 +66,13 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   old scope), components (`mount`/`scope`/`onDispose`), custom elements
   (`define`), routing (`router`/`navigate`/`compilePath`). `state()` skips
   proxying frozen objects (freeze static data to opt out of reactivity).
-- `html/index.js` — `` html`` `` / `html()`: author DOM as HTML strings with
-  reactive, XSS-safe holes (string→escaped text, `${()=>…}`→reactive, `onX`→
-  listener). An alternative to `el()`; both produce real DOM.
+- `html/index.js` — author DOM as HTML strings, three forms: `` html`` `` /
+  `html()` (inline `${}` holes), `html.template("…#{field}…")` (STORABLE — parsed
+  once, filled from a data object, reactive with state), and `ref(value)` (opt-in
+  token to inject a live node into a plain concatenated string; no prototype
+  patching). Holes: string→escaped text, `${()=>…}`→reactive, `onX`→listener.
+  `${}` = JS interpolation (inline only); `#{}` = html-parsed (survives as text,
+  hence storable).
 - `forms/index.js` — declarative forms + open input-type registry
   (`registerInput`, `field`, `form`).
 - `table/index.js` — declarative data table (collection + list): sortable

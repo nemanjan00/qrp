@@ -3,8 +3,8 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state } from "../qrp/index.js";
-import { html } from "../html/index.js";
+import { state, el } from "../qrp/index.js";
+import { html, ref } from "../html/index.js";
 
 test("html() from a plain string builds a DOM node", () => {
 	const node = html("<div class='card'>hi</div>");
@@ -72,4 +72,69 @@ test("html`` inserts a Node hole as-is", () => {
 
 	assert.equal(node.querySelector("b"), child);
 	assert.equal(node.textContent, "see bold");
+});
+
+// --- ref(): inject a live value into a plain string ------------------------
+
+test("ref() lets a plain string embed a real node", () => {
+	const link = el("a", { href: "/x" }, "go");
+	const node = html("<div>see " + ref(link) + "</div>");
+
+	assert.equal(node.querySelector("a"), link); // same node, not stringified
+	assert.equal(node.textContent, "see go");
+});
+
+test("ref() in a plain string wires a reactive binding", () => {
+	const s = state({ n: 1 });
+	const node = html("<span>" + ref(() => `n=${s.n}`) + "</span>");
+
+	assert.equal(node.textContent, "n=1");
+	s.n = 7;
+	assert.equal(node.textContent, "n=7");
+});
+
+test("ref() in an attribute position", () => {
+	const node = html("<a href=" + ref("/dest") + ">link</a>");
+
+	assert.equal(node.getAttribute("href"), "/dest");
+});
+
+// --- html.template(): storable #{} templates -------------------------------
+
+test("html.template fills #{field} from a data object (escaped)", () => {
+	const tpl = html.template("<div><h1>#{name}</h1><p>#{bio}</p></div>");
+	const node = tpl({ name: "R2 & D2", bio: "<b>astromech</b>" });
+
+	assert.equal(node.querySelector("h1").textContent, "R2 & D2");
+	// escaped as text, not parsed as markup
+	assert.equal(node.querySelector("p").textContent, "<b>astromech</b>");
+	assert.equal(node.querySelector("p b"), null);
+});
+
+test("html.template is reactive when filled with qrp state", () => {
+	const tpl = html.template("<span>#{title}</span>");
+	const data = state({ title: "one" });
+	const node = tpl(data);
+
+	assert.equal(node.textContent, "one");
+	data.title = "two";
+	assert.equal(node.textContent, "two");
+});
+
+test("html.template supports dotted paths and attribute fields", () => {
+	const tpl = html.template("<a href='#{link.href}'>#{link.label}</a>");
+	const node = tpl({ link: { href: "/go", label: "Go" } });
+
+	assert.equal(node.getAttribute("href"), "/go");
+	assert.equal(node.textContent, "Go");
+});
+
+test("html.template compiles once, fills many times independently", () => {
+	const tpl = html.template("<li>#{name}</li>");
+	const a = tpl({ name: "alice" });
+	const b = tpl({ name: "bob" });
+
+	assert.equal(a.textContent, "alice");
+	assert.equal(b.textContent, "bob");
+	assert.notEqual(a, b); // fresh DOM each call
 });

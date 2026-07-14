@@ -129,6 +129,24 @@ el("span", {}, () => `count: ${counter.n}`);
 html`<button onclick=${() => counter.n++}>${() => counter.n}</button>`;
 ```
 
+**Storable templates.** `${}` is JavaScript's interpolation — gone before html()
+sees it. For a template you keep in a file or config and fill later, use
+`html.template` with `#{}` placeholders — parsed once, reactive when filled with
+state:
+
+```js
+const row = html.template("<tr><td>#{name}</td><td>#{email}</td></tr>");
+row(user);                       // → DOM bound to user.name / user.email
+row(state({ name: "R2" }));      // reactive; #{} is escaped, XSS-safe
+```
+
+And to drop a live node into a plain concatenated string (no tagged template),
+`ref()` gives you an opt-in token — no prototype patching:
+
+```js
+html("<div class='card'>" + ref(myButton) + "</div>");   // real node, injected
+```
+
 **Reactive state that tracks per key.**
 
 ```js
@@ -197,7 +215,7 @@ unused exports tree-shake away.
 | Module | What it gives you |
 |--------|-------------------|
 | `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `compilePath` |
-| `html/index.js` | `` html`` `` / `html()` — author DOM as HTML strings with reactive, XSS-safe holes |
+| `html/index.js` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML with reactive, XSS-safe holes |
 | `forms/index.js` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
 | `table/index.js` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
 | `collection/index.js` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
