@@ -88,6 +88,13 @@ const isReactable = (value) => {
 		return false;
 	}
 
+	// A frozen object can never change — proxying it would only add tracking
+	// overhead and memory for nothing. Freeze big static/reference data stashed
+	// in state and reads cost zero. (Opt out of reactivity by freezing.)
+	if(Object.isFrozen(value)) {
+		return false;
+	}
+
 	if(Array.isArray(value)) {
 		return true;
 	}
@@ -244,6 +251,27 @@ export const effect = (fn) => {
 };
 
 /**
+ * Run fn WITHOUT tracking any reads, and without the current effect adopting
+ * any effects created inside it. Used when building detached, independently
+ * owned sub-trees (e.g. keyed list rows) from within a running effect — the
+ * rows must survive the outer effect re-running, so they must not become its
+ * children. Restores the effect stack afterward.
+ */
+export const untracked = (fn) => {
+	const prevActive = activeEffect;
+	const hidden = effectStack.splice(0, effectStack.length);
+
+	activeEffect = null;
+
+	try {
+		return fn();
+	} finally {
+		effectStack.push(...hidden);
+		activeEffect = prevActive;
+	}
+};
+
+/**
  * A read-only reactive value derived from other state:
  *   const full = derive(() => `${user.first} ${user.last}`);
  *   ... full.value
@@ -356,6 +384,13 @@ const toNodes = (value) => {
 };
 
 const appendChild = (parent, child) => {
+	// A keyed list() marker: reconcile with element reuse (see setupList).
+	if(child && child.__qrpList) {
+		setupList(parent, child);
+
+		return;
+	}
+
 	if(typeof child === "function") {
 		// Reactive region: re-render just this slice when its state changes.
 		const anchor = document.createComment("qrp");
@@ -376,6 +411,118 @@ const appendChild = (parent, child) => {
 	}
 
 	toNodes(child).forEach(node => parent.appendChild(node));
+};
+
+// Wire a keyed list() marker into `parent`: one element per item identity,
+// cached and REUSED across changes. A filter/sort/paginate only reorders the
+// cached elements (minimal DOM moves); each row updates itself through its own
+// reactive bindings, so surviving rows are never rebuilt.
+const setupList = (parent, marker) => {
+	const anchor = document.createComment("qrp-list");
+	parent.appendChild(anchor);
+
+	// key -> { element, scope }; scope owns the row's effects for disposal.
+	let cache = new Map();
+
+	effect(() => {
+		const items = marker.source() || [];
+
+		const next = new Map();
+		const desired = [];
+
+		items.forEach((item, index) => {
+			const key = marker.keyFn(item, index);
+
+			let entry = cache.get(key) || next.get(key);
+
+			if(!entry) {
+				// Build the row DETACHED: its effects must be owned by the row's
+				// own scope (so they survive this effect re-running) and must
+				// not track anything here (so item edits don't re-run the list).
+				let element;
+				let rowScope;
+
+				untracked(() => {
+					rowScope = scope(() => {
+						element = toNodes(marker.render(item, index))[0];
+					});
+				});
+
+				entry = { element, scope: rowScope };
+			}
+
+			next.set(key, entry);
+			marker._elemToItem.set(entry.element, item);
+			desired.push(entry.element);
+		});
+
+		// Remove rows whose keys are gone; dispose their effects.
+		cache.forEach((entry, key) => {
+			if(!next.has(key)) {
+				entry.scope.dispose();
+				entry.element.remove();
+			}
+		});
+
+		// Reorder to match `desired`, moving only elements that are out of
+		// place (each node's nextSibling should be the following desired node).
+		let ref = anchor;
+
+		for(let i = desired.length - 1; i >= 0; i--) {
+			const node = desired[i];
+
+			if(node.nextSibling !== ref) {
+				anchor.parentNode.insertBefore(node, ref);
+			}
+
+			ref = node;
+		}
+
+		cache = next;
+	});
+};
+
+/**
+ * A keyed list for efficient data rendering. Unlike a plain reactive region
+ * (which rebuilds on every change), this caches one element per item identity
+ * and reuses/reorders them — the right tool under a filtered/sorted/paginated
+ * table or feed. Use it as an el() child:
+ *
+ *   el("tbody", {}, list(
+ *     () => view.items,                    // reactive, ordered source
+ *     item => item.id,                      // stable key
+ *     item => el("tr", {}, () => item.name) // built once per key; self-updates
+ *   ));
+ *
+ * `render(item, index)` must return a single element. The returned marker also
+ * exposes itemFor(elementOrEvent) → the item that produced that element, for
+ * one-listener event delegation over large lists (via a WeakMap, leak-free).
+ *
+ * @param {Function} source () => Array (reactive)
+ * @param {Function} keyFn item => stable unique key
+ * @param {Function} render (item, index) => Element
+ * @returns {object} list marker (pass as an el child)
+ */
+export const list = (source, keyFn, render) => {
+	const elemToItem = new WeakMap();
+
+	return {
+		__qrpList: true,
+		source,
+		keyFn,
+		render,
+		_elemToItem: elemToItem,
+
+		itemFor: (target) => {
+			let node = target && target.nodeType ? target : (target && target.target);
+
+			while(node && !elemToItem.has(node)) {
+				node = node.parentElement;
+			}
+
+			return node ? elemToItem.get(node) : undefined;
+		}
+	};
 };
 
 /**

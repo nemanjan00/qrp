@@ -87,6 +87,34 @@ span.onclick     = () => counter.n++;             // on* fn → listener
 parent.appendChild(span); // qrp unwraps the proxy to the real node for you
 ```
 
+## Keyed lists — cache and reuse elements
+
+A plain reactive region (`el("ul", {}, () => items.map(...))`) rebuilds every
+node on any change — fine for small lists, wrong for a data table you filter or
+sort on every keystroke. `list()` does **keyed reconciliation**: one element per
+item identity, cached and reused. A filter/sort/paginate only *reorders* the
+cached elements (minimal DOM moves), and each row updates itself through its own
+bindings — survivors are never rebuilt. The element is, in effect, data cached
+by item identity (`Map` for key→element, `WeakMap` for element→item).
+
+```js
+import { list } from "./qrp/index.js";
+
+el("tbody", {}, list(
+  () => view.items,                     // reactive, ordered source
+  item => item.id,                       // stable key
+  item => el("tr", {}, () => item.name)  // built once per key; self-updates
+));
+```
+
+The marker also exposes `itemFor(elementOrEvent)` — map a clicked element back
+to its item for **one-listener event delegation** over huge lists (leak-free via
+`WeakMap`), instead of thousands of handlers.
+
+Bonus: freeze data you never mutate — `state({ ref: Object.freeze(bigData) })` —
+and qrp skips proxying it entirely (no tracking overhead, no memory). And
+`untracked(fn)` reads state without creating a dependency.
+
 ## Components, scopes, cleanup
 
 A component is just `(parent) => { ...appendChild... }`. `mount()` runs it inside
@@ -190,7 +218,7 @@ front and back can share them verbatim.
 
 | File | What it gives you |
 |------|-------------------|
-| `qrp/index.js` | Core: `state`, `effect`, `derive`, `raw`, `el`, `reactive`, `bind`, `mount`, `scope`, `define`, `router`, `navigate`, `compilePath`, `matchPath` |
+| `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `mount`, `scope`, `define`, `router`, `navigate`, `compilePath`, `matchPath` |
 | `forms/index.js` | Declarative settings forms over reactive state; an open input-type registry (`registerInput`); `parseKV`/`serializeKV`; live "textual mode" editing the same state |
 | `browser/index.js` | Reactive facades over browser APIs everyone forgot: `persisted` (localStorage + cross-tab sync), `query` (URL as state), `hashState`, `media`, `viewport`, `online`, `visible`, `seen` (IntersectionObserver), `cookies`, `watch` |
 | `events/index.js` | Global event bus on native `EventTarget`: `emitter`, `bus`, `request`/`respond`, `fromEvent`, `channel` (cross-tab via BroadcastChannel), `broadcast` |

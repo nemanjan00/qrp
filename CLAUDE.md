@@ -60,9 +60,11 @@ rule). Cross-module imports use the explicit `../<folder>/index.js` path —
 browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 `/index.js` is always written out.
 
-- `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`), DOM (`el`,
-  `reactive`, `bind`), components (`mount`/`scope`), custom elements
-  (`define`), routing (`router`/`navigate`/`compilePath`).
+- `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`),
+  DOM (`el`, `reactive`, `bind`), keyed lists (`list` — element reuse +
+  `itemFor` delegation), components (`mount`/`scope`), custom elements
+  (`define`), routing (`router`/`navigate`/`compilePath`). `state()` skips
+  proxying frozen objects (freeze static data to opt out of reactivity).
 - `forms/index.js` — declarative forms + open input-type registry
   (`registerInput`).
 - `browser/index.js` — reactive wrappers over native browser APIs.
