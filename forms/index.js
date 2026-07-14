@@ -229,21 +229,27 @@ export const form = ({ fields = {}, sections = [{ name: "Settings", filter: () =
 	};
 
 	return el("div", { class: "settings-container" }, () => {
-		const grouped = {};
+		// Map, not {} — a section literally named "constructor"/"toString" would
+		// otherwise hit an inherited Object.prototype member and crash .push.
+		const grouped = new Map();
 
 		Object.keys(settings).forEach(key => {
 			const name = sectionFor(key);
 
-			(grouped[name] = grouped[name] || []).push(key);
+			if(!grouped.has(name)) {
+				grouped.set(name, []);
+			}
+
+			grouped.get(name).push(key);
 		});
 
 		return sections
 			.map(section => section.name)
-			.filter(name => grouped[name])
+			.filter(name => grouped.has(name))
 			.flatMap(name => [
 				el("h3", {}, name),
 				el("div", { class: "settings-section" },
-					grouped[name].map(key => settingsItem(settings, key, fields[key]))
+					grouped.get(name).map(key => settingsItem(settings, key, fields[key]))
 				)
 			]);
 	});

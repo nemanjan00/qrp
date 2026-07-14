@@ -16,19 +16,14 @@ export const weightedPool = () => {
 	let weightMap = [];
 	let max = 0;
 
+	// Cumulative RAW weights (no min-normalization, which broke weight 0 and
+	// negatives). A candidate's slice is [prev, prev+weight); weight 0 yields an
+	// empty slice → never picked. `max` is the total weight.
 	const recalc = () => {
-		if(weights.length === 0) {
-			weightMap = [];
-			max = 0;
-
-			return;
-		}
-
-		const min = Math.min(...weights);
 		let pointer = 0;
 
 		weightMap = weights.map((weight) => {
-			pointer += weight / min;
+			pointer += weight;
 
 			return pointer;
 		});
@@ -38,8 +33,16 @@ export const weightedPool = () => {
 
 	return {
 		push: (candidate, weight) => {
+			// undefined defaults to 1; 0 is a valid "never pick"; negatives are
+			// nonsense for a probability weight.
+			const w = weight === undefined ? 1 : weight;
+
+			if(w < 0 || Number.isNaN(w)) {
+				throw new Error("weightedPool: weight must be >= 0");
+			}
+
 			candidates.push(candidate);
-			weights.push(weight || 1);
+			weights.push(w);
 
 			recalc();
 		},

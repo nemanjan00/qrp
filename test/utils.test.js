@@ -178,12 +178,52 @@ test("weightedPool delete recalculates and empty pick is undefined", () => {
 
 // --- paginate ---------------------------------------------------------------
 
-test("paginate slices by page, size 0 returns all", () => {
+test("paginate slices by page, size 0 returns a copy of all", () => {
 	const data = [1, 2, 3, 4, 5];
 
 	assert.deepEqual(paginate(data, 0, 2), [1, 2]);
 	assert.deepEqual(paginate(data, 2, 2), [5]);
 	assert.deepEqual(paginate(data, 0, 0), data);
+	assert.notEqual(paginate(data, 0, 0), data); // fresh copy, not the source
 	assert.equal(pageCount(5, 2), 3);
 	assert.equal(pageCount(5, 0), 1);
+});
+
+test("paginate clamps negative index to the first page", () => {
+	const data = [1, 2, 3, 4, 5, 6];
+
+	assert.deepEqual(paginate(data, -1, 3), [1, 2, 3]); // not a wrap-slice from the end
+	assert.deepEqual(paginate(data, -5, 2), [1, 2]);
+});
+
+test("roundRobinByKey handles Object.prototype bucket keys", () => {
+	const items = [
+		{ k: "constructor" }, { k: "__proto__" }, { k: "constructor" }, { k: "toString" }
+	];
+
+	const picked = roundRobinByKey(items, 4, (i) => i.k).map((i) => i.k);
+	// interleaved: constructor, __proto__, toString, constructor
+	assert.deepEqual(picked, ["constructor", "__proto__", "toString", "constructor"]);
+});
+
+test("weightedPool weight 0 is never picked; negatives throw", () => {
+	const pool = weightedPool();
+	pool.push("never", 0);
+	pool.push("always", 5); // caps: [0, 5], max 5
+
+	// every seed lands in [0,5) → "always"; "never" has an empty slice
+	for(let seed = 0; seed < 5; seed++) {
+		assert.equal(pool.pick(seed), "always");
+	}
+
+	assert.throws(() => weightedPool().push("bad", -1), />= 0/);
+});
+
+test("memoize max:0 retains nothing (not unbounded)", () => {
+	let calls = 0;
+	const fn = memoize((n) => { calls++; return n; }, { max: 0 });
+
+	fn(1);
+	fn(1); // nothing retained → recomputed
+	assert.equal(calls, 2);
 });

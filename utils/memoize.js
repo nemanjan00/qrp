@@ -20,7 +20,9 @@ import { lru } from "./lru.js";
  */
 export const memoize = (fn, options = {}) => {
 	const keyOf = options.key || ((args) => JSON.stringify(args));
-	const store = options.store || (options.max ? lru(options.max) : new Map());
+	// max === 0 means "retain nothing" (an lru(0)), not "unbounded" — only an
+	// absent max falls through to the unbounded Map.
+	const store = options.store || (options.max !== undefined ? lru(options.max) : new Map());
 
 	return (...args) => {
 		const key = keyOf(args);

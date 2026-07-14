@@ -19,18 +19,20 @@ export const roundRobinByKey = (items, limit, keyFn) => {
 		return [];
 	}
 
-	const buckets = {};
+	// Map, not {} — so bucket keys like "constructor"/"__proto__"/"toString"
+	// don't hit Object.prototype, and numeric keys don't coerce to strings.
+	const buckets = new Map();
 	const order = [];
 
 	items.forEach((item) => {
 		const key = keyFn(item);
 
-		if(buckets[key] === undefined) {
-			buckets[key] = [];
+		if(!buckets.has(key)) {
+			buckets.set(key, []);
 			order.push(key);
 		}
 
-		buckets[key].push(item);
+		buckets.get(key).push(item);
 	});
 
 	const picked = [];
@@ -41,11 +43,13 @@ export const roundRobinByKey = (items, limit, keyFn) => {
 		progress = false;
 
 		order.forEach((key) => {
-			if(picked.length >= limit || buckets[key].length === 0) {
+			const bucket = buckets.get(key);
+
+			if(picked.length >= limit || bucket.length === 0) {
 				return;
 			}
 
-			picked.push(buckets[key].shift());
+			picked.push(bucket.shift());
 
 			progress = true;
 		});

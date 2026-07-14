@@ -12,10 +12,12 @@
  */
 export const paginate = (array, index, size) => {
 	if(!size) {
-		return array;
+		return array.slice(); // fresh copy — never leak the source by reference
 	}
 
-	const start = index * size;
+	// Clamp index to >= 0 so a decrement-below-zero doesn't wrap-slice from the
+	// end (a negative start in Array.slice counts backwards).
+	const start = Math.max(0, index) * size;
 
 	return array.slice(start, start + size);
 };
