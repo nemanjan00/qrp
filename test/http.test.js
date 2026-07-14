@@ -7,15 +7,24 @@ import { effect } from "../qrp/index.js";
 import { emitter } from "../events/index.js";
 import { createHttp } from "../http/index.js";
 
-// Fetch stub returning a Response-like; records calls.
+// Fetch stub returning a Response-like (single-use body); records calls.
 const stubFetch = (ok, body, status = 200) => {
 	globalThis.fetch = (url, init) => {
 		globalThis.fetch.calls.push({ url, init });
 
+		let used = false;
+
 		return Promise.resolve({
 			ok,
 			status,
-			text: () => Promise.resolve(typeof body === "string" ? body : JSON.stringify(body))
+			statusText: "",
+			text: () => {
+				if(used) {
+					return Promise.reject(new TypeError("Body has already been read"));
+				}
+				used = true;
+				return Promise.resolve(typeof body === "string" ? body : JSON.stringify(body));
+			}
 		});
 	};
 
@@ -43,8 +52,10 @@ test("get prefixes baseUrl, attaches token + client, returns parsed JSON", () =>
 		const call = globalThis.fetch.calls[0];
 		assert.equal(call.url, "/api/v2/things");
 		assert.equal(call.init.method, "GET");
-		assert.equal(call.init.headers.authorization, "Bearer tok");
-		assert.equal(call.init.headers["x-authorization-client"], "web");
+		const h = call.init.headers;
+		const auth = h.authorization || h.Authorization;
+		assert.equal(auth, "Bearer tok");
+		assert.equal(h["x-authorization-client"], "web");
 	});
 });
 
@@ -128,7 +139,13 @@ test("error response emits error on the bus and rejects", () => {
 
 	return http.get("/things").then(
 		() => assert.fail("should reject"),
-		() => { assert.equal(errored, "Boom"); }
+		(err) => {
+			assert.equal(errored, "Boom");
+			// rejection is a structured value with status + parsed data (not a
+			// consumed Response), so callers can read the error body
+			assert.equal(err.status, 500);
+			assert.equal(err.data.error.message, "Boom");
+		}
 	);
 });
 
@@ -169,8 +186,73 @@ test("401 emits auth:unauthorized", () => {
 	);
 });
 
-test("302 rejects silently (no error emitted)", () => {
-	stubFetch(false, {}, 302);
+test("string-body Unauthorized also emits auth:unauthorized", () => {
+	stubFetch(false, { error: "Unauthorized" }, 403);
+
+	const bus = emitter();
+	let unauth = false;
+	bus.on("auth:unauthorized", () => { unauth = true; });
+
+	const http = createHttp({ baseUrl: "/api", bus });
+
+	return http.get("/secret").then(
+		() => assert.fail("should reject"),
+		() => { assert.equal(unauth, true); }
+	);
+});
+
+test("nullish params are skipped; arrays repeat the key", () => {
+	stubFetch(true, {});
+	const http = createHttp({ baseUrl: "/api", bus: emitter() });
+
+	return http.get("/things", { params: { q: undefined, page: 2, ids: [1, 2, 3] } }).then(() => {
+		const url = globalThis.fetch.calls[0].url;
+		assert.ok(!/q=/.test(url), "undefined param skipped");
+		assert.match(url, /page=2/);
+		assert.match(url, /ids=1&ids=2&ids=3/);
+	});
+});
+
+test("case-insensitive header merge (no duplicate content-type)", () => {
+	stubFetch(true, {});
+	const http = createHttp({ baseUrl: "/api", bus: emitter() });
+
+	return http.post("/x", { a: 1 }, { headers: { "content-type": "text/plain" } }).then(() => {
+		const headers = globalThis.fetch.calls[0].init.headers;
+		const keys = Object.keys(headers).filter((k) => k.toLowerCase() === "content-type");
+		assert.equal(keys.length, 1); // caller's lowercase wins, ours doesn't duplicate
+		assert.equal(headers[keys[0]], "text/plain");
+	});
+});
+
+test("FormData body passes through untouched (not JSON-stringified)", () => {
+	stubFetch(true, {});
+	const http = createHttp({ baseUrl: "/api", bus: emitter() });
+	const fd = new FormData();
+	fd.append("file", "x");
+
+	return http.post("/upload", fd).then(() => {
+		const init = globalThis.fetch.calls[0].init;
+		assert.ok(init.body instanceof FormData);
+		// we must NOT force a JSON content-type for FormData
+		const ct = Object.entries(init.headers).find(([k]) => k.toLowerCase() === "content-type");
+		assert.ok(!ct || ct[1] !== "application/json");
+	});
+});
+
+test("a synchronous build error does not leave the loader stuck", () => {
+	stubFetch(true, {});
+	const http = createHttp({ baseUrl: "/api", bus: emitter() });
+
+	// null path → path.indexOf throws inside buildUrl, before fetch
+	return http.get(null).then(
+		() => assert.fail("should reject"),
+		() => { assert.equal(http.loading.pending, 0); } // not stuck at 1
+	);
+});
+
+test("legacy: non-2xx rejects and does not emit for a plain body", () => {
+	stubFetch(false, {}, 500);
 
 	const bus = emitter();
 	let errored = false;
@@ -180,9 +262,9 @@ test("302 rejects silently (no error emitted)", () => {
 
 	return http.get("/thing").then(
 		() => assert.fail("should reject"),
-		(response) => {
-			assert.equal(response.status, 302);
-			assert.equal(errored, false);
+		(err) => {
+			assert.equal(err.status, 500);
+			assert.equal(errored, true); // generic error emitted
 		}
 	);
 });

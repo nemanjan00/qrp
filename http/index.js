@@ -17,10 +17,17 @@
  * (loader.start / loader.stop are still emitted on the bus for event-style UIs.)
  *
  * Errors: a non-2xx response emits "error" on the bus (so the toast stack shows
- * it) and rejects; an "Unauthorized" body or 401 also emits "auth:unauthorized".
- * A 302 rejects silently (caller handles the redirect). Network failure emits a
- * generic error. In every case the returned promise rejects, so callers can
- * still react.
+ * it) and REJECTS with { status, data, response } — data is the already-parsed
+ * error body, so callers can read validation details (the Response body is
+ * consumed). An "Unauthorized" body (object or string form) or a 401 also emits
+ * "auth:unauthorized". Network failure rejects with the fetch TypeError after a
+ * generic "error" emit. In every case the returned promise rejects.
+ *
+ * Bodies: plain objects/arrays are JSON-stringified (with a JSON content-type);
+ * FormData/Blob/ArrayBuffer/URLSearchParams/typed-arrays pass through so fetch
+ * sets the right content-type. Params: nullish values are skipped, arrays repeat
+ * the key (ids=1&ids=2). Pass config.signal for cancellation, config.init for
+ * any other fetch init (credentials, mode, cache, …).
  */
 
 import { state } from "../qrp/index.js";
@@ -80,7 +87,24 @@ export const createHttp = (options = {}) => {
 		}
 
 		if(params) {
-			const query = new URLSearchParams(params).toString();
+			const search = new URLSearchParams();
+
+			Object.entries(params).forEach(([key, value]) => {
+				// Skip nullish so `params: { q: undefined }` doesn't send the
+				// literal "q=undefined". Append array values individually
+				// (ids=1&ids=2), the repeated-key form most backends expect.
+				if(value == null) {
+					return;
+				}
+
+				if(Array.isArray(value)) {
+					value.forEach((v) => { if(v != null) { search.append(key, v); } });
+				} else {
+					search.append(key, value);
+				}
+			});
+
+			const query = search.toString();
 
 			if(query) {
 				url += (url.indexOf("?") === -1 ? "?" : "&") + query;
@@ -90,24 +114,50 @@ export const createHttp = (options = {}) => {
 		return url;
 	};
 
-	const buildHeaders = (extra, hasBody) => {
-		const headers = { ...baseHeaders, ...(extra || {}) };
+	// Body types fetch handles natively pass through untouched; only plain
+	// objects/arrays are JSON-stringified. Prevents FormData/Blob/etc. from
+	// being silently destroyed into "{}" (and lets fetch set FormData's own
+	// multipart content-type with its boundary).
+	const NATIVE_BODY = (body) => (
+		typeof body === "string"
+		|| body instanceof FormData
+		|| body instanceof Blob
+		|| body instanceof ArrayBuffer
+		|| body instanceof URLSearchParams
+		|| (typeof ReadableStream !== "undefined" && body instanceof ReadableStream)
+		|| ArrayBuffer.isView(body)
+	);
 
-		if(hasBody && headers["Content-Type"] === undefined) {
-			headers["Content-Type"] = JSON_CONTENT_TYPE;
+	// Merge headers case-insensitively (last wins) so a caller's "content-type"
+	// and our "Content-Type" don't both survive and get combined by Headers.
+	// jsonBody = true only when we will JSON.stringify (plain object/array);
+	// for native bodies we do NOT set content-type (fetch does it right).
+	const buildHeaders = (extra, jsonBody) => {
+		const merged = new Map(); // lowercased name -> [originalName, value]
+		const put = (name, value) => merged.set(name.toLowerCase(), [name, value]);
+
+		Object.entries(baseHeaders).forEach(([k, v]) => put(k, v));
+		Object.entries(extra || {}).forEach(([k, v]) => put(k, v));
+
+		if(jsonBody && !merged.has("content-type")) {
+			put("Content-Type", JSON_CONTENT_TYPE);
 		}
 
 		const bearer = token();
 
 		if(bearer) {
-			headers["authorization"] = "Bearer " + bearer;
+			put("Authorization", "Bearer " + bearer);
 		}
 
 		const clientId = client();
 
 		if(clientId) {
-			headers["x-authorization-client"] = clientId;
+			put("x-authorization-client", clientId);
 		}
+
+		const headers = {};
+
+		merged.forEach(([name, value]) => { headers[name] = value; });
 
 		return headers;
 	};
@@ -124,22 +174,32 @@ export const createHttp = (options = {}) => {
 		}
 	};
 
-	// Mirror the interceptor's message aggregation: base message plus any
-	// per-field validation messages appended.
+	// Base message plus any per-field validation messages, space-joined. Handles
+	// both { error: { message } } and { error: "text" }, and errors entries that
+	// are strings or { message }.
 	const errorMessage = (data) => {
-		if(!data || !data.error) {
+		if(!data) {
 			return GENERIC_ERROR;
 		}
 
-		let message = data.error.message || data.error;
+		const parts = [];
+		const base = data.error && (data.error.message || (typeof data.error === "string" ? data.error : null));
+
+		if(base) {
+			parts.push(base);
+		}
 
 		if(data.errors) {
 			Object.values(data.errors).forEach((entry) => {
-				message += entry.message;
+				const text = typeof entry === "string" ? entry : (entry && entry.message);
+
+				if(text) {
+					parts.push(text);
+				}
 			});
 		}
 
-		return message || GENERIC_ERROR;
+		return parts.length ? parts.join(" ") : GENERIC_ERROR;
 	};
 
 	const isUnauthorized = (response, data) => {
@@ -147,7 +207,10 @@ export const createHttp = (options = {}) => {
 			return true;
 		}
 
-		return !!(data && data.error && data.error.message === "Unauthorized");
+		// Both { error: { message: "Unauthorized" } } and { error: "Unauthorized" }.
+		const errText = data && data.error && (data.error.message || data.error);
+
+		return errText === "Unauthorized";
 	};
 
 	/**
@@ -160,25 +223,39 @@ export const createHttp = (options = {}) => {
 	const request = (method, path, config = {}) => {
 		const hasBody = config.body !== undefined;
 
-		const init = { method, headers: buildHeaders(config.headers, hasBody) };
+		// Build EVERYTHING that can throw (URL, headers, body) BEFORE start(),
+		// so a synchronous error can't leave the loader counter stuck at ≥1.
+		let url;
+		let init;
 
-		if(hasBody) {
-			init.body = typeof config.body === "string" ? config.body : JSON.stringify(config.body);
+		try {
+			const jsonBody = hasBody && !NATIVE_BODY(config.body);
+
+			init = { method, headers: buildHeaders(config.headers, jsonBody), ...(config.init || {}) };
+
+			if(config.signal) {
+				init.signal = config.signal;
+			}
+
+			if(hasBody) {
+				init.body = jsonBody ? JSON.stringify(config.body) : config.body;
+			}
+
+			url = buildUrl(path, config.params);
+		} catch(error) {
+			emitter.emit("error", { message: error.message || GENERIC_ERROR });
+
+			return Promise.reject(error);
 		}
 
 		start();
 
-		return fetch(buildUrl(path, config.params), init).then((response) => {
+		return fetch(url, init).then((response) => {
 			return response.text().then((raw) => {
 				const data = parseBody(raw);
 
 				if(response.ok) {
 					return data;
-				}
-
-				if(response.status === 302) {
-					// Silent — the caller decides what to do with a redirect.
-					return Promise.reject(response);
 				}
 
 				emitter.emit("error", { message: errorMessage(data) });
@@ -187,10 +264,13 @@ export const createHttp = (options = {}) => {
 					emitter.emit("auth:unauthorized");
 				}
 
-				return Promise.reject(response);
+				// Reject with a structured value: status + the already-parsed
+				// data (the Response body is consumed, so callers can't re-read
+				// it — hand them the parsed error instead of a used Response).
+				return Promise.reject({ status: response.status, data, response });
 			});
 		}, (networkError) => {
-			// fetch rejected → no response at all.
+			// fetch rejected → no response at all (network failure / abort).
 			emitter.emit("error", { message: GENERIC_ERROR });
 
 			return Promise.reject(networkError);
