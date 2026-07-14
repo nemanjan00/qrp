@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>qrp • TodoMVC</title>
+	<style>
+		:root { color-scheme: light dark; }
+		* { box-sizing: border-box; }
+		body { font: 14px/1.4 system-ui, sans-serif; margin: 0; padding: 3rem 1rem; background: #f5f5f5; color: #111; }
+		@media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } }
+		.app { max-width: 550px; margin: 0 auto; background: color-mix(in srgb, currentColor 4%, transparent); border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+		h1 { text-align: center; font-size: 3rem; font-weight: 200; color: #b83f45; margin: 0 0 .5rem; }
+		.new-todo, .edit { width: 100%; padding: 1rem; font: inherit; font-size: 1.1rem; border: none; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); background: transparent; color: inherit; }
+		.new-todo:focus, .edit:focus { outline: 2px solid #b83f45; outline-offset: -2px; }
+		ul.list { list-style: none; margin: 0; padding: 0; }
+		li.todo { display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem; border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent); }
+		li.todo.completed label { text-decoration: line-through; opacity: .5; }
+		li.todo input[type=checkbox] { width: 1.4rem; height: 1.4rem; }
+		li.todo label { flex: 1; }
+		li.todo .destroy { border: none; background: none; color: #b83f45; font-size: 1.2rem; cursor: pointer; opacity: .6; }
+		li.todo .destroy:hover { opacity: 1; }
+		.edit { padding: .5rem; }
+		.footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; font-size: .85rem; flex-wrap: wrap; }
+		.filters { display: flex; gap: .5rem; list-style: none; margin: 0; padding: 0; }
+		.filters a { text-decoration: none; color: inherit; padding: .2rem .5rem; border: 1px solid transparent; border-radius: 4px; }
+		.filters a.active { border-color: #b83f45; }
+		.footer button { border: none; background: none; color: inherit; cursor: pointer; }
+		.footer button:hover { text-decoration: underline; }
+		.toggle-all { display: flex; align-items: center; gap: .5rem; padding: .5rem 1rem; font-size: .85rem; opacity: .7; }
+	</style>
+</head>
+<body>
+	<section class="app">
+		<h1>todos</h1>
+		<div id="root"></div>
+	</section>
+	<p style="text-align:center;opacity:.5;font-size:.8rem" id="stats"></p>
+
+	<script type="module">
+		import { state, effect, el, mount } from "../qrp/index.js";
+		import { persisted } from "../browser/index.js";
+		import { router } from "../qrp/index.js";
+
+		// --- model: one reactive, auto-persisted object --------------------
+		const store = persisted("qrp-todomvc", { items: [], seq: 1 });
+
+		const add = (title) => {
+			title = title.trim();
+			if(!title) return;
+
+			// Reassign the array so the list region re-renders.
+			store.items = [...store.items, { id: store.seq++, title, done: false }];
+		};
+
+		const remove = (id) => {
+			store.items = store.items.filter(t => t.id !== id);
+		};
+
+		const setDone = (id, done) => {
+			store.items = store.items.map(t => t.id === id ? { ...t, done } : t);
+		};
+
+		const rename = (id, title) => {
+			title = title.trim();
+
+			if(!title) {
+				return remove(id);
+			}
+
+			store.items = store.items.map(t => t.id === id ? { ...t, title } : t);
+		};
+
+		const clearDone = () => {
+			store.items = store.items.filter(t => !t.done);
+		};
+
+		const setAll = (done) => {
+			store.items = store.items.map(t => ({ ...t, done }));
+		};
+
+		// --- a single todo row (editable) ----------------------------------
+		const todoRow = (todo, editing) => {
+			const li = el("li", { class: () => `todo ${todo.done ? "completed" : ""}` });
+
+			effect(() => {
+				li.innerHTML = "";
+
+				if(editing.id === todo.id) {
+					const input = el("input", {
+						class: "edit",
+						value: todo.title,
+						onkeydown: (e) => {
+							if(e.key === "Enter") { rename(todo.id, input.value); editing.id = null; }
+							if(e.key === "Escape") { editing.id = null; }
+						},
+						onblur: () => { rename(todo.id, input.value); editing.id = null; }
+					});
+
+					li.appendChild(input);
+					input.focus();
+					return;
+				}
+
+				li.appendChild(el("input", {
+					type: "checkbox",
+					checked: todo.done,
+					onchange: (e) => setDone(todo.id, e.target.checked)
+				}));
+
+				li.appendChild(el("label", {
+					ondblclick: () => { editing.id = todo.id; }
+				}, todo.title));
+
+				li.appendChild(el("button", {
+					class: "destroy",
+					onclick: () => remove(todo.id),
+					title: "Delete"
+				}, "✕"));
+			});
+
+			return li;
+		};
+
+		// --- the app view (filter comes from the route) --------------------
+		const app = (filter) => (view) => {
+			const editing = state({ id: null });
+
+			// new-todo input
+			const input = el("input", {
+				class: "new-todo",
+				placeholder: "What needs to be done?",
+				autofocus: true,
+				onkeydown: (e) => {
+					if(e.key === "Enter") { add(input.value); input.value = ""; }
+				}
+			});
+			view.appendChild(input);
+
+			// toggle-all
+			view.appendChild(el("label", { class: "toggle-all" },
+				el("input", {
+					type: "checkbox",
+					checked: () => store.items.length > 0 && store.items.every(t => t.done),
+					onchange: (e) => setAll(e.target.checked)
+				}),
+				"Mark all as complete"
+			));
+
+			// reactive list, filtered
+			view.appendChild(el("ul", { class: "list" }, () => {
+				return store.items
+					.filter(t => filter === "active" ? !t.done : filter === "completed" ? t.done : true)
+					.map(t => todoRow(t, editing));
+			}));
+
+			// footer
+			view.appendChild(el("div", { class: "footer" },
+				el("span", {}, () => {
+					const left = store.items.filter(t => !t.done).length;
+					return `${left} item${left === 1 ? "" : "s"} left`;
+				}),
+				el("ul", { class: "filters" },
+					el("li", {}, el("a", { href: "/examples/todomvc.html", class: () => filter === "all" ? "active" : "" }, "All")),
+					el("li", {}, el("a", { href: "/active", class: () => filter === "active" ? "active" : "" }, "Active")),
+					el("li", {}, el("a", { href: "/completed", class: () => filter === "completed" ? "active" : "" }, "Completed"))
+				),
+				el("button", {
+					onclick: clearDone,
+					style: () => store.items.some(t => t.done) ? "" : "visibility:hidden"
+				}, "Clear completed")
+			));
+		};
+
+		// --- route the filter ----------------------------------------------
+		router({
+			"/examples/todomvc.html": app("all"),
+			"/active": app("active"),
+			"/completed": app("completed")
+		}, document.getElementById("root"), { transitions: false });
+
+		// tiny live stat readout
+		effect(() => {
+			document.getElementById("stats").textContent =
+				`${store.items.length} todos in state — all reactive, persisted, zero build step`;
+		});
+	</script>
+</body>
+</html>
