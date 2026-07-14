@@ -3,8 +3,8 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>qrp — API reference</title>
-	<meta name="description" content="qrp API reference — every export, signature, and usage snippet. Rendered from docs/API.md, live, with qrp.">
+	<title>qrp — getting started</title>
+	<meta name="description" content="Getting started with qrp — a ten-minute, zero-to-dashboard tour of the five core ideas. Rendered from docs/GETTING-STARTED.md, live, with qrp.">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
 	<style>
 		:root {
@@ -74,7 +74,7 @@
 			<a href="./" class="brand">q<b>r</b>p</a>
 			<div class="nav-links">
 				<a href="./">Home</a>
-				<a href="./start.html">Guide</a>
+				<a href="./api.html">API</a>
 				<a href="./#table">Demos</a>
 				<a href="https://github.com/nemanjan00/qrp" target="_blank">GitHub</a>
 			</div>
@@ -83,10 +83,10 @@
 
 	<div class="layout">
 		<aside>
-			<input class="search" id="search" type="search" aria-label="Filter API reference" placeholder="Filter…" autocomplete="off">
-			<nav id="toc" aria-label="API sections"></nav>
+			<input class="search" id="search" type="search" aria-label="Filter the guide" placeholder="Filter…" autocomplete="off">
+			<nav id="toc" aria-label="Guide sections"></nav>
 		</aside>
-		<main id="doc"><div class="loading">Loading API reference…</div></main>
+		<main id="doc"><div class="loading">Loading the guide…</div></main>
 	</div>
 
 	<script type="importmap">
@@ -118,10 +118,19 @@
 		}
 	</script>
 	<script type="module">
-		import { state, el, effect, list } from "@nemanjan00/qrp";
+		import { state, el, list } from "@nemanjan00/qrp";
 
-		// ---- a compact Markdown → DOM renderer (the subset docs/API.md uses) ----
-		// Dogfoods qrp: no markdown library, just el() building real nodes.
+		// This page fetches docs/GETTING-STARTED.md (single source) and renders it
+		// with a compact Markdown → DOM renderer — dogfooding qrp, no md library.
+
+		// doc-relative links -> the site's pages (the .md is authored for GitHub)
+		const resolveHref = (href) => {
+			if(/^(https?:|#)/.test(href)) { return href; }
+			return href
+				.replace(/^\.\/API\.md/, "api.html")
+				.replace(/^\.\.\/examples/, "examples")
+				.replace(/^\.\.\//, "./");
+		};
 
 		// inline: `code`, **bold**, *italic*, [text](url)
 		const inline = (text) => {
@@ -133,15 +142,14 @@
 				if(m[1] !== undefined) { out.push(el("code", {}, m[1])); }
 				else if(m[2] !== undefined) { out.push(el("strong", {}, ...inline(m[2]))); }
 				else if(m[3] !== undefined) { out.push(el("em", {}, ...inline(m[3]))); }
-				else { out.push(el("a", { href: m[5] }, ...inline(m[4]))); }
+				else { out.push(el("a", { href: resolveHref(m[5]) }, ...inline(m[4]))); }
 				last = m.index + m[0].length;
 			}
 			if(last < text.length) { out.push(text.slice(last)); }
 			return out;
 		};
 
-		// GitHub-compatible slug: strip punctuation, spaces -> hyphens (do NOT
-		// collapse runs), so anchors match the ones in the Markdown on GitHub.
+		// GitHub-compatible slug: strip punctuation, spaces -> hyphens.
 		const slug = (s) => s.toLowerCase().replace(/`/g, "").replace(/[^\w\s-]/g, "").trim().replace(/\s/g, "-");
 
 		// block-level parse → array of DOM nodes; also collects headings for the TOC
@@ -220,7 +228,7 @@
 		};
 
 		// ---- fetch the markdown (single source) and render ----
-		fetch("./docs/API.md").then((r) => {
+		fetch("./docs/GETTING-STARTED.md").then((r) => {
 			if(!r.ok) { throw new Error("HTTP " + r.status); }
 			return r.text();
 		}).then((md) => {
@@ -228,7 +236,6 @@
 			const doc = document.getElementById("doc");
 			doc.replaceChildren(...nodes);
 
-			// searchable TOC (module-level h2s + their h3s), filtered reactively
 			const q = state({ term: "" });
 			const entries = toc.map((t) => ({ ...t, hay: t.text.toLowerCase() }));
 			const tocEl = document.getElementById("toc");
@@ -241,9 +248,9 @@
 			document.getElementById("search").addEventListener("input", (ev) => { q.term = ev.target.value.toLowerCase(); });
 		}).catch((err) => {
 			document.getElementById("doc").replaceChildren(
-				el("p", {}, "Could not load the API reference (", el("code", {}, String(err.message || err)), ")."),
-				el("p", { class: "note" }, "Serve this over HTTP (e.g. python -m http.server) so ./docs/API.md is fetchable, or read it directly: ",
-					el("a", { href: "./docs/API.md" }, "docs/API.md"), "."));
+				el("p", {}, "Could not load the guide (", el("code", {}, String(err.message || err)), ")."),
+				el("p", { class: "note" }, "Serve this over HTTP (e.g. python -m http.server) so ./docs/GETTING-STARTED.md is fetchable, or read it directly: ",
+					el("a", { href: "./docs/GETTING-STARTED.md" }, "docs/GETTING-STARTED.md"), "."));
 		});
 	</script>
 </body>

@@ -15,7 +15,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
 
-**[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[🚀 5-minute example](#-5-minute-example)** · **[💡 Why it exists](#-why-it-exists)**
+**[🚀 Getting started](docs/GETTING-STARTED.md)** · **[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[💡 Why it exists](#-why-it-exists)**
 
 </div>
 
@@ -80,6 +80,10 @@ void handleRoot() {
 ---
 
 ## 📥 Install
+
+> New here? The **[Getting Started guide](docs/GETTING-STARTED.md)** is a
+> ten-minute, zero-to-dashboard walkthrough of the five core ideas. This section
+> is the reference; that's the tutorial.
 
 ```sh
 npm i @nemanjan00/qrp

@@ -117,6 +117,12 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - **`docs/API.md`** — the API reference (curated). **`api.html`** renders it
   live with a qrp-built markdown renderer (single source — the site derives from
   the markdown; don't hand-duplicate API content into the page).
+- **`docs/GETTING-STARTED.md`** — the tutorial (zero-to-dashboard, the five core
+  ideas). **`start.html`** renders it with the same markdown renderer as
+  `api.html` (same single-source pattern; it rewrites the `.md`'s doc-relative
+  links — `./API.md` → `api.html`, `../examples` → `examples` — for the web
+  context). Both pages' `slug()` is GitHub-compatible so cross-page `#anchors`
+  from the docs line up.
 - **`docs/API.md` is generated** from the `.d.ts` by `bin/gen-api.js` (`npm run
   docs`) — the `.d.ts` are the single source; don't hand-edit `API.md`. Curated
   module prose lives in `@module` doc-comments at the top of each `.d.ts`.
