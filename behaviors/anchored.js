@@ -1,0 +1,59 @@
+/**
+ * behaviors/anchored.js — position a floating element next to a trigger.
+ *
+ * Minimal JS positioner (fixed placement, flip-on-overflow) for dropdowns,
+ * tooltips, popovers. If you target modern browsers, the native Popover API +
+ * CSS anchor positioning can replace this — it's here for portability.
+ */
+
+/**
+ * Position `floating` relative to `trigger` and keep it there on scroll/resize.
+ *
+ * @param {Element} trigger the anchor element
+ * @param {Element} floating the element to position
+ * @param {object} [options]
+ * @param {("bottom"|"top")} [options.placement] preferred side (default bottom)
+ * @param {number} [options.gap] px gap between trigger and floating (default 4)
+ * @returns {Function} dispose (also exposes .update() to reposition manually)
+ */
+export const anchored = (trigger, floating, options = {}) => {
+	const placement = options.placement || "bottom";
+	const gap = options.gap === undefined ? 4 : options.gap;
+
+	const update = () => {
+		const t = trigger.getBoundingClientRect();
+		const f = floating.getBoundingClientRect();
+
+		floating.style.position = "fixed";
+
+		let top = placement === "top" ? t.top - f.height - gap : t.bottom + gap;
+
+		// Flip up if it would overflow the bottom and there's room above.
+		if(placement !== "top" && top + f.height > window.innerHeight && t.top - f.height - gap > 0) {
+			top = t.top - f.height - gap;
+		}
+
+		let left = t.left;
+
+		if(left + f.width > window.innerWidth) {
+			left = Math.max(0, window.innerWidth - f.width);
+		}
+
+		floating.style.top = top + "px";
+		floating.style.left = left + "px";
+	};
+
+	update();
+
+	window.addEventListener("resize", update);
+	window.addEventListener("scroll", update, true);
+
+	const dispose = () => {
+		window.removeEventListener("resize", update);
+		window.removeEventListener("scroll", update, true);
+	};
+
+	dispose.update = update;
+
+	return dispose;
+};

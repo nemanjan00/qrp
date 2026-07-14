@@ -10,6 +10,7 @@ import { memoize } from "../utils/memoize.js";
 import { cacheForever, precache, precacheWithRefresh } from "../utils/cache.js";
 import { roundRobinByKey } from "../utils/round-robin.js";
 import { weightedPool } from "../utils/weighted-pool.js";
+import { paginate, pageCount } from "../utils/paginate.js";
 
 // --- lru --------------------------------------------------------------------
 
@@ -173,4 +174,16 @@ test("weightedPool delete recalculates and empty pick is undefined", () => {
 
 	assert.deepEqual(pool.all(), ["b"]);
 	assert.equal(pool.pick(0), "b");
+});
+
+// --- paginate ---------------------------------------------------------------
+
+test("paginate slices by page, size 0 returns all", () => {
+	const data = [1, 2, 3, 4, 5];
+
+	assert.deepEqual(paginate(data, 0, 2), [1, 2]);
+	assert.deepEqual(paginate(data, 2, 2), [5]);
+	assert.deepEqual(paginate(data, 0, 0), data);
+	assert.equal(pageCount(5, 2), 3);
+	assert.equal(pageCount(5, 0), 1);
 });

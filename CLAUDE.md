@@ -77,10 +77,21 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   `auth:unauthorized` rather than knowing about logout.
 - `utils/*.js` — pure data helpers, **one file per concept** (not a single
   grab-bag) so file-level import = pay-for-what-you-use with no bundler:
-  `memoize.js`, `lru.js`, `cache.js`, `round-robin.js`, `weighted-pool.js`;
-  `index.js` is an opt-in barrel. Rule of thumb: unrelated helpers → separate
-  files; a cohesive whole-module (core, http) → one file is fine.
+  `memoize.js`, `lru.js`, `cache.js`, `round-robin.js`, `weighted-pool.js`,
+  `paginate.js`; `index.js` is an opt-in barrel. Rule of thumb: unrelated
+  helpers → separate files; a cohesive whole-module (core, http) → one file.
+- `behaviors/*.js` — headless behaviors to build styled components (one file
+  each): `portal`, `dismissable`, `trap-focus`, `anchored`, `disclosure`,
+  `busy-while`. Carry platform/a11y hard parts; caller brings markup + CSS.
+- `collection/index.js` — reactive sort/filter/paginate combiner over a
+  dataset; `.items` drives a keyed `list()`. The `form()`-analog for data.
 - `proto/index.js` — prototype-level enhancement helpers.
+
+Philosophy in practice: qrp ships **helpers to build (styled) components**, not
+components. Table = collection + list; modal = portal + dismissable + trapFocus;
+dropdown = anchored + dismissable + disclosure. Each helper is headless and
+standalone (like forms' individual inputs); the combiners (form, collection) are
+optional sugar.
 - `test/*.test.js` — tests. `examples/*.html` — runnable demos.
 
 ## Gotchas learned the hard way

@@ -177,13 +177,25 @@ const resolveInput = (field) => {
 	return inputTypes.text;
 };
 
-const settingsItem = (settings, key, field = {}) => {
+/**
+ * Render one labelled field — the middle rung between an individual input and
+ * the whole form(). Build a form row-by-row without the sections machinery:
+ *   view.appendChild(field(settings, "NICK", { name: "Nick", type: "text" }));
+ *
+ * @param {object} settings reactive state holding the value
+ * @param {string} key the settings key to bind
+ * @param {object} [spec] { name, description, type, input, ...attrs }
+ * @returns {Element} label + input (+ description)
+ */
+export const field = (settings, key, spec = {}) => {
 	return el("div", { class: "setting-item" },
-		el("label", {}, field.name || key),
-		resolveInput(field)(settings, key, field),
-		field.description ? el("div", { class: "description" }, field.description) : null
+		el("label", {}, spec.name || key),
+		resolveInput(spec)(settings, key, spec),
+		spec.description ? el("div", { class: "description" }, spec.description) : null
 	);
 };
+
+const settingsItem = field;
 
 /**
  * Render a settings form. Returns a plain element; append it anywhere.

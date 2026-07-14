@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import { state } from "../qrp/index.js";
 import {
-	form, inputs, multichoice, registerInput, getInput,
+	form, field, inputs, multichoice, registerInput, getInput,
 	parseKV, serializeKV
 } from "../forms/index.js";
 
@@ -116,6 +116,22 @@ test("registerInput adds a custom type usable declaratively", () => {
 	});
 
 	assert.equal(el.querySelector("input").dataset.shout, "true");
+});
+
+test("field() renders one labelled input standalone (no form needed)", () => {
+	const settings = state({ NICK: "R2" });
+
+	const row = field(settings, "NICK", { name: "Nick", type: "text", description: "your handle" });
+
+	assert.equal(row.querySelector("label").textContent, "Nick");
+	assert.equal(row.querySelector("input").value, "R2");
+	assert.equal(row.querySelector(".description").textContent, "your handle");
+
+	// still two-way bound
+	const input = row.querySelector("input");
+	input.value = "C3PO";
+	input.dispatchEvent(new Event("input"));
+	assert.equal(settings.NICK, "C3PO");
 });
 
 test("backward-compatible procedural inputs still work", () => {

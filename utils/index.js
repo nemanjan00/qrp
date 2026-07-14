@@ -11,3 +11,4 @@ export { memoize } from "./memoize.js";
 export { cacheForever, precache, precacheWithRefresh } from "./cache.js";
 export { roundRobinByKey } from "./round-robin.js";
 export { weightedPool } from "./weighted-pool.js";
+export { paginate, pageCount } from "./paginate.js";

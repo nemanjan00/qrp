@@ -190,6 +190,47 @@ Built-in types: every native `<input>` variant (`text`, `number`, `email`,
 A live `textual()` textarea can edit the same state as the form, both
 directions at once.
 
+## Helpers to build (styled) components
+
+qrp doesn't ship styled components — it ships the *behaviors* so building your
+own styled ones is trivial. A data table is `collection` + `list`; a modal is
+`portal` + `dismissable` + `trapFocus`; a dropdown is `anchored` + `dismissable`
++ `disclosure`. You write the markup and CSS; the helpers carry the platform and
+a11y hard parts.
+
+```js
+import { portal } from "./behaviors/portal.js";
+import { dismissable } from "./behaviors/dismissable.js";
+import { trapFocus } from "./behaviors/trap-focus.js";
+
+const openModal = (content) => {
+  const dialog = el("div", { class: "my-modal" }, content); // your styled markup
+  const remove = portal(dialog);                             // → document.body
+  const untrap = trapFocus(dialog);                          // a11y focus trap
+  const undismiss = dismissable(dialog, () => close());      // Esc / outside-click
+  const close = () => { undismiss(); untrap(); remove(); };
+  return close;
+};
+```
+
+And a sortable, filterable, keyed table:
+
+```js
+import { collection } from "./collection/index.js";
+
+const view = collection(() => rows, {
+  sort:     state({ key: "name", dir: 1 }),
+  filter:   state({ q: "" }),
+  filterFn: (r, f) => r.name.includes(f.q)
+});
+
+el("table", { class: "table" },
+  el("thead", {}, el("tr", {}, columns.map(c =>
+    el("th", { onclick: () => view.toggleSort(c.key) }, c.label)))),
+  el("tbody", {}, list(view.items, r => r.id, r =>          // keyed reuse
+    el("tr", {}, columns.map(c => el("td", {}, () => r[c.key]))))));
+```
+
 ## HTML5 History routing
 
 `router()` matches `location.pathname` against Express-style patterns
@@ -223,7 +264,9 @@ front and back can share them verbatim.
 | `browser/index.js` | Reactive facades over browser APIs everyone forgot: `persisted` (localStorage + cross-tab sync), `query` (URL as state), `hashState`, `media`, `viewport`, `online`, `visible`, `seen` (IntersectionObserver), `cookies`, `watch` |
 | `events/index.js` | Global event bus on native `EventTarget`: `emitter`, `bus`, `request`/`respond`, `fromEvent`, `channel` (cross-tab via BroadcastChannel), `broadcast` |
 | `http/index.js` | `fetch` wrapper for a JSON backend: `createHttp` — URL shaping, auth headers, a **reactive** in-flight loader, and centralized errors routed to the bus (`error`, `auth:unauthorized`) |
-| `utils/*.js` | Pure data helpers, **one file each** so you import only what you use: `memoize.js` (in-flight dedup + optional LRU), `lru.js`, `cache.js` (`cacheForever`/`precache`/`precacheWithRefresh`), `round-robin.js`, `weighted-pool.js`. `utils/index.js` is an opt-in barrel for all of them |
+| `utils/*.js` | Pure data helpers, **one file each** so you import only what you use: `memoize.js` (in-flight dedup + optional LRU), `lru.js`, `cache.js` (`cacheForever`/`precache`/`precacheWithRefresh`), `round-robin.js`, `weighted-pool.js`, `paginate.js`. `utils/index.js` is an opt-in barrel |
+| `behaviors/*.js` | Headless behaviors to build your own styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile`. Carry the platform/a11y hard parts; you bring the markup + CSS |
+| `collection/index.js` | Reactive sort/filter/paginate over a dataset (`collection`) — the `form()`-style combiner that drives a keyed `list()` table; each stage also usable alone |
 | `toasts/index.js` | Notifications driven by the event bus: `notify.success/error/info/warning`, `toasts` (mountable stack), `createToasts`; content is any renderable |
 | `proto/index.js` | Prototype-level enhancement: `findProto`, `wrapMethod` (idempotent), `onceOnly`, `delegate` |
 
