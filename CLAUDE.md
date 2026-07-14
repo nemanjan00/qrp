@@ -69,6 +69,15 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - `events/index.js` — global event bus over native `EventTarget`.
 - `toasts/index.js` — notifications driven by the bus (`notify.*`, `toasts`);
   content is any renderable.
+- `http/index.js` — `fetch` wrapper (`createHttp`): URL shaping, auth headers,
+  reactive in-flight loader, centralized errors → bus (`error`,
+  `auth:unauthorized`). Auth-agnostic: takes a `token()` getter, emits
+  `auth:unauthorized` rather than knowing about logout.
+- `utils/*.js` — pure data helpers, **one file per concept** (not a single
+  grab-bag) so file-level import = pay-for-what-you-use with no bundler:
+  `memoize.js`, `lru.js`, `cache.js`, `round-robin.js`, `weighted-pool.js`;
+  `index.js` is an opt-in barrel. Rule of thumb: unrelated helpers → separate
+  files; a cohesive whole-module (core, http) → one file is fine.
 - `proto/index.js` — prototype-level enhancement helpers.
 - `test/*.test.js` — tests. `examples/*.html` — runnable demos.
 

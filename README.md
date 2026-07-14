@@ -194,6 +194,8 @@ front and back can share them verbatim.
 | `forms/index.js` | Declarative settings forms over reactive state; an open input-type registry (`registerInput`); `parseKV`/`serializeKV`; live "textual mode" editing the same state |
 | `browser/index.js` | Reactive facades over browser APIs everyone forgot: `persisted` (localStorage + cross-tab sync), `query` (URL as state), `hashState`, `media`, `viewport`, `online`, `visible`, `seen` (IntersectionObserver), `cookies`, `watch` |
 | `events/index.js` | Global event bus on native `EventTarget`: `emitter`, `bus`, `request`/`respond`, `fromEvent`, `channel` (cross-tab via BroadcastChannel), `broadcast` |
+| `http/index.js` | `fetch` wrapper for a JSON backend: `createHttp` — URL shaping, auth headers, a **reactive** in-flight loader, and centralized errors routed to the bus (`error`, `auth:unauthorized`) |
+| `utils/*.js` | Pure data helpers, **one file each** so you import only what you use: `memoize.js` (in-flight dedup + optional LRU), `lru.js`, `cache.js` (`cacheForever`/`precache`/`precacheWithRefresh`), `round-robin.js`, `weighted-pool.js`. `utils/index.js` is an opt-in barrel for all of them |
 | `toasts/index.js` | Notifications driven by the event bus: `notify.success/error/info/warning`, `toasts` (mountable stack), `createToasts`; content is any renderable |
 | `proto/index.js` | Prototype-level enhancement: `findProto`, `wrapMethod` (idempotent), `onceOnly`, `delegate` |
 
@@ -261,6 +263,31 @@ const lastLogin = fromEvent(bus, "user:login", u => u.name); // event → state
 bus.respond("add", ({ a, b }) => a + b);
 await bus.request("add", { a: 2, b: 3 }); // → 5
 ```
+
+## Talking to a backend
+
+`createHttp` is the fetch equivalent of the classic axios-interceptor stack —
+URL shaping, auth headers, a global loader, and centralized errors — but
+auth-agnostic and with the loader as **reactive state** instead of bookkeeping:
+
+```js
+import { createHttp } from "./http/index.js";
+
+const http = createHttp({ baseUrl: "/api/v2", token: () => session.token });
+
+http.get("/things", { params: { page: 2 } });   // → parsed JSON
+http.post("/things", { name: "x" });
+
+// a global progress bar is one effect — no loader.start/stop plumbing in the UI
+effect(() => bar.hidden = http.loading.pending === 0);
+```
+
+Every relative URL is prefixed with `baseUrl`; `params` go through
+`URLSearchParams`; the bearer token (and an optional `x-authorization-client`)
+are attached. A non-2xx response emits `error` on the bus (so a toast shows),
+appends any per-field validation messages, and emits `auth:unauthorized` on a
+401; a 302 rejects silently for the caller to handle. `loader.start`/
+`loader.stop` are still emitted for event-style UIs.
 
 ## Measured, in a real browser
 

@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"test": "node --test 'test/*.test.js'",
-		"lint": "eslint qrp forms browser events toasts proto test",
+		"lint": "eslint qrp forms browser events toasts proto http utils test",
 		"prepare": "husky"
 	},
 	"lint-staged": {
