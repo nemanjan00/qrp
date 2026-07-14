@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>qrp • data table</title>
+	<link rel="stylesheet" href="../qrp.css">
+	<style>
+		body { font-family: var(--qrp-font); max-width: 900px; margin: 2rem auto; padding: 0 1rem; background: var(--qrp-bg); color: var(--qrp-fg); }
+		.toolbar { display: flex; gap: var(--qrp-gap); align-items: center; margin-bottom: var(--qrp-gap); flex-wrap: wrap; }
+		.toolbar input, .toolbar select { padding: 0.45rem 0.6rem; border: 1px solid var(--qrp-border); border-radius: var(--qrp-radius); background: var(--qrp-bg); color: var(--qrp-fg); font: inherit; }
+		.grow { flex: 1; }
+		.pager { display: flex; gap: var(--qrp-gap); align-items: center; justify-content: flex-end; margin-top: var(--qrp-gap); color: var(--qrp-muted); font-size: 0.85rem; }
+		h1 { font-weight: 300; }
+	</style>
+</head>
+<body>
+	<h1>Users <small style="opacity:.5">— a styled table from qrp helpers</small></h1>
+	<div id="app" class="qrp-card"></div>
+
+	<script type="module">
+		import { state, el } from "../qrp/index.js";
+		import { table } from "../table/index.js";
+		import { portal } from "../behaviors/portal.js";
+		import { dismissable } from "../behaviors/dismissable.js";
+		import { trapFocus } from "../behaviors/trap-focus.js";
+		import { toasts, notify } from "../toasts/index.js";
+
+		mount_toasts();
+		function mount_toasts() {
+			import("../qrp/index.js").then(({ mount }) => mount(document.body, toasts.component));
+		}
+
+		// --- fake data ------------------------------------------------------
+		const NAMES = ["carol", "alice", "bob", "dave", "erin", "frank", "grace", "heidi", "ivan", "judy", "mallory", "oscar", "peggy", "trent", "victor", "walter"];
+		const STATUSES = ["active", "idle", "warning", "disconnected"];
+		const rows = NAMES.map((name, i) => ({
+			id: i + 1,
+			account: { name, status: STATUSES[i % STATUSES.length] },
+			followers: Math.floor(Math.random() * 100000),
+			interactions: Math.floor(Math.random() * 5000)
+		}));
+
+		const store = state({ items: rows });
+		const filter = state({ q: "" });
+		const page = state({ index: 0, size: 6 });
+
+		const badge = (status) => el("span", {
+			class: `qrp-badge qrp-badge-${status === "active" ? "success" : status === "warning" ? "warning" : status === "disconnected" ? "danger" : "info"}`
+		}, status);
+
+		// --- the table (all the wiring is declarative) ----------------------
+		const t = table({
+			rows: () => store.items,
+			key: (i) => i.id,
+			filter,
+			filterFn: (item, f) => !f.q || item.account.name.indexOf(f.q.toLowerCase()) !== -1,
+			page,
+			sort: state({ key: "interactions", dir: -1 }),
+			fields: [
+				{ key: "name", label: "User", sortable: true, accessor: (i) => i.account.name },
+				{ key: "status", label: "Status", sortable: true, accessor: (i) => i.account.status, render: (i) => badge(i.account.status) },
+				{ key: "followers", label: "Followers", sortable: true, accessor: (i) => i.followers, formatter: (v) => v.toLocaleString() },
+				{ key: "interactions", label: "Interactions", sortable: true, accessor: (i) => i.interactions, formatter: (v) => v.toLocaleString() },
+				{ key: "actions", label: "", render: (item) => el("button", { class: "qrp-btn", onclick: () => openModal(item) }, "View") }
+			]
+		});
+
+		// --- toolbar (search) ----------------------------------------------
+		const toolbar = el("div", { class: "toolbar" },
+			el("input", { class: "grow", type: "search", placeholder: "Search users…  (filter reuses row elements)", oninput: (e) => { filter.q = e.target.value; page.index = 0; } })
+		);
+
+		// --- pagination -----------------------------------------------------
+		const pager = el("div", { class: "pager" },
+			el("button", { class: "qrp-btn", onclick: () => { if(page.index > 0) page.index--; } }, "‹ Prev"),
+			el("span", {}, () => `Page ${page.index + 1} of ${t.view.pageCount()} — ${t.view.total()} users`),
+			el("button", { class: "qrp-btn", onclick: () => { if(page.index < t.view.pageCount() - 1) page.index++; } }, "Next ›")
+		);
+
+		document.getElementById("app").append(toolbar, t, pager);
+
+		// --- modal from behaviors (portal + trap + dismiss) ----------------
+		function openModal(item) {
+			const dialog = el("div", { class: "qrp-modal" },
+				el("h3", {}, `@${item.account.name}`),
+				el("p", {}, () => `Status: ${item.account.status}`),
+				el("p", {}, `Followers: ${item.followers.toLocaleString()}`),
+				el("button", { class: "qrp-btn qrp-btn-primary", onclick: () => close() }, "Close")
+			);
+			const backdrop = el("div", { class: "qrp-modal-backdrop" }, dialog);
+
+			const remove = portal(backdrop);
+			const untrap = trapFocus(dialog);
+			const undismiss = dismissable(dialog, () => close());
+
+			function close() { undismiss(); untrap(); remove(); notify.info(`Closed @${item.account.name}`); }
+		}
+	</script>
+</body>
+</html>

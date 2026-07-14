@@ -267,6 +267,8 @@ front and back can share them verbatim.
 | `utils/*.js` | Pure data helpers, **one file each** so you import only what you use: `memoize.js` (in-flight dedup + optional LRU), `lru.js`, `cache.js` (`cacheForever`/`precache`/`precacheWithRefresh`), `round-robin.js`, `weighted-pool.js`, `paginate.js`. `utils/index.js` is an opt-in barrel |
 | `behaviors/*.js` | Headless behaviors to build your own styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile`. Carry the platform/a11y hard parts; you bring the markup + CSS |
 | `collection/index.js` | Reactive sort/filter/paginate over a dataset (`collection`) — the `form()`-style combiner that drives a keyed `list()` table; each stage also usable alone |
+| `table/index.js` | Declarative data table (`table`): column config (accessor/formatter/sortByFormatted/render/classes), sortable headers, keyed row reuse, holder-based cell updates on immutable refetch; `.view` exposes the collection for pagination |
+| `qrp.css` | Optional minimal baseline styling (design tokens + semantic classes) so helper-built UIs look fine before you theme them. Not auto-loaded — link it yourself |
 | `toasts/index.js` | Notifications driven by the event bus: `notify.success/error/info/warning`, `toasts` (mountable stack), `createToasts`; content is any renderable |
 | `proto/index.js` | Prototype-level enhancement: `findProto`, `wrapMethod` (idempotent), `onceOnly`, `delegate` |
 

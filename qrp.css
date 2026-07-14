@@ -1,0 +1,243 @@
+/*
+ * qrp.css — minimal, opt-in baseline styling for qrp helpers.
+ *
+ * Not a framework — a tasteful starting layer so a helper-built dashboard looks
+ * fine before you touch it. Everything is driven by CSS custom properties:
+ * override a token below (or per-scope) and the whole system follows. Styles
+ * only target the semantic classes qrp emits (.qrp-table, .qrp-card, …), so
+ * this never fights your own CSS. Link it yourself; qrp does not inject it.
+ *
+ * Dark mode: honors prefers-color-scheme, and a [data-theme] attribute wins.
+ */
+
+:root {
+	--qrp-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--qrp-fg: #1a1a1a;
+	--qrp-muted: #6b7280;
+	--qrp-bg: #ffffff;
+	--qrp-surface: #f7f8fa;
+	--qrp-border: #e4e7ec;
+	--qrp-accent: #2563eb;
+	--qrp-accent-fg: #ffffff;
+	--qrp-danger: #dc2626;
+	--qrp-success: #16a34a;
+	--qrp-warning: #d97706;
+	--qrp-info: #2563eb;
+
+	--qrp-gap: 0.75rem;
+	--qrp-radius: 8px;
+	--qrp-pad: 0.6rem 0.8rem;
+	--qrp-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--qrp-fg: #e6e8eb;
+		--qrp-muted: #9aa4b2;
+		--qrp-bg: #14171a;
+		--qrp-surface: #1c2024;
+		--qrp-border: #2b3138;
+		--qrp-shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+	}
+}
+
+:root[data-theme="dark"] {
+	--qrp-fg: #e6e8eb;
+	--qrp-muted: #9aa4b2;
+	--qrp-bg: #14171a;
+	--qrp-surface: #1c2024;
+	--qrp-border: #2b3138;
+	--qrp-shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="light"] {
+	--qrp-fg: #1a1a1a;
+	--qrp-bg: #ffffff;
+	--qrp-surface: #f7f8fa;
+	--qrp-border: #e4e7ec;
+}
+
+/* --- table ------------------------------------------------------------- */
+
+.qrp-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-family: var(--qrp-font);
+	color: var(--qrp-fg);
+	font-size: 0.9rem;
+}
+
+.qrp-table th,
+.qrp-table td {
+	padding: var(--qrp-pad);
+	text-align: left;
+	border-bottom: 1px solid var(--qrp-border);
+	vertical-align: middle;
+}
+
+.qrp-table thead th {
+	color: var(--qrp-muted);
+	font-weight: 600;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+.qrp-table .qrp-sortable {
+	cursor: pointer;
+	user-select: none;
+}
+
+.qrp-table .qrp-sortable:hover {
+	color: var(--qrp-fg);
+}
+
+.qrp-table .qrp-sort {
+	color: var(--qrp-accent);
+}
+
+.qrp-table tbody tr:hover {
+	background: var(--qrp-surface);
+}
+
+/* --- card -------------------------------------------------------------- */
+
+.qrp-card {
+	background: var(--qrp-bg);
+	border: 1px solid var(--qrp-border);
+	border-radius: var(--qrp-radius);
+	box-shadow: var(--qrp-shadow);
+	padding: var(--qrp-gap);
+	color: var(--qrp-fg);
+	font-family: var(--qrp-font);
+}
+
+.qrp-card-header {
+	font-weight: 600;
+	margin-bottom: var(--qrp-gap);
+}
+
+/* --- button ------------------------------------------------------------ */
+
+.qrp-btn {
+	font: inherit;
+	font-family: var(--qrp-font);
+	padding: 0.4rem 0.8rem;
+	border: 1px solid var(--qrp-border);
+	border-radius: var(--qrp-radius);
+	background: var(--qrp-surface);
+	color: var(--qrp-fg);
+	cursor: pointer;
+}
+
+.qrp-btn:hover {
+	border-color: var(--qrp-accent);
+}
+
+.qrp-btn-primary {
+	background: var(--qrp-accent);
+	color: var(--qrp-accent-fg);
+	border-color: var(--qrp-accent);
+}
+
+/* --- badge ------------------------------------------------------------- */
+
+.qrp-badge {
+	display: inline-block;
+	padding: 0.15rem 0.5rem;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	background: var(--qrp-surface);
+	color: var(--qrp-muted);
+}
+
+.qrp-badge-success { background: var(--qrp-success); color: #fff; }
+.qrp-badge-danger  { background: var(--qrp-danger);  color: #fff; }
+.qrp-badge-warning { background: var(--qrp-warning); color: #fff; }
+.qrp-badge-info    { background: var(--qrp-info);    color: #fff; }
+
+/* --- toasts ------------------------------------------------------------ */
+
+.qrp-toasts {
+	position: fixed;
+	top: 1rem;
+	right: 1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	z-index: 1000;
+	max-width: 340px;
+}
+
+.qrp-toast {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	padding: var(--qrp-pad);
+	border-radius: var(--qrp-radius);
+	box-shadow: var(--qrp-shadow);
+	color: #fff;
+	font-family: var(--qrp-font);
+}
+
+.qrp-toast-title { font-weight: 700; }
+.qrp-toast-body { flex: 1; }
+.qrp-toast-close { border: none; background: none; color: inherit; cursor: pointer; opacity: 0.7; }
+.qrp-toast-close:hover { opacity: 1; }
+.qrp-toast-success { background: var(--qrp-success); }
+.qrp-toast-error   { background: var(--qrp-danger); }
+.qrp-toast-info    { background: var(--qrp-info); }
+.qrp-toast-warning { background: var(--qrp-warning); }
+
+/* --- overlay / spinner ------------------------------------------------- */
+
+.qrp-overlay {
+	position: relative;
+}
+
+.qrp-overlay[data-busy="true"]::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: color-mix(in srgb, var(--qrp-bg) 60%, transparent);
+	backdrop-filter: blur(1px);
+}
+
+.qrp-spinner {
+	width: 1.5rem;
+	height: 1.5rem;
+	border: 3px solid var(--qrp-border);
+	border-top-color: var(--qrp-accent);
+	border-radius: 50%;
+	animation: qrp-spin 0.7s linear infinite;
+}
+
+@keyframes qrp-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* --- modal ------------------------------------------------------------- */
+
+.qrp-modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.qrp-modal {
+	background: var(--qrp-bg);
+	color: var(--qrp-fg);
+	border-radius: var(--qrp-radius);
+	box-shadow: var(--qrp-shadow);
+	padding: calc(var(--qrp-gap) * 1.5);
+	max-width: 90vw;
+	max-height: 85vh;
+	overflow: auto;
+	font-family: var(--qrp-font);
+}

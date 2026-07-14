@@ -85,6 +85,13 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   `busy-while`. Carry platform/a11y hard parts; caller brings markup + CSS.
 - `collection/index.js` — reactive sort/filter/paginate combiner over a
   dataset; `.items` drives a keyed `list()`. The `form()`-analog for data.
+- `table/index.js` — declarative data table over collection+list: column config
+  (accessor/formatter/sortByFormatted/render/classes), sortable headers, keyed
+  row reuse. Uses a per-key reactive HOLDER so cells reflect immutable row
+  REPLACEMENT (refetch) without rebuilding the element. `key` option = the
+  `:key` equivalent (a function → stable id).
+- `qrp.css` — optional minimal baseline (design tokens + semantic classes);
+  link it yourself, qrp never injects it.
 - `proto/index.js` — prototype-level enhancement helpers.
 
 Philosophy in practice: qrp ships **helpers to build (styled) components**, not
