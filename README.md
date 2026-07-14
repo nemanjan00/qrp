@@ -5,7 +5,7 @@
 A data-first, declarative frontend framework for the browser. Zero dependencies,
 zero build step — one `<script type="module">` and you're running. No compiler,
 no bundler, no `node_modules` at runtime. Reactivity is a `Proxy`, the DOM is
-real, and the whole core gzips to **11.5 KB**.
+real, and the core gzips to **~12 KB** as-loaded — over half of that is JSDoc comments (**~5 KB** minified).
 
 ```js
 import { state, el, mount } from "./qrp/index.js";
@@ -406,17 +406,41 @@ classic, built with `list()` + `when()`), `index.html` (forms, routing, toasts),
 > (e.g. `/settings/user`) 404s. That's expected for a History-API app, not a qrp
 > bug.
 
+## TypeScript
+
+Types ship as `*.d.ts` next to each module, so importing `./qrp/index.js`
+resolves them automatically — no `@types` package, no build step, no change to
+how qrp loads. Generics flow through: `state<T>`, `list<T>`, `collection<T>`,
+`table<T>`, `memoize`, and the rest.
+
+```ts
+import { state, el, list } from "./qrp/index.js";
+
+interface User { id: number; name: string; }
+const users = state<{ rows: User[] }>({ rows: [] });
+el("ul", {}, list(() => users.rows, (u) => u.id, (u) => el("li", {}, () => u.name)));
+```
+
+`npm run typecheck` runs `tsc --noEmit` over the declarations and a usage suite
+in strict mode.
+
+## API reference
+
+Full reference — every export, signature, and a usage snippet per module — in
+[`docs/API.md`](docs/API.md).
+
 ## Tests & tooling
 
 ```sh
-npm install    # dev-only: happy-dom (tests), eslint (lint), husky (git hooks)
-npm test       # node --test — 192 tests across every module
-npm run lint   # eslint (eslint:recommended + house style)
+npm install     # dev-only: happy-dom (tests), eslint, typescript, husky
+npm test        # node --test — 192 tests across every module
+npm run lint    # eslint (eslint:recommended + house style)
+npm run typecheck  # tsc --noEmit over the .d.ts + a usage suite (strict)
 ```
 
 The framework has **zero runtime dependencies**; everything in `devDependencies`
-is for tests, lint, and the pre-commit hook. Nothing is required to *use* qrp —
-just load the modules.
+is for tests, lint, types, and the pre-commit hook. Nothing is required to *use*
+qrp — just load the modules.
 
 ---
 

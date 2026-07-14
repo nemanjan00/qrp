@@ -106,6 +106,23 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   link it yourself, qrp never injects it.
 - `proto/index.js` — prototype-level enhancement helpers.
 
+## Types & docs
+
+- **`*.d.ts` next to every module** (hand-written) — importing `./qrp/index.js`
+  resolves `./qrp/index.d.ts` automatically (no `@types`, no build). Generics
+  flow through (`state<T>`, `list<T>`, `collection<T>`, `table<T>`). `Renderable`
+  in `qrp/index.d.ts` is the shared child type (strings/nodes/arrays/functions/
+  list()+when() markers). `npm run typecheck` = `tsc --noEmit` over the `.d.ts`
+  + a usage suite (`test/types.ts`) in strict mode with `skipLibCheck:false`.
+- **`docs/API.md`** — the API reference (curated). **`api.html`** renders it
+  live with a qrp-built markdown renderer (single source — the site derives from
+  the markdown; don't hand-duplicate API content into the page).
+- NOTE (future / "another day"): `.d.ts` and `API.md` could be *generated* from
+  JSDoc to make the code the single source — verified `tsc --declaration
+  --allowJs` emits `.d.ts` from JSDoc, but `any`-heavy without `@template`
+  generics. Enriching JSDoc + a JSDoc→md generator is the north star. Same bucket
+  as shipping a minified build (~5 KB vs ~12 KB as-loaded).
+
 Philosophy in practice: qrp ships **helpers to build (styled) components**, not
 components. Table = collection + list; modal = portal + dismissable + trapFocus;
 dropdown = anchored + dismissable + disclosure. Each helper is headless and
