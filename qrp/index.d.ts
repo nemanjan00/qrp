@@ -121,6 +121,17 @@ export function onDispose(fn: () => void): void;
  */
 export function scope(fn: () => void): Scope;
 
+/**
+ * Build a value in a fresh ownership scope; returns `{ value, dispose }`. Use for
+ * UI created outside a render (a modal opened from an onclick) so its reactive
+ * bindings are owned and torn down with `dispose()` instead of leaking.
+ * @example
+ * const { value: dialog, dispose } = scoped(() => buildReactiveDialog());
+ * const remove = portal(dialog);
+ * const close = () => { dispose(); remove(); };
+ */
+export function scoped<T>(fn: () => T): { value: T; dispose: () => void };
+
 // --- DOM -------------------------------------------------------------------
 
 /**

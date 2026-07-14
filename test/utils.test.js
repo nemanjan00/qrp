@@ -216,3 +216,45 @@ test("throttle runs on the leading edge then caps the rate", async () => {
 	await new Promise((r) => setTimeout(r, 50));
 	assert.equal(calls, 2, "one trailing after the window");
 });
+
+// --- memoize ttl + invalidate -----------------------------------------------
+
+test("memoize ttl expires an entry after it settles", async () => {
+	let calls = 0;
+	const fn = memoize(async (x) => { calls++; return x * 2; }, { ttl: 20 });
+
+	assert.equal(await fn(2), 4);
+	assert.equal(await fn(2), 4);
+	assert.equal(calls, 1, "cached within ttl");
+
+	await new Promise((r) => setTimeout(r, 35));
+	assert.equal(await fn(2), 4);
+	assert.equal(calls, 2, "recomputed after ttl");
+});
+
+test("memoize.invalidate clears one key or all", () => {
+	let calls = 0;
+	const fn = memoize((x) => { calls++; return x; });
+
+	fn(1); fn(2);
+	assert.equal(calls, 2);
+	fn(1);
+	assert.equal(calls, 2, "cached");
+
+	fn.invalidate(1);
+	fn(1);
+	assert.equal(calls, 3, "recomputed after single invalidate");
+
+	fn.invalidate();   // clear all
+	fn(2);
+	assert.equal(calls, 4, "recomputed after clear-all");
+});
+
+test("lru.clear empties the store", () => {
+	const store = lru(3);
+	store.set("a", 1);
+	store.set("b", 2);
+	store.clear();
+	assert.equal(store.size, 0);
+	assert.equal(store.has("a"), false);
+});

@@ -7,7 +7,7 @@
 //
 // build.js bundles + minifies + gzips this into a PROGMEM blob the ESP32 serves.
 
-import { state, el, when, derive, list } from "../../qrp/index.js";
+import { state, el, when, derive, list, scoped } from "../../qrp/index.js";
 import { portal } from "../../behaviors/portal.js";
 import { dismissable } from "../../behaviors/dismissable.js";
 import { trapFocus } from "../../behaviors/trap-focus.js";
@@ -92,7 +92,9 @@ const openScan = () => {
 	const close = () => { if (closed) { return; } closed = true; teardown(); };
 	const pick = (ssid) => { config.ssid = ssid; config.mode = "sta"; note(`selected "${ssid}"`); close(); };
 
-	const dialog = el("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": "Nearby WiFi networks" },
+	// Built from an onclick, so there's no current scope — scoped() owns the
+	// dialog's when()/list() effects so they tear down with the modal (no leak).
+	const { value: dialog, dispose } = scoped(() => el("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": "Nearby WiFi networks" },
 		el("h3", {}, "Nearby networks"),
 		when(() => scan.scanning,
 			() => el("p", { class: "dim" }, "scanning…"),
@@ -104,14 +106,14 @@ const openScan = () => {
 					onkeydown: (e) => { if (e.key === "Enter") { pick(n.ssid); } } },
 				el("span", {}, () => n.ssid),
 				el("span", { class: "sig" }, () => `${n.rssi} dBm`))))),
-		el("button", { class: "modal-close", onclick: close }, "Close"));
+		el("button", { class: "modal-close", onclick: close }, "Close")));
 	const backdrop = el("div", { class: "modal-backdrop" }, dialog);
 
 	// a modal = portal + trapFocus + dismissable; compose their teardowns
 	const remove = portal(backdrop);             // -> document.body
 	const untrap = trapFocus(dialog);            // focus trap + restore
 	const undismiss = dismissable(dialog, close);   // Esc / outside click
-	teardown = () => { undismiss(); untrap(); remove(); };
+	teardown = () => { undismiss(); untrap(); remove(); dispose(); };
 
 	// device scans real networks; the offline demo serves a canned list
 	fetch("api/scan").then((r) => r.json())

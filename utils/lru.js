@@ -40,6 +40,8 @@ export const lru = (max) => {
 
 		delete: (key) => map.delete(key),
 
+		clear: () => map.clear(),
+
 		get size() {
 			return map.size;
 		}

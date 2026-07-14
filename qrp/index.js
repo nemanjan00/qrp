@@ -407,6 +407,24 @@ export const scope = (fn) => {
 };
 
 /**
+ * Build something in a fresh ownership scope and get back both the result and a
+ * dispose(). The fix for UI created OUTSIDE a render — e.g. a modal opened from
+ * an onclick, where there is no current scope, so its reactive bindings would
+ * otherwise be ownerless effects that outlive the DOM:
+ *
+ *   const { value: dialog, dispose } = scoped(() => buildReactiveDialog());
+ *   const remove = portal(dialog);
+ *   const close = () => { dispose(); remove(); };   // effects + DOM both gone
+ */
+export const scoped = (fn) => {
+	let value;
+
+	const self = scope(() => { value = fn(); });
+
+	return { value, dispose: self.dispose };
+};
+
+/**
  * Mount a component into a parent element.
  * A component is just (parent) => { ...appendChild... }.
  * Returns { dispose } which tears down the component's effects and DOM.

@@ -136,6 +136,22 @@ during it. `mount()` wraps this and also clears the DOM — reach for `scope()`
 directly only when you're managing effects **without** a DOM subtree to clear
 (e.g. a bundle of subscriptions you want to tear down together).
 
+### `scoped`
+
+```ts
+scoped<T>(fn: () => T): { value: T
+```
+
+Build a value in a fresh ownership scope; returns `{ value, dispose }`. Use for
+UI created outside a render (a modal opened from an onclick) so its reactive
+bindings are owned and torn down with `dispose()` instead of leaking.
+
+```js
+const { value: dialog, dispose } = scoped(() => buildReactiveDialog());
+const remove = portal(dialog);
+const close = () => { dispose(); remove(); };
+```
+
 ### `el`
 
 ```ts
@@ -760,7 +776,7 @@ A bounded key/value store with least-recently-used eviction.
 ### `memoize`
 
 ```ts
-memoize<F extends (...args: any[]) => any>(fn: F, options?: MemoizeOptions): F
+memoize<F extends (...args: any[]) => any>(fn: F, options?: MemoizeOptions): Memoized<F>
 ```
 
 Memoize a sync/async function by its args (async calls deduped in flight).
@@ -831,7 +847,7 @@ throttle<A extends any[]>(fn: (...args: A) => any, ms?: number): RateLimited<A>
 
 Call fn at most once per `ms` (leading + trailing). Scope-aware: auto-cancels on dispose.
 
-**Supporting types:** `RateLimited`.
+**Supporting types:** `Memoized`, `RateLimited`.
 
 
 ## proto

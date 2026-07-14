@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state, effect, derive, raw, el, mount, scope, clear } from "../qrp/index.js";
+import { state, effect, derive, raw, el, mount, scope, scoped, clear } from "../qrp/index.js";
 
 test("effect runs once immediately", () => {
 	let runs = 0;
@@ -311,4 +311,25 @@ test("mount disposes component effects", () => {
 	s.n = 2;
 	assert.equal(reads, 2); // no leak after unmount
 	assert.equal(parent.innerHTML, "");
+});
+
+test("scoped returns the built value and a dispose that tears its effects down", () => {
+	const s = state({ n: 0 });
+	let runs = 0;
+
+	// built OUTSIDE any render/scope (like a modal opened from onclick)
+	const { value, dispose } = scoped(() => {
+		effect(() => { void s.n; runs++; });
+		return el("div", {}, "modal");
+	});
+
+	assert.equal(value.textContent, "modal");
+	assert.equal(runs, 1);
+
+	s.n = 1;
+	assert.equal(runs, 2, "effect is live while scoped");
+
+	dispose();
+	s.n = 2;
+	assert.equal(runs, 2, "effect disposed — no leak");
 });
