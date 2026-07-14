@@ -630,6 +630,10 @@ effect(() => applyTheme(
 				themeDemo())));
 
 		// the headline: change ONE cell in a 10k table → 1 node of 40,002
+		const vsRow = (name, note, frac, hi) => el("div", { style: "display:grid;grid-template-columns:90px 1fr auto;gap:1rem;align-items:center;font-size:.85rem" },
+			el("strong", { style: hi ? "color:var(--accent2)" : "color:var(--muted)" }, name),
+			el("div", { class: "bar-track", style: "height:14px" }, el("div", { class: "bar-fill", style: `width:${frac}%;background:${hi ? "var(--accent2)" : "var(--muted)"}` })),
+			el("span", { class: "bar-num", style: "min-width:150px;text-align:right" }, note));
 		const perfHeadline = () => el("div", { class: "headline-stat" },
 			el("div", { class: "hs-num" }, "1", el("span", {}, " / 40,002")),
 			el("div", { class: "hs-label" },
@@ -637,7 +641,15 @@ effect(() => applyTheme(
 			el("div", { class: "hs-sub" },
 				"The ", el("code", {}, "Proxy"), " setter fires one tracked effect that writes the one text node it already references — ",
 				el("strong", { style: "color:var(--accent)" }, "~0.8 µs"), ", no diff, no re-render, O(1) regardless of table size. ",
-				el("span", { class: "dim" }, "A virtual-DOM framework re-runs the component and reconciles even for one cell.")));
+				el("span", { class: "dim" }, "That “1 of 40,002” is machine-independent — architectural, not a timing.")),
+			el("div", { style: "max-width:520px;margin:2rem auto 0;display:flex;flex-direction:column;gap:.6rem" },
+				el("div", { class: "dim", style: "font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;text-align:left" }, "JS per single-cell update — shorter is faster (both touch 1 node)"),
+				vsRow("qrp", "~0.8 µs · 1 node", 1.5, true),
+				vsRow("React 18", "~800 µs · 1 node", 100, false)),
+			el("div", { class: "hs-sub", style: "margin-top:1.2rem;font-size:.85rem" },
+				"Both touch exactly one node. React spends ", el("strong", {}, "~1000×"), " the JavaScript to find ",
+				el("em", {}, "which"), " — re-running the component and reconciling 10,000 children; qrp's subscription already points at it. ",
+				el("span", { class: "dim" }, "Measured in real Chromium — reproduce with examples/react-compare.html.")));
 		app.appendChild(section("perf", "Performance", "Change one field. Touch one node.",
 			"The operation where the architecture is categorically different: a single-cell update. Then the full suite — paint-timed in real Chromium against a hand-written keyed vanilla-DOM control (the floor, not another framework); bars show qrp / vanilla, closer to 100% is closer to raw DOM.",
 			perfHeadline(),

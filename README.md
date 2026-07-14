@@ -124,7 +124,7 @@ first-class and produce the same real DOM.
 // el() — plain-DOM helper; function props/children are reactive
 el("span", {}, () => `count: ${counter.n}`);
 
-// html`` — for people who think in HTML. String holes are escaped (XSS-safe);
+// html`` — for people who think in HTML. Interpolated text values are escaped;
 // ${() => …} holes are reactive; onX=${fn} wires listeners.
 html`<button onclick=${() => counter.n++}>${() => counter.n}</button>`;
 ```
@@ -137,8 +137,20 @@ state:
 ```js
 const row = html.template("<tr><td>#{name}</td><td>#{email}</td></tr>");
 row(user);                       // → DOM bound to user.name / user.email
-row(state({ name: "R2" }));      // reactive; #{} is escaped, XSS-safe
+row(state({ name: "R2" }));      // reactive; #{} fields escaped as text
 ```
+
+**On escaping (the precise guarantee).** A value interpolated in **text**
+position (a child hole, `${}` or `#{}`) is rendered as a text node — it can never
+inject an element, `<script>`, or event handler, whatever string it holds.
+Attribute holes are set as the attribute *value* verbatim (via `setAttribute` /
+property, never re-parsed as HTML — so a value can't break out into a new
+attribute or tag), **but qrp does not sanitize URL schemes**: a `javascript:`
+value in an `href` passes through, same as Lit. Don't put untrusted data in
+`href`/`src`/`style` without your own check. The full set of attack vectors —
+`<script>`/`<img onerror>` in text holes, unquoted-attribute breakout attempts,
+the `javascript:` boundary — lives in `test/html-xss.test.js` and is verified in
+real Chromium.
 
 And to drop a live node into a plain concatenated string (no tagged template),
 `ref()` gives you an opt-in token — no prototype patching:
@@ -215,7 +227,7 @@ unused exports tree-shake away.
 | Module | What it gives you |
 |--------|-------------------|
 | `qrp/index.js` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `compilePath` |
-| `html/index.js` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML with reactive, XSS-safe holes |
+| `html/index.js` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML; text holes escaped (see escaping guarantee above) |
 | `forms/index.js` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
 | `table/index.js` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
 | `collection/index.js` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
@@ -239,19 +251,44 @@ text node it already holds a reference to. Measured in real Chromium with a
 `MutationObserver` watching the whole table:
 
 > **1 DOM node touched, out of 40,002.** No diff. No component re-render. No
-> reconcile pass. The cost is **~0.8 µs** of reactivity bookkeeping — you could
-> do over a million single-cell updates per second.
+> reconcile pass. The cost is **~0.8 µs** of reactivity bookkeeping.
 
-A virtual-DOM framework must re-run the component and reconcile its output even
-to change one cell, so its cost scales with the component and the tree. qrp's is
-O(1) and independent of table size.
+That "1 of 40,002" is the important number — it's machine-independent and
+falsifiable: rerun it on any hardware and you get the same answer, because it's
+architectural, not a timing.
 
-**Honest footnote:** this is a win over *virtual-DOM frameworks*, not over
-hand-written vanilla. A bare `textContent =` when you already hold the node
+**Measured against React 18** (memoized keyed rows, `flushSync`, the standard
+list pattern), same operation, same `MutationObserver`:
+
+| Change one cell in 10,000 rows | JS per update | DOM nodes touched |
+|---|---|---|
+| **qrp** | **~0.8 µs** | **1** of 40,002 |
+| React 18 | **~800 µs** | 1 of 40,002 |
+
+Both touch **exactly one DOM node**. React spends ~800 µs of JavaScript to figure
+out *which* node (re-run the component, build 10,000 element descriptors,
+reconcile 10,000 children); qrp spends ~0.8 µs because the subscription already
+points at it. Same DOM outcome, **~1000× the work** — that's the reconcile pass
+qrp doesn't have. It's O(1) and independent of table size. Reproduce it:
+`examples/react-compare.html`.
+
+*(A React with per-row state stores narrows this — but that's the point: you
+have to restructure to avoid the reconcile; qrp is O(1) for free.)*
+
+To put ~0.8 µs in perspective without overclaiming: it's ~20,000 single-cell
+updates' worth of *bookkeeping* inside one 16 ms frame budget. In practice you'd
+never do that many — layout and paint dominate long before (see "update every
+10th row" below, which is 8 ms paint-timed for 1,000 cells: ~10% reactivity,
+~90% paint). That internal consistency is the point: the reactivity is real and
+small, and paint is the rest.
+
+**Honest footnote — vs hand-written vanilla, not React:** this is a win over
+*virtual-DOM frameworks*. A bare `textContent =` when you already hold the node
 reference is ~0.27 µs; finding the cell with `querySelector` first is ~0.46 µs.
-qrp's ~0.8 µs is slightly more — reactivity isn't free. What you get for it: qrp
-*derives* that node reference from the subscription automatically, so you never
-write or maintain the `id → node` map the fast vanilla depends on.
+qrp's ~0.8 µs is slightly more — reactivity isn't free, and that ~0.5 µs is
+exactly what buys the automatic dependency tracking. qrp *derives* the node
+reference from the subscription, so you never write or maintain the `id → node`
+map the fast vanilla depends on.
 
 ### The rest of the suite
 
@@ -273,8 +310,11 @@ median of 5 after warmup, against a hand-written keyed vanilla-DOM control —
 On create, replace, update, and remove, qrp is at **hand-written DOM parity
 (0.9–1.3×)** — there's no reconcile pass to pay for, because updates are
 fine-grained. The swap case was 5.9× before a longest-increasing-subsequence
-reconcile brought it to 1.3×. The remaining gaps (select, clear) are the cost of
-per-row subscriptions and scope disposal.
+reconcile brought it to 1.3×. The remaining gaps are per-row subscriptions
+(select) and scope disposal (clear). **`clear` at 1.8× is the honest weak
+spot**: it disposes each row scope's effects individually, so it scales with
+bindings-per-row — fatter rows make it worse. A bulk scope-drop that frees
+children without visiting each dep-set would fix it; not done yet.
 
 Run it yourself: `examples/bench.html` exposes the suite on `window.bench`
 (`runAll()`, `updateOneNs()`, `mutationsForOne()`).
@@ -355,7 +395,7 @@ classic, built with `list()` + `when()`), `index.html` (forms, routing, toasts),
 
 ```sh
 npm install    # dev-only: happy-dom (tests), eslint (lint), husky (git hooks)
-npm test       # node --test — 182 tests across every module
+npm test       # node --test — 192 tests across every module
 npm run lint   # eslint (eslint:recommended + house style)
 ```
 

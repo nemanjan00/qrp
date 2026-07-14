@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>react single-cell</title></head>
+<body>
+<div id="root"></div>
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<script>
+// A FAIR React 10k-row table: keyed rows, React.memo so unchanged rows are
+// skipped. We measure the cost of changing ONE cell's data.
+const { createElement: h, memo, useState, useRef } = React;
+
+const N = 10000;
+const build = (n) => Array.from({ length: n }, (_, i) => ({ id: i, label: "row " + i }));
+
+// A memoized row — re-renders only when its own props change (referential).
+const Row = memo(function Row({ row }) {
+  return h("tr", null,
+    h("td", null, row.id),
+    h("td", { className: "label" }, row.label),
+    h("td", null, "x"));
+});
+
+let externalSetRows;
+function Table() {
+  const [rows, setRows] = useState(() => build(N));
+  externalSetRows = setRows;
+  return h("table", null, h("tbody", null, rows.map((row) => h(Row, { key: row.id, row }))));
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(h(Table));
+
+// Update ONE row: replace that row object (new ref) inside a new array, so
+// React.memo re-renders exactly that one row. flushSync makes it synchronous so
+// we can time the reconcile itself (not batching/scheduling).
+const flushSync = ReactDOM.flushSync;
+let tick = 0;
+const updateOne = () => {
+  const mid = Math.floor(N / 2);
+  flushSync(() => {
+    externalSetRows((prev) => {
+      const next = prev.slice();
+      next[mid] = { id: prev[mid].id, label: "v" + (tick++) };
+      return next;
+    });
+  });
+};
+
+window.reactBench = {
+  updateOneNs: () => {
+    for (let i = 0; i < 500; i++) updateOne();   // warm
+    const reps = 3000;
+    const t = performance.now();
+    for (let i = 0; i < reps; i++) updateOne();
+    return Math.round((performance.now() - t) / reps * 1e6); // ns per update
+  },
+  mutationsForOne: () => {
+    const rootEl = document.getElementById("root");
+    const total = rootEl.querySelectorAll("*").length;
+    const obs = new MutationObserver(() => {});
+    obs.observe(rootEl, { subtree: true, childList: true, characterData: true, attributes: true });
+    updateOne();
+    const recs = obs.takeRecords();
+    obs.disconnect();
+    const touched = new Set();
+    recs.forEach((m) => { touched.add(m.target); m.addedNodes.forEach(n=>touched.add(n)); m.removedNodes.forEach(n=>touched.add(n)); });
+    return { mutationRecords: recs.length, nodesTouched: touched.size, treeNodes: total };
+  }
+};
+window.__ready = true;
+</script>
+</body></html>
