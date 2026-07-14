@@ -3,28 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Device Settings</title>
+<title>Device Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
 <style>
-	:root { --bg:#0a0d12; --fg:#e8ebf0; --muted:#8894a6; --line:#232d3b; --accent:#ffb23e; --ok:#34d399; }
+	:root { --bg:#0a0d12; --panel:#121821; --fg:#e8ebf0; --muted:#8894a6; --line:#232d3b; --accent:#ffb23e; --ok:#34d399; }
 	* { box-sizing:border-box; }
-	body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,sans-serif; }
-	main { max-width:480px; margin:0 auto; padding:2rem 1.25rem; }
-	h1 { font-size:1.3rem; margin:0 0 .25rem; }
-	p.sub { color:var(--muted); margin:0 0 1.5rem; font-size:.9rem; }
-	label { display:block; margin:.9rem 0 .3rem; font-size:.85rem; color:var(--muted); }
-	input, select { width:100%; padding:.55rem .7rem; background:#121821; color:var(--fg);
+	body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,sans-serif; }
+	main { max-width:520px; margin:0 auto; padding:1.5rem 1.25rem 2.5rem; }
+	h1 { font-size:1.25rem; margin:0 0 1rem; }
+	h2.sec { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:1.8rem 0 .6rem; font-weight:700; }
+
+	.bar-status { display:flex; align-items:center; gap:.5rem; font-size:.82rem; color:var(--muted); margin-bottom:1rem; }
+	.bar-status .spacer { flex:1; }
+	.dot { width:9px; height:9px; border-radius:50%; background:var(--muted); }
+	.dot.on { background:var(--ok); box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+	.dot.sim { background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+
+	.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; }
+	.stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:.7rem .5rem; text-align:center; }
+	.stat-v { font-size:1.35rem; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; }
+	.stat-k { font-size:.68rem; color:var(--muted); margin-top:.15rem; }
+
+	.spark { display:flex; align-items:flex-end; gap:2px; height:52px; margin:.7rem 0 0; padding:.4rem .5rem;
+		background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+	.spark .bar { flex:1; background:linear-gradient(180deg,var(--accent),color-mix(in srgb,var(--accent) 30%,transparent));
+		border-radius:2px 2px 0 0; transition:height .35s ease; min-height:2%; }
+
+	.control { display:flex; align-items:center; gap:1rem; margin-top:1rem; }
+	.toggle { padding:.55rem 1rem; border:1px solid var(--line); border-radius:8px; background:var(--panel);
+		color:var(--muted); font:inherit; font-weight:700; cursor:pointer; }
+	.toggle.led-on { background:var(--accent); color:#1a1206; border-color:var(--accent); }
+	input[type=range] { flex:1; accent-color:var(--accent); }
+
+	.fld { display:block; margin:.7rem 0; }
+	.fld span { display:block; font-size:.78rem; color:var(--muted); margin-bottom:.25rem; }
+	input, select { width:100%; padding:.5rem .65rem; background:var(--bg); color:var(--fg);
 		border:1px solid var(--line); border-radius:8px; font:inherit; }
 	input:focus, select:focus { outline:2px solid var(--accent); outline-offset:-1px; }
-	.actions { display:flex; align-items:center; gap:1rem; margin-top:1.5rem; }
+	.derived { font-size:.82rem; color:var(--ok); margin-top:.3rem; }
+
+	.actions { margin-top:1rem; }
 	.save { padding:.6rem 1.2rem; border:0; border-radius:8px; background:var(--accent);
 		color:#1a1206; font:inherit; font-weight:700; cursor:pointer; }
-	.status { color:var(--ok); font-size:.85rem; }
+
+	.log { list-style:none; margin:0; padding:0; font-size:.82rem; }
+	.log li { padding:.35rem .1rem; border-bottom:1px solid var(--line); color:var(--muted); font-variant-numeric:tabular-nums; }
+
+	.ssid-row { display:flex; gap:.5rem; }
+	.scan-btn { flex:0 0 auto; padding:0 .9rem; border:1px solid var(--accent); border-radius:8px;
+		background:transparent; color:var(--accent); font:inherit; font-weight:600; cursor:pointer; }
+
+	.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(2px);
+		display:flex; align-items:center; justify-content:center; padding:1rem; z-index:100; }
+	.modal { width:100%; max-width:380px; background:var(--panel); border:1px solid var(--line);
+		border-radius:12px; padding:1.2rem; }
+	.modal h3 { margin:0 0 .8rem; font-size:1.05rem; }
+	.netlist { list-style:none; margin:0 0 1rem; padding:0; max-height:230px; overflow-y:auto; }
+	.netlist li { display:flex; justify-content:space-between; align-items:center; gap:1rem;
+		padding:.6rem .7rem; border:1px solid var(--line); border-radius:8px; margin-bottom:.4rem; cursor:pointer; }
+	.netlist li:hover, .netlist li:focus { border-color:var(--accent); outline:none; }
+	.netlist .sig { color:var(--muted); font-size:.8rem; font-variant-numeric:tabular-nums; }
+	.modal-close { width:100%; padding:.55rem; border:1px solid var(--line); border-radius:8px;
+		background:var(--bg); color:var(--fg); font:inherit; cursor:pointer; }
 </style>
 </head>
 <body>
 <main>
-	<h1>Device Settings</h1>
-	<p class="sub">Served from this device's flash — no internet required.</p>
+	<h1>Greenhouse Node</h1>
 	<div id="app"></div>
 </main>
 <script type="module">/*__APP__*/</script>

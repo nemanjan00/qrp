@@ -60,7 +60,7 @@ const header = [
 fs.mkdirSync(rel("src"), { recursive: true });
 fs.writeFileSync(rel("src/dashboard_html_gz.h"), header);
 
-console.log("dashboard app (qrp core + forms), bundled + minified:");
+console.log("live dashboard (qrp core: state/el/when/list/derive), bundled + minified:");
 console.log(`  app JS            ${kb(Buffer.byteLength(appJs))}`);
 console.log(`  full HTML page    ${kb(Buffer.byteLength(html))}`);
 console.log(`  gzipped (flash)   ${kb(gz.length)}   <- total device footprint`);

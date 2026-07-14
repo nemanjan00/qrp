@@ -305,16 +305,16 @@
 
 		// ============================================================ ESP32 / MICROCONTROLLER
 		const espDemo = () => livePanel(
-			el("div", { class: "dim", style: "font-size:.8rem" }, "the exact page an ESP32 serves from flash — live, running here:"),
+			el("div", { class: "dim", style: "font-size:.8rem" }, "the exact page an ESP32 serves from flash — live, running here (demo telemetry):"),
 			el("iframe", {
-				src: "examples/esp32/dashboard.html", loading: "lazy",
-				style: "width:100%;height:390px;border:1px solid var(--border);border-radius:8px;background:#0a0d12"
+				src: "examples/esp32/dashboard.html", loading: "lazy", title: "ESP32 live dashboard demo",
+				style: "width:100%;height:460px;border:1px solid var(--border);border-radius:8px;background:#0a0d12"
 			}),
 			el("div", { class: "row", style: "justify-content:space-between;align-items:center" },
-				el("span", { style: "color:var(--accent2);font-weight:700;font-size:.85rem" }, "~4 KB gzipped · the whole app"),
+				el("span", { style: "color:var(--accent2);font-weight:700;font-size:.85rem" }, "~6 KB gzipped · the whole live dashboard"),
 				el("a", { class: "btn", href: "examples/esp32/dashboard.html", target: "_blank" }, "Open the demo ↗")));
-		app.appendChild(section("esp32", "The extreme case", "Small enough to live on a microcontroller.",
-			"The whole library is ~15 KB min+gzip, so a useful qrp app needs no server and no CDN — it fits in flash on an ESP32. A device's config is data, and form() renders it as a live, two-way-bound settings dashboard. The chip serves the page from PROGMEM over its own WiFi: no filesystem, no internet, no build step on the device. react-dom alone is 10× this entire dashboard.",
+		app.appendChild(section("esp32", "The extreme case", "A live dashboard on a microcontroller.",
+			"The whole library is ~15 KB min+gzip, so a useful qrp app needs no server and no CDN — it fits in flash on an ESP32. Not a static form: telemetry streams into reactive bindings, an LED toggles live, the config form rewrites itself with when(), and a WiFi-scan modal comes from portal + trapFocus + dismissable. The chip serves it all from PROGMEM over its own WiFi — no filesystem, no internet, no build on the device.",
 			el("div", { class: "demo" },
 				codeWindow("main.cpp", `
 // the entire web app, served from flash:
