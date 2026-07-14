@@ -590,9 +590,17 @@ http.get("/me", { params: { page: 2 } });`),
 			// a self-contained router over an in-memory path (no navigation side effects)
 			const cur = state({ path: "overview" });
 			const routes = { overview: view("Overview", "Routes are path patterns; :params and query are parsed for you."), settings: view("Settings", "The matched component mounts in its own scope."), about: view("About", "Leaving a route disposes its effects — no leaks.") };
-			const render = () => { outlet.replaceChildren(); mount(outlet, routes[cur.path]); };
-			effect(render);
-			const link = (p, label) => el("button", { class: () => `tab ${cur.path === p ? "active" : ""}`, onclick: () => cur.path = p }, label);
+			// keep the mount handle and dispose it before the next mount — this IS
+			// what the real router() does: the previous route's scope (effects +
+			// DOM) is torn down on navigation. No stranded handles, no leak.
+			let current = null;
+			const go = (p) => {
+				cur.path = p;
+				if(current) { current.dispose(); }   // disposes prev scope + clears the outlet
+				current = mount(outlet, routes[p]);
+			};
+			go("overview");
+			const link = (p, label) => el("button", { class: () => `tab ${cur.path === p ? "active" : ""}`, onclick: () => go(p) }, label);
 			return livePanel(
 				el("div", { class: "row" }, link("overview", "/overview"), link("settings", "/settings"), link("about", "/about")),
 				outlet);
