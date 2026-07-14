@@ -258,3 +258,18 @@ test("rebind removes keys the fresh object dropped (no stale leftovers)", () => 
 	store.rows = [{ id: 1, a: "1" }];   // b dropped
 	assert.equal(view.querySelector("li").textContent, "a,id");
 });
+
+test("rebind terminates on cyclic objects (depth bound, no stack overflow)", () => {
+	const a = { id: 1, name: "A", self: null };
+	a.self = a;
+	const store = state({ rows: [a] });
+
+	const view = el("ul", {}, list(() => store.rows, (r) => r.id, (r) => el("li", {}, () => r.name)));
+	assert.equal(view.querySelector("li").textContent, "A");
+
+	// refetch a NEW self-referential object with the same key
+	const b = { id: 1, name: "B", self: null };
+	b.self = b;
+	assert.doesNotThrow(() => { store.rows = [b]; });
+	assert.equal(view.querySelector("li").textContent, "B");
+});
