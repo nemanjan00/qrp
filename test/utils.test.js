@@ -11,6 +11,7 @@ import { cacheForever, precache, precacheWithRefresh } from "../utils/cache.js";
 import { paginate, pageCount } from "../utils/paginate.js";
 import { limit } from "../utils/limit.js";
 import { debounce, throttle } from "../utils/debounce.js";
+import { validate } from "../utils/validate.js";
 
 // --- lru --------------------------------------------------------------------
 
@@ -257,4 +258,32 @@ test("lru.clear empties the store", () => {
 	store.clear();
 	assert.equal(store.size, 0);
 	assert.equal(store.has("a"), false);
+});
+
+// --- validate ---------------------------------------------------------------
+
+test("validate returns [] for valid data, errors for invalid", () => {
+	const schema = {
+		name: { type: "string", required: true, min: 2 },
+		age: { type: "number", min: 0, max: 120 },
+		role: { enum: ["admin", "user"] }
+	};
+	assert.deepEqual(validate(schema, { name: "Ada", age: 36, role: "admin" }), []);
+
+	const errs = validate(schema, { name: "A", age: 200, role: "root" });
+	const paths = errs.map((e) => e.path).sort();
+	assert.deepEqual(paths, ["age", "name", "role"]);
+});
+
+test("validate handles required, custom check, and nested fields", () => {
+	const schema = {
+		email: { required: true, pattern: /@/, message: "needs @" },
+		pin: { check: (v) => v === 1234 ? true : "wrong pin" },
+		prefs: { fields: { theme: { enum: ["light", "dark"] } } }
+	};
+	const errs = validate(schema, { pin: 9, prefs: { theme: "neon" } });
+	const map = Object.fromEntries(errs.map((e) => [e.path, e.message]));
+	assert.equal(map.email, "needs @");
+	assert.equal(map.pin, "wrong pin");
+	assert.equal(map["prefs.theme"], "prefs.theme must be one of light, dark");
 });

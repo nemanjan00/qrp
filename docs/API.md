@@ -1179,7 +1179,12 @@ interface DismissableOptions { escape?: boolean; outside?: boolean; }
 ```
 
 ```ts
-interface AnchoredOptions { placement?: "bottom" | "top"; gap?: number; }
+interface AnchoredOptions {
+	placement?: "bottom" | "top";
+	gap?: number;
+	/** Size the floating element to the trigger's width (dropdown-spans-input). */
+	matchWidth?: boolean;
+}
 ```
 
 ```ts
@@ -1296,6 +1301,22 @@ throttle<A extends any[]>(fn: (...args: A) => any, ms?: number): RateLimited<A>
 
 Call fn at most once per `ms` (leading + trailing). Scope-aware: auto-cancels on dispose.
 
+### `loadScript`
+
+```ts
+loadScript(url: string, attrs?: Record<string, string>): ScriptStatus
+```
+
+Inject a UMD/global <script> once (deduped by URL); returns reactive load state.
+
+### `validate`
+
+```ts
+validate(schema: Schema, data: any): ValidationError[]
+```
+
+Validate data against a schema; returns errors ([] when valid).
+
 #### Supporting types
 
 ```ts
@@ -1358,6 +1379,43 @@ interface RateLimited<A extends any[]> {
 ```
 
 A rate-limited wrapper with an imperative cancel for its pending timer.
+
+```ts
+interface ScriptStatus {
+	ready: boolean;
+	error: unknown;
+	/** Resolves when the script loads (non-enumerable; not a reactive key). */
+	readonly promise: Promise<void>;
+}
+```
+
+Reactive load state for a lazily-injected script.
+
+```ts
+interface Rule {
+	required?: boolean;
+	type?: "string" | "number" | "boolean" | "object" | "array" | "null";
+	enum?: any[];
+	/** Number: value bound. String/array: length bound. */
+	min?: number;
+	max?: number;
+	pattern?: RegExp;
+	/** Return true/undefined for ok, or a string message for an error. */
+	check?: (value: any) => true | string | undefined | void;
+	/** Nested schema for object fields. */
+	fields?: Schema;
+	/** Override message for any failure on this field. */
+	message?: string;
+}
+```
+
+```ts
+type Schema = Record<string, Rule>;
+```
+
+```ts
+interface ValidationError { path: string; message: string; }
+```
 
 
 ## proto

@@ -14,6 +14,8 @@
  * @param {object} [options]
  * @param {("bottom"|"top")} [options.placement] preferred side (default bottom)
  * @param {number} [options.gap] px gap between trigger and floating (default 4)
+ * @param {boolean} [options.matchWidth] size floating to the trigger's width
+ *   (the common dropdown-spans-its-input case)
  * @returns {Function} dispose (also exposes .update() to reposition manually)
  */
 export const anchored = (trigger, floating, options = {}) => {
@@ -22,9 +24,14 @@ export const anchored = (trigger, floating, options = {}) => {
 
 	const update = () => {
 		const t = trigger.getBoundingClientRect();
-		const f = floating.getBoundingClientRect();
 
 		floating.style.position = "fixed";
+
+		if(options.matchWidth) {
+			floating.style.minWidth = t.width + "px";
+		}
+
+		const f = floating.getBoundingClientRect();
 
 		let top = placement === "top" ? t.top - f.height - gap : t.bottom + gap;
 
