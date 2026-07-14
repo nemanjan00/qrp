@@ -176,3 +176,41 @@ test("field passes native attrs through (class, disabled, rows, aria-*)", () => 
 	assert.equal(input.hasAttribute("name"), false);
 	assert.equal(input.hasAttribute("description"), false);
 });
+
+test("form renders the fields spec even when settings lacks the key (+ seeds default)", () => {
+	const settings = state({});   // server hasn't sent anything yet
+	const el = form({
+		fields: { MODE: { name: "Mode", type: "text", default: "sta" } },
+		settings
+	});
+	const input = el.querySelector("input");
+	assert.ok(input, "field renders from the spec, not from settings keys");
+	assert.equal(input.value, "sta", "default seeded into settings");
+	assert.equal(settings.MODE, "sta");
+});
+
+test("form does not render unknown settings keys as mystery inputs", () => {
+	const settings = state({ MODE: "sta", secretInternalFlag: true });
+	const el = form({ fields: { MODE: { type: "text" } }, settings });
+	assert.equal(el.querySelectorAll("input").length, 1, "only the declared field");
+});
+
+test("form supports dotted paths (nested settings), two-way bound", () => {
+	const settings = state({ wifi: { ssid: "home" } });
+	const el = form({
+		fields: { "wifi.ssid": { name: "SSID", type: "text" } },
+		settings
+	});
+	const input = el.querySelector("input");
+	assert.equal(input.value, "home");
+
+	input.value = "office";
+	input.dispatchEvent(new Event("input"));
+	assert.equal(settings.wifi.ssid, "office", "writes through the nested path");
+});
+
+test("form dotted path creates intermediate objects + seeds nested default", () => {
+	const settings = state({});
+	form({ fields: { "a.b.c": { type: "text", default: "x" } }, settings });
+	assert.equal(settings.a.b.c, "x");
+});

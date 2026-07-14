@@ -194,8 +194,31 @@ const resolveInput = (field) => {
 const LABELABLE = new Set(["INPUT", "SELECT", "TEXTAREA"]);
 let fieldSeq = 0;
 
+/**
+ * Resolve a (possibly dotted) key to the object that holds the leaf and the leaf
+ * name — creating intermediate plain objects through the proxy so nested fields
+ * ("dynamics.pattern.switch") bind reactively. `a.b` → { target: settings.a, leaf: "b" }.
+ */
+const resolveTarget = (settings, key) => {
+	const parts = String(key).split(".");
+	let target = settings;
+
+	for(let i = 0; i < parts.length - 1; i++) {
+		const part = parts[i];
+
+		if(target[part] === undefined || target[part] === null || typeof target[part] !== "object") {
+			target[part] = {};
+		}
+
+		target = target[part];
+	}
+
+	return { target, leaf: parts[parts.length - 1] };
+};
+
 export const field = (settings, key, spec = {}) => {
-	const control = resolveInput(spec)(settings, key, spec);
+	const { target, leaf } = resolveTarget(settings, key);
+	const control = resolveInput(spec)(target, leaf, spec);
 
 	// associate the label with the control for a11y (screen readers, click-to-focus)
 	const labelAttrs = {};
@@ -229,28 +252,43 @@ const settingsItem = field;
  * @returns {Element} the form container element
  */
 export const form = ({ fields = {}, sections = [{ name: "Settings", filter: () => true }], settings }) => {
-	Object.entries(fields).forEach(([key, field]) => {
-		if(settings[key] === undefined && field.default !== undefined) {
-			settings[key] = field.default;
+	const fieldKeys = Object.keys(fields);
+
+	// Seed missing values from each field's default (dotted paths included).
+	fieldKeys.forEach(key => {
+		const { target, leaf } = resolveTarget(settings, key);
+
+		if(target[leaf] === undefined && fields[key].default !== undefined) {
+			target[leaf] = fields[key].default;
 		}
 	});
 
+	// The `fields` spec is the declared intent, so it drives what renders (a
+	// field appears even before the server sends its key; unknown settings keys
+	// don't leak in as mystery inputs). With no `fields`, fall back to rendering
+	// whatever keys settings holds — the reactive-key-set / textual-editor flow.
+	const fieldsDriven = fieldKeys.length > 0;
+
+	const currentValue = (key) => {
+		const { target, leaf } = resolveTarget(raw(settings), key);
+
+		return target ? target[leaf] : undefined;
+	};
+
 	const sectionFor = (key) => {
-		// Read the value through raw() so this does NOT track the value —
-		// only the key set drives re-grouping. Value edits are handled by
-		// each input's own binding, so the form structure (and the user's
-		// caret) survives them.
-		const match = sections.find(section => section.filter(key, raw(settings)[key]));
+		// raw() read so grouping tracks only the key set, not values.
+		const match = sections.find(section => section.filter(key, currentValue(key)));
 
 		return match ? match.name : "Other";
 	};
 
-	return el("div", { class: "settings-container" }, () => {
+	const build = () => {
 		// Map, not {} — a section literally named "constructor"/"toString" would
 		// otherwise hit an inherited Object.prototype member and crash .push.
 		const grouped = new Map();
+		const keys = fieldsDriven ? fieldKeys : Object.keys(settings);
 
-		Object.keys(settings).forEach(key => {
+		keys.forEach(key => {
 			const name = sectionFor(key);
 
 			if(!grouped.has(name)) {
@@ -269,7 +307,13 @@ export const form = ({ fields = {}, sections = [{ name: "Settings", filter: () =
 					grouped.get(name).map(key => settingsItem(settings, key, fields[key]))
 				)
 			]);
-	});
+	};
+
+	// Fields-driven forms are a static structure (config, not data) → build once.
+	// The settings-driven fallback stays reactive to key add/remove.
+	return fieldsDriven
+		? el("div", { class: "settings-container" }, ...build())
+		: el("div", { class: "settings-container" }, build);
 };
 
 /**

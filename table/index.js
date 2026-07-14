@@ -165,9 +165,10 @@ export const table = (options) => {
 		const props = fieldSpec.tdClass ? { class: fieldSpec.tdClass } : {};
 
 		if(fieldSpec.render) {
-			// Custom cells are built once with the current item; use formatter
-			// columns for values that must react to data replacement.
-			return el("td", props, fieldSpec.render(holder.item));
+			// Reactive: re-invoke render when the row's item is replaced (refetch),
+			// so custom/action cells reflect fresh data instead of the item they
+			// were built with. Reading holder.item in the thunk tracks it.
+			return el("td", props, () => fieldSpec.render(holder.item));
 		}
 
 		return el("td", props, () => {

@@ -191,3 +191,20 @@ test("exposes the collection controller for pagination", () => {
 	assert.equal(t.view.pageCount(), 2);
 	assert.equal(t.view.total(), 3);
 });
+
+test("render (custom) cells re-run when the row's data is replaced (§2.3c)", () => {
+	const store = state({ rows: [{ id: 1, blocked: false }] });
+	const t = table({
+		rows: () => store.rows,
+		key: (r) => r.id,
+		fields: [
+			{ key: "action", label: "", render: (r) => el("button", {}, r.blocked ? "Unblock" : "Block") }
+		]
+	});
+
+	assert.equal(t.querySelector("tbody button").textContent, "Block");
+
+	// refetch: same key, mutated field — the action cell must reflect it
+	store.rows = [{ id: 1, blocked: true }];
+	assert.equal(t.querySelector("tbody button").textContent, "Unblock");
+});
