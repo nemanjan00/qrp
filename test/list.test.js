@@ -204,3 +204,57 @@ test("filter/sort scenario reuses the same nodes across passes", () => {
 	query.q = ""; // back to all
 	assert.equal([...ul.querySelectorAll("li")].length, 3);
 });
+
+test("a surviving key rebinds to a fresh object (refetch shows new data)", () => {
+	const store = state({ rows: [{ id: 1, name: "Ada" }, { id: 2, name: "Grace" }] });
+
+	const view = el("ul", {}, list(
+		() => store.rows,
+		(r) => r.id,
+		(r) => el("li", {}, () => r.name)
+	));
+
+	const firstLi = view.querySelector("li");
+	assert.equal(firstLi.textContent, "Ada");
+
+	// refetch: brand-new objects, same keys, changed field
+	store.rows = [{ id: 1, name: "Ada Lovelace" }, { id: 2, name: "Grace Hopper" }];
+
+	assert.equal(view.querySelectorAll("li")[0].textContent, "Ada Lovelace");
+	assert.equal(view.querySelectorAll("li")[1].textContent, "Grace Hopper");
+	// element identity preserved (rebound, not rebuilt)
+	assert.equal(view.querySelector("li"), firstLi);
+});
+
+test("rebind is a bounded recursive merge: nested fields + captured sub-proxy stay live", () => {
+	const store = state({ rows: [{ id: 1, meta: { status: "active", tags: ["x"] } }] });
+	let capturedMeta;
+
+	const view = el("ul", {}, list(
+		() => store.rows,
+		(r) => r.id,
+		(r) => { capturedMeta = r.meta; return el("li", {}, () => `${r.meta.status}:${r.meta.tags.join(",")}`); }
+	));
+
+	assert.equal(view.querySelector("li").textContent, "active:x");
+
+	// fresh objects all the way down; deep field + nested array changed
+	store.rows = [{ id: 1, meta: { status: "idle", tags: ["x", "y"] } }];
+	assert.equal(view.querySelector("li").textContent, "idle:x,y");
+	// nested proxy identity preserved: a reference captured at build time sees it
+	assert.equal(capturedMeta.status, "idle", "captured nested proxy rebinds in place");
+});
+
+test("rebind removes keys the fresh object dropped (no stale leftovers)", () => {
+	const store = state({ rows: [{ id: 1, a: "1", b: "2" }] });
+
+	const view = el("ul", {}, list(
+		() => store.rows,
+		(r) => r.id,
+		(r) => el("li", {}, () => Object.keys(r).sort().join(","))
+	));
+
+	assert.equal(view.querySelector("li").textContent, "a,b,id");
+	store.rows = [{ id: 1, a: "1" }];   // b dropped
+	assert.equal(view.querySelector("li").textContent, "a,id");
+});

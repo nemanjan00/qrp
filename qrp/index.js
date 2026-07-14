@@ -684,6 +684,46 @@ const lisIndices = (arr) => {
 	return result;
 };
 
+// Max depth reconcileItem recurses into nested plain objects before falling back
+// to reference assignment. Bounds cost and prevents runaway recursion on deep or
+// cyclic data — deeper subtrees are still updated, just replaced wholesale.
+const REBIND_DEPTH = 8;
+
+const isPlainObject = (value) => {
+	if(!value || typeof value !== "object" || Array.isArray(value)) {
+		return false;
+	}
+
+	const proto = Object.getPrototypeOf(value);
+
+	return proto === Object.prototype || proto === null;
+};
+
+// Merge `source` (a fresh raw item) INTO the row's reactive proxy, in place:
+// recurse into nested plain objects (so their proxy identity is preserved and
+// only changed leaf keys trigger), assign changed leaves, and delete keys the
+// fresh object dropped. Depth-limited; must run inside untracked().
+const reconcileItem = (targetProxy, source, depth) => {
+	const targetRaw = raw(targetProxy);
+
+	Object.keys(source).forEach((key) => {
+		const sv = source[key];
+		const tv = targetRaw[key];
+
+		if(depth > 0 && isPlainObject(sv) && isPlainObject(tv)) {
+			reconcileItem(targetProxy[key], sv, depth - 1);
+		} else if(!Object.is(tv, sv)) {
+			targetProxy[key] = sv;
+		}
+	});
+
+	Object.keys(targetRaw).forEach((key) => {
+		if(!(key in source)) {
+			delete targetProxy[key];
+		}
+	});
+};
+
 const setupList = (parent, marker) => {
 	const anchor = document.createComment("qrp-list");
 	parent.appendChild(anchor);
@@ -734,7 +774,16 @@ const setupList = (parent, marker) => {
 					});
 				});
 
-				entry = { element, scope: rowScope };
+				entry = { element, scope: rowScope, item: reactiveItem, rawItem: item };
+			} else if(entry.rawItem !== item) {
+				// Surviving key, but a FRESH object (e.g. a refetch): rebind the
+				// row's reactive item so its cells show the new data instead of
+				// the object captured when the row was built. A bounded recursive
+				// merge preserves nested proxy identity and only triggers changed
+				// leaves; dropped keys are removed. Same-identity (mutated-in-place)
+				// rows already updated through their own bindings.
+				untracked(() => reconcileItem(entry.item, item, REBIND_DEPTH));
+				entry.rawItem = item;
 			}
 
 			next.set(key, entry);
