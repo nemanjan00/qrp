@@ -111,8 +111,10 @@
 		.bars { display: flex; flex-direction: column; gap: 0.7rem; }
 		.bar-row { display: grid; grid-template-columns: 150px 1fr 70px; align-items: center; gap: 0.8rem; font-size: 0.85rem; }
 		.bar-track { background: var(--surface2); border-radius: 6px; height: 22px; overflow: hidden; position: relative; }
-		.bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #ff8c00); border-radius: 6px; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+		.bar-fill { height: 100%; border-radius: 6px; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
 		.bar-num { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+		/* vanilla-parity marker at 1.0× (50% of the 2× scale) */
+		.vanilla-line { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 2px; background: var(--fg); opacity: 0.35; z-index: 1; }
 
 		.reveal { opacity: 0; transform: translateY(24px); transition: .7s cubic-bezier(.2,.8,.2,1); }
 		.reveal.shown { opacity: 1; transform: none; }
@@ -132,6 +134,24 @@
 		table.qrp-table { font-size: 0.85rem; }
 		.toolbar { display: flex; gap: 0.6rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
 		.pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.8rem; font-size: 0.82rem; color: var(--muted); }
+
+		/* --- responsive --- */
+		@media (max-width: 820px) {
+			.nav-links { gap: 0.9rem; font-size: 0.82rem; }
+			.nav-links a[href^="#"] { display: none; }   /* keep GitHub + status dot; drop section jumps */
+		}
+		@media (max-width: 760px) {
+			section { padding: 3.5rem 1.1rem; }
+			.headline-stat { padding: 1.8rem 1.1rem; }
+			.bar-row { grid-template-columns: 110px 1fr 52px; gap: 0.5rem; font-size: 0.78rem; }
+			pre { font-size: 0.76rem; padding: 0.9rem; }
+			.demo { gap: 0.9rem; }
+		}
+		@media (max-width: 460px) {
+			.nav-links a:not([href^="http"]) { display: none; }
+			.badges { gap: 0.4rem; }
+			.badge { font-size: 0.74rem; padding: 0.3rem 0.7rem; }
+		}
 	</style>
 </head>
 <body>
@@ -402,7 +422,7 @@ form({ settings, fields: {
 				el("div", { style: "padding:1rem" },
 					el("div", { class: "toolbar" },
 						el("input", { type: "search", placeholder: "Filter names…", style: "flex:1", oninput: (e) => { filter.q = e.target.value; page.index = 0; } })),
-					t,
+					el("div", { style: "overflow-x:auto" }, t),
 					el("div", { class: "pager" },
 						el("button", { class: "btn", onclick: () => { if(page.index > 0) page.index--; } }, "‹"),
 						el("span", {}, () => `page ${page.index + 1} / ${t.view.pageCount()} — ${t.view.total()} people`),
@@ -410,7 +430,23 @@ form({ settings, fields: {
 		};
 		app.appendChild(section("table", "The flagship", "A data table in a dozen lines.",
 			"Sortable headers, live filter, pagination, and keyed row reuse — sort or filter and qrp moves the existing <tr> nodes instead of rebuilding them. Click the headers.",
-			tableDemo()));
+			el("div", { style: "display:grid;grid-template-columns:1fr;gap:1.2rem" },
+				codeWindow("table.js", `
+const t = table({
+  rows: () => store.rows,
+  key: (r) => r.id,                       // the :key equivalent
+  filter, page,
+  filterFn: (r, f) => r.name.toLowerCase().includes(f.q),
+  sort: state({ key: "signups", dir: -1 }),
+  fields: [
+    { key: "name",    label: "Name",    sortable: true },
+    { key: "status",  label: "Status",  sortable: true,
+      render: (r) => badge(r.status) },
+    { key: "signups", label: "Signups", sortable: true,
+      formatter: (v) => v.toLocaleString() }
+  ]
+});`),
+				tableDemo())));
 
 		// ============================================================ BEHAVIORS (modal + dropdown + accordion)
 		const openModal = () => {
@@ -492,18 +528,27 @@ el("button", { onclick: () => prefs.likes++ });`),
 				browserDemo())));
 
 		// ============================================================ PERFORMANCE
+		// all eight ops, including the two worst (create 10k, clear 10k) — the
+		// README shows all eight, so does this. Bar length = COST relative to
+		// vanilla on a fixed 2× scale, so LONGER = SLOWER (same as the headline
+		// chart); the marker line sits at 1.0× (hand-written vanilla parity).
 		const perfData = [
-			["create 1,000 rows", 0.9], ["replace all rows", 1.0], ["update every 10th", 0.9],
-			["swap 2 in 10,000", 1.3], ["remove a row", 1.2], ["select a row", 1.5]
+			["create 1,000 rows", 0.9], ["create 10,000 rows", 1.3], ["replace all rows", 1.0],
+			["update every 10th", 0.9], ["swap 2 in 10,000", 1.3], ["remove a row", 1.2],
+			["select a row", 1.5], ["clear 10,000 rows", 1.8]
 		];
 		const perfSection = () => {
 			const shown = state({ on: false });
 			const bars = el("div", { class: "bars" }, perfData.map(([label, ratio]) =>
 				el("div", { class: "bar-row" },
 					el("span", {}, label),
-					el("div", { class: "bar-track" }, el("div", { class: "bar-fill", style: () => `width:${shown.on ? Math.min(100, 100 / ratio) : 0}%` })),
+					el("div", { class: "bar-track" },
+						el("div", { class: "vanilla-line" }),
+						el("div", { class: "bar-fill", style: () => `width:${shown.on ? Math.min(100, ratio / 2 * 100) : 0}%;background:${ratio <= 1.05 ? "var(--accent2)" : "var(--accent)"}` })),
 					el("span", { class: "bar-num" }, `${ratio}×`))));
-			const wrap = el("div", {}, bars);
+			const wrap = el("div", {},
+				el("div", { class: "dim", style: "font-size:.78rem;margin-bottom:.8rem" }, "longer = slower. The line is hand-written vanilla (1×); bars left of it beat raw DOM, right of it are slower."),
+				bars);
 			const vis = seen(wrap, { threshold: 0.3 });
 			effect(() => { if(vis.matches) shown.on = true; });
 			return wrap;
@@ -651,7 +696,7 @@ effect(() => applyTheme(
 				el("em", {}, "which"), " — re-running the component and reconciling 10,000 children; qrp's subscription already points at it. ",
 				el("span", { class: "dim" }, "Measured in real Chromium — reproduce with examples/react-compare.html.")));
 		app.appendChild(section("perf", "Performance", "Change one field. Touch one node.",
-			"The operation where the architecture is categorically different: a single-cell update. Then the full suite — paint-timed in real Chromium against a hand-written keyed vanilla-DOM control (the floor, not another framework); bars show qrp / vanilla, closer to 100% is closer to raw DOM.",
+			"The operation where the architecture is categorically different: a single-cell update. Then the full suite — all eight ops, paint-timed in real Chromium against a hand-written keyed vanilla-DOM control (the floor, not another framework). Includes the two we're slower on: clear (1.8×) is the honest weak spot.",
 			perfHeadline(),
 			el("h3", { style: "margin:2.5rem 0 1rem;font-size:1rem;color:var(--muted)" }, "The full suite, vs hand-written vanilla DOM"),
 			perfSection()));
