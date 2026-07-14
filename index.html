@@ -191,6 +191,7 @@
 		import { disclosure } from "./behaviors/disclosure.js";
 		import { busyWhile } from "./behaviors/busy-while.js";
 		import { persisted, viewport, online, seen, media } from "./browser/index.js";
+		import { wrapMethod, delegate } from "./proto/index.js";
 
 		// mount the global toast stack (demos fire real toasts)
 		mount(document.body, toasts.component);
@@ -206,7 +207,7 @@
 		const highlight = (code) => {
 			const esc = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 			return esc.replace(
-				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|define|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen)\b/g,
+				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|define|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen|wrapMethod|delegate|onceOnly)\b/g,
 				(m, c, s, k, fn) =>
 					c ? `<span class="c">${c}</span>`
 					: s ? `<span class="s">${s}</span>`
@@ -345,6 +346,47 @@ define("qrp-clock", (host) => {
 				livePanel(
 					el("div", { class: "dim", style: "font-size:.8rem" }, "a live <qrp-clock> element:"),
 					el("qrp-clock")))));
+
+		// ============================================================ PROTOTYPES
+		// wrapMethod is the userscript trick made a primitive: augment a method on
+		// a prototype in place, idempotently (the tag guard stops double-wrapping).
+		const protoDemo = () => {
+			// a tiny "service" built on a prototype — the thing you'd want to patch
+			const Api = { greet(name) { return `hello, ${name}`; } };
+			const account = Object.create(Api);
+			const log = state({ lines: [] });
+			const call = () => log.lines = [...log.lines, account.greet("ada")].slice(-4);
+			const patch = () => {
+				// wrap greet() to shout — tagged, so pressing twice is a no-op
+				wrapMethod(Api, "greet", (original) => function(name) {
+					return original.call(this, name).toUpperCase() + "!";
+				}, "shout");
+				call();
+			};
+			return livePanel(
+				el("div", { class: "dim", style: "font-size:.8rem" }, "call the method, then patch its prototype in place — existing objects pick up the new behavior:"),
+				el("div", { class: "row" },
+					el("button", { class: "btn", onclick: call }, "account.greet()"),
+					el("button", { class: "btn btn-primary", onclick: patch }, "wrapMethod(shout)")),
+				el("div", { class: "view-panel", style: "min-height:auto;font-family:var(--mono,monospace);font-size:.82rem" },
+					list(() => log.lines.map((t, i) => ({ id: i, t })), (r) => r.id,
+						(r) => el("div", { style: "color:var(--accent2)" }, "→ ", () => r.t))));
+		};
+		app.appendChild(section("proto", "Prototypes", "Patch behavior in place. No classes.",
+			"You love objects and __proto__ over inheritance — so qrp ships the tools for it. wrapMethod() augments a method on any prototype (yours or a native one) idempotently: a tag guard stops a second wrap, so it's safe to run on every hot-reload. delegate() and onceOnly() round out the set. It's the logout-userscript trick, made a primitive.",
+			el("div", { class: "demo" },
+				codeWindow("proto.js", `
+// intercept a method on a prototype, in place:
+wrapMethod(Api, "greet", (original) =>
+  function (name) {
+    return original.call(this, name)
+      .toUpperCase() + "!";
+  }, "shout");        // tag → wrapping is idempotent
+
+// one delegated listener for a whole list:
+delegate(list, "button.del", (e, el) =>
+  remove(el.dataset.id));`),
+				protoDemo())));
 
 		// ============================================================ FORMS
 		registerInput("callsign", (settings, key, field) => {
@@ -709,6 +751,7 @@ effect(() => applyTheme(
 			["🔔", "toasts", "notifications off the bus; content is any renderable"],
 			["🪟", "browser", "URL, localStorage, media, viewport, online — as reactive state"],
 			["🧩", "behaviors", "portal, dismissable, trapFocus, anchored, disclosure"],
+			["🧬", "proto", "wrapMethod, delegate, onceOnly — patch prototypes, no classes"],
 			["🛠️", "utils", "memoize, lru, cache, paginate — pure helpers"],
 			["🎨", "qrp.css", "optional minimal baseline (design tokens + classes)"]
 		];
