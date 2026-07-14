@@ -81,12 +81,17 @@ const SIM_NETS = [
 	{ ssid: "farmhouse", rssi: -81 }
 ];
 const scan = state({ nets: [], scanning: false });
-let closeModal = () => {};
 
-const pickNetwork = (ssid) => { config.ssid = ssid; config.mode = "sta"; note(`selected "${ssid}"`); closeModal(); };
-
+// Everything the modal needs is local to openScan — close and pick close over
+// THIS invocation, so the pattern stays correct if copied for a second modal.
 const openScan = () => {
 	scan.nets = []; scan.scanning = true;
+
+	let closed = false;
+	let teardown = () => {};
+	const close = () => { if (closed) { return; } closed = true; teardown(); };
+	const pick = (ssid) => { config.ssid = ssid; config.mode = "sta"; note(`selected "${ssid}"`); close(); };
+
 	const dialog = el("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": "Nearby WiFi networks" },
 		el("h3", {}, "Nearby networks"),
 		when(() => scan.scanning,
@@ -95,18 +100,18 @@ const openScan = () => {
 				() => scan.nets,
 				(n) => n.ssid,
 				(n) => el("li", { tabindex: "0", role: "button",
-					onclick: () => pickNetwork(n.ssid),
-					onkeydown: (e) => { if (e.key === "Enter") { pickNetwork(n.ssid); } } },
+					onclick: () => pick(n.ssid),
+					onkeydown: (e) => { if (e.key === "Enter") { pick(n.ssid); } } },
 				el("span", {}, () => n.ssid),
 				el("span", { class: "sig" }, () => `${n.rssi} dBm`))))),
-		el("button", { class: "modal-close", onclick: () => closeModal() }, "Close"));
+		el("button", { class: "modal-close", onclick: close }, "Close"));
 	const backdrop = el("div", { class: "modal-backdrop" }, dialog);
 
+	// a modal = portal + trapFocus + dismissable; compose their teardowns
 	const remove = portal(backdrop);             // -> document.body
 	const untrap = trapFocus(dialog);            // focus trap + restore
-	const undismiss = dismissable(dialog, () => closeModal());   // Esc / outside click
-	let closed = false;
-	closeModal = () => { if (closed) { return; } closed = true; undismiss(); untrap(); remove(); };
+	const undismiss = dismissable(dialog, close);   // Esc / outside click
+	teardown = () => { undismiss(); untrap(); remove(); };
 
 	// device scans real networks; the offline demo serves a canned list
 	fetch("api/scan").then((r) => r.json())
@@ -127,13 +132,19 @@ const stat = (label, value) => el("div", { class: "stat" },
 	el("div", { class: "stat-v" }, value),
 	el("div", { class: "stat-k" }, label));
 
-// live "sparkline": fixed bars, each height bound to the rolling temp history
+// live "sparkline": each bar's height is bound to the rolling temp history.
+// The min/max are derived ONCE per tick (not re-scanned by every bar) — the
+// fine-grained shape the framework is pitching: one scan feeds 40 bindings.
+const range = derive(() => {
+	const h = telemetry.history;
+	const min = Math.min(...h), max = Math.max(...h);
+	return { min, span: (max - min) || 1, len: h.length };
+});
 const sparkline = el("div", { class: "spark", "aria-hidden": "true" },
 	Array.from({ length: BARS }, (_unused, i) => el("span", { class: "bar", style: () => {
-		const h = telemetry.history;
-		const v = h[h.length - BARS + i];
+		const { min, span, len } = range.value;
+		const v = telemetry.history[len - BARS + i];
 		if (v == null) { return "height:2%"; }
-		const min = Math.min(...h), max = Math.max(...h), span = (max - min) || 1;
 		return `height:${Math.max(6, Math.round(((v - min) / span) * 100))}%`;
 	} }))
 );
