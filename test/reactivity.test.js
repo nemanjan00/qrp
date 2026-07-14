@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state, effect, derive, untracked } from "../qrp/index.js";
+import { state, effect, derive, untracked, onEffectError } from "../qrp/index.js";
 
 // These tests pin down qrp's reactivity SEMANTICS — the questions a
 // reactivity-literate reader asks first. They are the spec, in code.
@@ -195,4 +195,29 @@ test("a throw on RE-RUN propagates on the triggering write", () => {
 	let seen;
 	effect(() => { seen = s.n; });
 	assert.equal(seen, 2);
+});
+
+// --- onEffectError (central crash reporting) --------------------------------
+
+test("onEffectError fires before the error propagates, then unsubscribes", () => {
+	const seen = [];
+	const off = onEffectError((err) => seen.push(err.message));
+
+	assert.throws(() => effect(() => { throw new Error("kaboom"); }), /kaboom/);
+	assert.deepEqual(seen, ["kaboom"], "handler saw the error");
+
+	off();
+	assert.throws(() => effect(() => { throw new Error("again"); }), /again/);
+	assert.deepEqual(seen, ["kaboom"], "no longer called after unsubscribe");
+});
+
+test("onEffectError also catches throws on re-run", () => {
+	const seen = [];
+	const off = onEffectError((err) => seen.push(err.message));
+	const s = state({ n: 0 });
+
+	effect(() => { if(s.n > 0) { throw new Error("on-rerun"); } });
+	assert.throws(() => { s.n = 1; }, /on-rerun/);
+	assert.deepEqual(seen, ["on-rerun"]);
+	off();
 });

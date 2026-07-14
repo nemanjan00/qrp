@@ -60,11 +60,12 @@ rule). Cross-module imports use the explicit `../<folder>/index.js` path —
 browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 `/index.js` is always written out.
 
-- `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`),
-  DOM (`el`, `reactive`, `bind`, `clear`), keyed lists (`list` — element reuse +
-  `itemFor` delegation), conditional subtrees (`when` — swaps branch + disposes
-  old scope), components (`mount`/`scope`/`onDispose`), custom elements
-  (`define`), routing (`router`/`navigate`/`compilePath`). `state()` skips
+- `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`,
+  `onEffectError` for central crash reporting), DOM (`el`, `reactive`, `bind`,
+  `clear`), keyed lists (`list` — element reuse + `itemFor` delegation),
+  conditional subtrees (`when` — swaps branch + disposes old scope), components
+  (`mount`/`scope`/`onDispose`), custom elements (`define`), routing
+  (`router`/`navigate`/`compilePath`, reactive `currentRoute`). `state()` skips
   proxying frozen objects (freeze static data to opt out of reactivity).
 - `html/index.js` — author DOM as HTML strings, three forms: `` html`` `` /
   `html()` (inline `${}` holes), `html.template("…#{field}…")` (STORABLE — parsed
@@ -84,11 +85,14 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   content is any renderable.
 - `http/index.js` — `fetch` wrapper (`createHttp`): URL shaping, auth headers,
   reactive in-flight loader, centralized errors → bus (`error`,
-  `auth:unauthorized`). Auth-agnostic: takes a `token()` getter, emits
+  `auth:unauthorized`), per-request `responseType` (json/text/arraybuffer/blob/
+  response for binary + non-JSON). Auth-agnostic: takes a `token()` getter, emits
   `auth:unauthorized` rather than knowing about logout.
 - `utils/*.js` — pure data helpers **that a dashboard actually needs**, one file
   per concept so file-level import = pay-for-what-you-use with no bundler:
-  `memoize.js`, `lru.js`, `cache.js`, `paginate.js`; `index.js` is an opt-in
+  `memoize.js`, `lru.js`, `cache.js`, `paginate.js`, `limit.js` (concurrency /
+  rate / timeout — the `queue-promised` wrapper core, dependency-free),
+  `debounce.js` (`debounce`/`throttle`, scope-aware); `index.js` is an opt-in
   barrel. (Keep this tight — "do one thing well." round-robin / weighted-pool
   style load-balancer helpers were removed because they don't serve dashboards;
   don't re-add general-purpose utilities that aren't dashboard-shaped.)

@@ -286,3 +286,45 @@ test("network failure emits a generic error and settles the loader", () => {
 		}
 	);
 });
+
+// --- responseType (binary / non-JSON) ---------------------------------------
+
+const stubTyped = (payload) => {
+	globalThis.fetch = () => Promise.resolve({
+		ok: true, status: 200, statusText: "",
+		text: () => Promise.resolve(payload.text),
+		arrayBuffer: () => Promise.resolve(payload.buffer),
+		blob: () => Promise.resolve(payload.blob)
+	});
+	globalThis.fetch.calls = [];
+};
+
+test("responseType 'text' returns the raw body unparsed", async () => {
+	stubTyped({ text: "{\"a\":1}" });
+	const http = createHttp({ baseUrl: "" });
+	const out = await http.get("/x", { responseType: "text" });
+	assert.equal(out, "{\"a\":1}", "string, not parsed to an object");
+});
+
+test("responseType 'arraybuffer' returns the ArrayBuffer", async () => {
+	const buf = new Uint8Array([1, 2, 3]).buffer;
+	stubTyped({ buffer: buf });
+	const http = createHttp({ baseUrl: "" });
+	const out = await http.get("/bin", { responseType: "arraybuffer" });
+	assert.equal(out, buf);
+});
+
+test("responseType 'response' hands back the raw Response", async () => {
+	stubTyped({});
+	const http = createHttp({ baseUrl: "" });
+	const out = await http.get("/raw", { responseType: "response" });
+	assert.equal(out.status, 200);
+	assert.equal(typeof out.text, "function");
+});
+
+test("default responseType still parses JSON (unchanged)", async () => {
+	stubTyped({ text: "{\"a\":1}" });
+	const http = createHttp({ baseUrl: "" });
+	const out = await http.get("/x");
+	assert.deepEqual(out, { a: 1 });
+});

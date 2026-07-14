@@ -11,7 +11,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-none-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
 [![core size](https://img.shields.io/badge/core-~3.7_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
-[![tests](https://img.shields.io/badge/tests-192_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
+[![tests](https://img.shields.io/badge/tests-206_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
 
@@ -319,17 +319,17 @@ unused exports tree-shake away.
 
 | Module | What it gives you |
 |--------|-------------------|
-| `@nemanjan00/qrp` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `compilePath` |
+| `@nemanjan00/qrp` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `onEffectError`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `currentRoute`, `compilePath` |
 | `@nemanjan00/qrp/html` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML; text holes escaped (see escaping guarantee above) |
 | `@nemanjan00/qrp/forms` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
 | `@nemanjan00/qrp/table` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
 | `@nemanjan00/qrp/collection` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
-| `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing |
+| `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing, per-request `responseType` (json/text/binary) |
 | `@nemanjan00/qrp/events` | Global event bus on native `EventTarget`: `bus`, `emitter`, `request`/`respond`, `channel` |
 | `@nemanjan00/qrp/toasts` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
 | `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
 | `@nemanjan00/qrp/behaviors/*` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
-| `@nemanjan00/qrp/utils/*` | Pure data helpers for dashboards: `memoize`, `lru`, `cache` (`cacheForever`/`precache`/`precacheWithRefresh`), `paginate` |
+| `@nemanjan00/qrp/utils/*` | Pure data helpers for dashboards: `memoize`, `lru`, `cache` (`cacheForever`/`precache`/`precacheWithRefresh`), `paginate`, `limit` (concurrency/rate/timeout), `debounce`/`throttle` |
 | `@nemanjan00/qrp/proto` | Prototype-level enhancement (objects & `__proto__`, no classes): `findProto`, `wrapMethod`, `onceOnly`, `delegate` |
 | `qrp.css` | Optional minimal baseline (design tokens + semantic classes). Link it yourself. |
 
@@ -526,7 +526,7 @@ Full reference — every export, signature, and a usage snippet per module — i
 
 ```sh
 npm install     # dev-only: happy-dom (tests), eslint, typescript, husky
-npm test        # node --test — 192 tests across every module
+npm test        # node --test — 206 tests across every module
 npm run lint    # eslint (eslint:recommended + house style)
 npm run typecheck  # tsc --noEmit over the .d.ts + a usage suite (strict)
 ```

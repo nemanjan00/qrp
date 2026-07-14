@@ -250,13 +250,36 @@ export const createHttp = (options = {}) => {
 
 		start();
 
+		// How to read a successful body. Default "json" is unchanged; the other
+		// modes use the platform's own Response readers so binary / non-JSON
+		// endpoints (msgpack, file downloads) don't have to bypass the client.
+		const readOk = (response) => {
+			if(config.responseType === "response") {
+				return response;
+			}
+			if(config.responseType === "arraybuffer") {
+				return response.arrayBuffer();
+			}
+			if(config.responseType === "blob") {
+				return response.blob();
+			}
+			if(config.responseType === "text") {
+				return response.text();
+			}
+
+			return response.text().then(parseBody);
+		};
+
 		return fetch(url, init).then((response) => {
+			if(response.ok) {
+				return readOk(response);
+			}
+
+			// Error path is identical for every responseType: read the body as
+			// text so we can still surface a message and detect 401, and reject
+			// with the same { status, data, response } contract as always.
 			return response.text().then((raw) => {
 				const data = parseBody(raw);
-
-				if(response.ok) {
-					return data;
-				}
 
 				emitter.emit("error", { message: errorMessage(data) });
 
@@ -264,9 +287,6 @@ export const createHttp = (options = {}) => {
 					emitter.emit("auth:unauthorized");
 				}
 
-				// Reject with a structured value: status + the already-parsed
-				// data (the Response body is consumed, so callers can't re-read
-				// it — hand them the parsed error instead of a used Response).
 				return Promise.reject({ status: response.status, data, response });
 			});
 		}, (networkError) => {

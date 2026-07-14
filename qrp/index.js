@@ -254,6 +254,33 @@ export const onDispose = (fn) => {
 	}
 };
 
+const errorHandlers = new Set();
+
+/**
+ * Register a handler called whenever an effect (a render binding, a derive, a
+ * user effect) throws — before the error propagates. This is the central place
+ * to wire crash reporting; without it a throwing binding is only observable at
+ * the write site. Returns an unsubscribe function.
+ *
+ *   onEffectError((error) => Sentry.captureException(error));
+ */
+export const onEffectError = (handler) => {
+	errorHandlers.add(handler);
+
+	return () => errorHandlers.delete(handler);
+};
+
+const reportEffectError = (error, runner) => {
+	errorHandlers.forEach(handler => {
+		try {
+			handler(error, runner);
+		} catch(handlerError) {
+			// a reporter must never mask the original failure
+			console.error("qrp: onEffectError handler threw", handlerError);
+		}
+	});
+};
+
 /**
  * Run fn immediately, tracking every state key it reads; re-run it whenever
  * one of those keys changes. Returns the runner, which has .dispose().
@@ -277,6 +304,11 @@ export const effect = (fn) => {
 			// write site, or effect() itself on first run); the rest of the
 			// reactive system is unaffected. No silent failures.
 			disposeEffect(runner);
+
+			// Central observability: report to any onEffectError handlers before
+			// the error propagates. This is where you wire Sentry etc. — without
+			// it a throwing render binding is only visible at the write site.
+			reportEffectError(error, runner);
 
 			throw error;
 		} finally {
@@ -1122,6 +1154,13 @@ export const navigate = (url, { replace = false } = {}) => {
  * @param {Element|Document} [options.linksRoot] where link clicks are captured
  * @returns {object} { navigate, render, dispose }
  */
+/**
+ * Reactive current route — { path, params, query } — updated by router() before
+ * each mount. Read it anywhere (a navbar's active links, tenant-prefixed hrefs)
+ * without threading ctx through every handler.
+ */
+export const currentRoute = state({ path: "", params: {}, query: {} });
+
 export const router = (routes, outlet, options = {}) => {
 	patchHistory();
 
@@ -1152,6 +1191,12 @@ export const router = (routes, outlet, options = {}) => {
 
 	const render = () => {
 		const { component, ctx } = resolve();
+
+		// publish the active route as reactive state before mounting, so a navbar
+		// (or anything outside the handler) reacts to navigation.
+		currentRoute.path = ctx.path;
+		currentRoute.params = ctx.params;
+		currentRoute.query = ctx.query;
 
 		const swap = () => {
 			if(current) {

@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { compilePath, matchPath, router, navigate, el } from "../qrp/index.js";
+import { compilePath, matchPath, router, navigate, el, currentRoute, effect } from "../qrp/index.js";
 
 test("compilePath matches a literal route", () => {
 	const c = compilePath("/settings");
@@ -110,5 +110,32 @@ test("navigate re-renders the router", () => {
 	assert.equal(outlet.querySelector("h1").textContent, "about");
 	assert.equal(location.pathname, "/about");
 
+	app.dispose();
+});
+
+test("currentRoute is reactive and tracks navigation", () => {
+	history.replaceState(null, "", "/user/7?tab=info");
+
+	const outlet = document.createElement("div");
+	document.body.appendChild(outlet);
+
+	const app = router({
+		"/": (view) => view.appendChild(el("h1", {}, "home")),
+		"/user/:id": (view) => view.appendChild(el("h1", {}, "user"))
+	}, outlet);
+
+	// reflects the initial route
+	assert.equal(currentRoute.path, "/user/7");
+	assert.deepEqual(currentRoute.params, { id: "7" });
+	assert.deepEqual(currentRoute.query, { tab: "info" });
+
+	// an effect reading currentRoute re-runs on navigation
+	const seen = [];
+	const runner = effect(() => seen.push(currentRoute.path));
+	navigate("/");
+	assert.equal(currentRoute.path, "/");
+	assert.deepEqual(seen, ["/user/7", "/"]);
+
+	runner.dispose();
 	app.dispose();
 });

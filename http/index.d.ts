@@ -30,6 +30,13 @@ export interface RequestConfig {
 	body?: unknown;
 	headers?: Record<string, string>;
 	signal?: AbortSignal;
+	/**
+	 * How to read a successful response body. Default "json" (parsed). Use
+	 * "text" for plain text, "arraybuffer"/"blob" for binary (msgpack, downloads),
+	 * or "response" to get the raw Response untouched. Non-2xx always rejects
+	 * with { status, data, response } regardless.
+	 */
+	responseType?: "json" | "text" | "arraybuffer" | "blob" | "response";
 	/** Any other fetch init (credentials, mode, cache, …). */
 	init?: RequestInit;
 }

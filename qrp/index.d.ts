@@ -89,6 +89,16 @@ export function raw<T>(obj: T): T;
  */
 export function effect(fn: () => void): EffectHandle;
 
+/**
+ * Register a handler called when any effect (a render binding, a derive, a user
+ * effect) throws — before the error propagates. The central place to wire crash
+ * reporting; without it a throwing binding is only observable at the write site.
+ * Returns an unsubscribe function.
+ * @example
+ * onEffectError((error) => Sentry.captureException(error));
+ */
+export function onEffectError(handler: (error: unknown, effect?: unknown) => void): () => void;
+
 /** Read state inside fn WITHOUT tracking it as a dependency. */
 export function untracked<T>(fn: () => T): T;
 
@@ -262,6 +272,15 @@ export interface RouteContext {
 	query: Record<string, string>;
 	path: string;
 }
+
+/**
+ * Reactive current route, updated by router() before each mount. Read it from
+ * anywhere (a navbar's active links, tenant-prefixed hrefs) without threading
+ * ctx through every handler.
+ * @example
+ * el("a", { class: () => currentRoute.path === "/users" ? "active" : "" }, "Users");
+ */
+export const currentRoute: { path: string; params: Record<string, string>; query: Record<string, string> };
 
 export interface RouterOptions {
 	notFound?: (outlet: HTMLElement, ctx: RouteContext) => void;

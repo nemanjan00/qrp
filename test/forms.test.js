@@ -159,3 +159,20 @@ test("backward-compatible procedural inputs still work", () => {
 	assert.equal(el.querySelector("input").value, "R2");
 	assert.equal(el.querySelector("select").querySelectorAll("option").length, 2);
 });
+
+test("field passes native attrs through (class, disabled, rows, aria-*)", () => {
+	const settings = state({ BIO: "" });
+	const row = field(settings, "BIO", {
+		name: "Bio", type: "text",
+		class: "form-control", disabled: true, "aria-describedby": "hint", placeholder: "…"
+	});
+	const input = row.querySelector("input");
+	assert.equal(input.getAttribute("class"), "form-control");
+	assert.equal(input.getAttribute("placeholder"), "…");
+	assert.equal(input.getAttribute("aria-describedby"), "hint");
+	assert.ok(input.hasAttribute("disabled"));
+	// meta keys never leak onto the control as attributes
+	assert.equal(input.hasAttribute("type") && input.getAttribute("type"), "text");
+	assert.equal(input.hasAttribute("name"), false);
+	assert.equal(input.hasAttribute("description"), false);
+});

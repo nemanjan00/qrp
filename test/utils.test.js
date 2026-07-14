@@ -9,6 +9,8 @@ import { lru } from "../utils/lru.js";
 import { memoize } from "../utils/memoize.js";
 import { cacheForever, precache, precacheWithRefresh } from "../utils/cache.js";
 import { paginate, pageCount } from "../utils/paginate.js";
+import { limit } from "../utils/limit.js";
+import { debounce, throttle } from "../utils/debounce.js";
 
 // --- lru --------------------------------------------------------------------
 
@@ -158,4 +160,59 @@ test("memoize max:0 retains nothing (not unbounded)", () => {
 	fn(1);
 	fn(1); // nothing retained → recomputed
 	assert.equal(calls, 2);
+});
+
+// --- limit (concurrency + rate + timeout) -----------------------------------
+
+test("limit caps concurrent in-flight calls (FIFO)", async () => {
+	let active = 0, peak = 0;
+	const fn = limit((n) => new Promise((r) => {
+		active++; peak = Math.max(peak, active);
+		setTimeout(() => { active--; r(n); }, 20);
+	}), 2);
+
+	const results = await Promise.all([1, 2, 3, 4, 5].map(fn));
+	assert.deepEqual(results, [1, 2, 3, 4, 5]);
+	assert.equal(peak, 2, "never more than 2 at once");
+});
+
+test("limit rejects a call that exceeds its timeout", async () => {
+	const fn = limit(() => new Promise((r) => setTimeout(r, 50)), { max: 1, timeout: 10 });
+	await assert.rejects(fn(), /timeout/);
+});
+
+test("limit surfaces a rejection and keeps draining the queue", async () => {
+	const fn = limit((n) => n === 2 ? Promise.reject(new Error("boom")) : Promise.resolve(n), 1);
+	const settled = await Promise.allSettled([fn(1), fn(2), fn(3)]);
+	assert.deepEqual(settled.map((s) => s.status), ["fulfilled", "rejected", "fulfilled"]);
+});
+
+// --- debounce / throttle ----------------------------------------------------
+
+test("debounce fires once after the quiet period", async () => {
+	let calls = 0, last;
+	const d = debounce((x) => { calls++; last = x; }, 15);
+	d(1); d(2); d(3);
+	assert.equal(calls, 0, "not yet");
+	await new Promise((r) => setTimeout(r, 30));
+	assert.equal(calls, 1);
+	assert.equal(last, 3, "trailing args win");
+});
+
+test("debounce.cancel drops the pending call", async () => {
+	let calls = 0;
+	const d = debounce(() => calls++, 15);
+	d(); d.cancel();
+	await new Promise((r) => setTimeout(r, 30));
+	assert.equal(calls, 0);
+});
+
+test("throttle runs on the leading edge then caps the rate", async () => {
+	let calls = 0;
+	const t = throttle(() => calls++, 30);
+	t(); // leading, runs now
+	t(); t(); // coalesced into one trailing
+	assert.equal(calls, 1, "leading only, so far");
+	await new Promise((r) => setTimeout(r, 50));
+	assert.equal(calls, 2, "one trailing after the window");
 });

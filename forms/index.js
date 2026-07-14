@@ -60,8 +60,10 @@ export const serializeKV = (settings) => {
 // A factory has the signature (settings, key, field) => Element and is
 // expected to two-way bind to settings[key] (usually via el's `bind`).
 
-/** Passthrough attributes copied from a field spec onto native inputs. */
-const INPUT_ATTRS = ["placeholder", "min", "max", "step", "pattern", "required", "autocomplete"];
+// Field-spec keys qrp interprets itself — everything else on the spec is a
+// native attribute passed straight through to the control (so `class`,
+// `disabled`, `readonly`, `rows`, `aria-*`, any framework hook, all reach it).
+const META_KEYS = new Set(["name", "description", "type", "input", "default", "options"]);
 
 /**
  * Native <input type=X> variants that need nothing beyond a type attribute.
@@ -92,8 +94,8 @@ export const getInput = (type) => inputTypes[type];
 const pickAttrs = (field) => {
 	const attrs = {};
 
-	INPUT_ATTRS.forEach(attr => {
-		if(field[attr] !== undefined) {
+	Object.keys(field).forEach(attr => {
+		if(!META_KEYS.has(attr) && field[attr] !== undefined) {
 			attrs[attr] = field[attr];
 		}
 	});

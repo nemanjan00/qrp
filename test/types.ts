@@ -1,7 +1,7 @@
 // Type-level test: exercises the public .d.ts surface. `tsc --noEmit` on this
 // is the "test" for the declarations — it fails if a signature is wrong.
 
-import { state, effect, derive, el, list, when, mount, router, define, navigate } from "../qrp/index.js";
+import { state, effect, derive, el, list, when, mount, router, define, navigate, onEffectError, currentRoute } from "../qrp/index.js";
 import { html, ref } from "../html/index.js";
 import { table } from "../table/index.js";
 import { collection } from "../collection/index.js";
@@ -15,6 +15,8 @@ import { trapFocus } from "../behaviors/trap-focus.js";
 import { disclosure } from "../behaviors/disclosure.js";
 import { busyWhile } from "../behaviors/busy-while.js";
 import { memoize } from "../utils/memoize.js";
+import { limit } from "../utils/limit.js";
+import { debounce, throttle } from "../utils/debounce.js";
 import { paginate } from "../utils/paginate.js";
 
 interface User { id: number; name: string; signups: number; }
@@ -102,5 +104,17 @@ const mfn = memoize((a: number, b: number) => a + b, { max: 100 });
 const sum: number = mfn(1, 2);
 const page: number[] = paginate([1, 2, 3, 4], 0, 2);
 
+// new surface
+const offErr: () => void = onEffectError((err: unknown) => void err);
+const rp: string = currentRoute.path;
+const rid: string | undefined = currentRoute.params.id;
+const limited = limit(async (id: number) => id * 2, { max: 3, perSecond: 5, timeout: 1000 });
+const limitedP: Promise<number> = limited(1);
+const deb = debounce((q: string) => void q, 200);
+deb("x"); deb.cancel();
+const thr = throttle(() => {}, 100);
+thr(); thr.cancel();
+createHttp().get("/x", { responseType: "arraybuffer" }).then((b: any) => b);
+
 // silence "unused" without changing meaning
-void [len, item, node, filled, token, fEl, fld, kv, count, pages, pending, sum, page];
+void [len, item, node, filled, token, fEl, fld, kv, count, pages, pending, sum, page, offErr, rp, rid, limitedP, deb, thr];

@@ -81,6 +81,21 @@ const runner = effect(() => render(state.value));
 runner.dispose();   // stop it
 ```
 
+### `onEffectError`
+
+```ts
+onEffectError(handler: (error: unknown, effect?: unknown) => void): () => void
+```
+
+Register a handler called when any effect (a render binding, a derive, a user
+effect) throws — before the error propagates. The central place to wire crash
+reporting; without it a throwing binding is only observable at the write site.
+Returns an unsubscribe function.
+
+```js
+onEffectError((error) => Sentry.captureException(error));
+```
+
 ### `untracked`
 
 ```ts
@@ -256,6 +271,20 @@ navigate(url: string, options?: NavigateOptions): void
 ```
 
 Programmatic navigation (pushes/replaces the URL; the router reacts).
+
+### `currentRoute`
+
+```ts
+currentRoute: { path: string; params: Record<string, string>; query: Record<string, string> }
+```
+
+Reactive current route, updated by router() before each mount. Read it from
+anywhere (a navbar's active links, tenant-prefixed hrefs) without threading
+ctx through every handler.
+
+```js
+el("a", { class: () => currentRoute.path === "/users" ? "active" : "" }, "Users");
+```
 
 ### `router`
 
@@ -762,6 +791,34 @@ pageCount(total: number, size: number): number
 ```
 
 Number of pages for `total` items at `size` per page.
+
+### `limit`
+
+```ts
+limit<A extends any[], R>(fn: (...args: A) => R | Promise<R>, options?: number | LimitOptions): (...args: A) => Promise<R>
+```
+
+Rate-limit an async function: cap concurrency, throughput, and per-call time.
+Pass a number for concurrency-only, or an options object for all three.
+Excess calls queue FIFO; each call returns a Promise.
+
+### `debounce`
+
+```ts
+debounce<A extends any[]>(fn: (...args: A) => any, ms?: number): RateLimited<A>
+```
+
+Delay fn until `ms` after the last call. Scope-aware: auto-cancels on dispose.
+
+### `throttle`
+
+```ts
+throttle<A extends any[]>(fn: (...args: A) => any, ms?: number): RateLimited<A>
+```
+
+Call fn at most once per `ms` (leading + trailing). Scope-aware: auto-cancels on dispose.
+
+**Supporting types:** `RateLimited`.
 
 
 ## proto

@@ -29,7 +29,8 @@ const MODULES = [
 		"behaviors/portal.d.ts", "behaviors/dismissable.d.ts", "behaviors/trap-focus.d.ts",
 		"behaviors/anchored.d.ts", "behaviors/disclosure.d.ts", "behaviors/busy-while.d.ts"] },
 	{ title: "utils", imp: "@nemanjan00/qrp/utils/<name>", files: [
-		"utils/lru.d.ts", "utils/memoize.d.ts", "utils/cache.d.ts", "utils/paginate.d.ts"] },
+		"utils/lru.d.ts", "utils/memoize.d.ts", "utils/cache.d.ts", "utils/paginate.d.ts",
+		"utils/limit.d.ts", "utils/debounce.d.ts"] },
 	{ title: "proto", imp: "@nemanjan00/qrp/proto", files: ["proto/index.d.ts"] }
 ];
 
