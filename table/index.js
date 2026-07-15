@@ -118,8 +118,14 @@ export const table = (options) => {
 			props.onclick = () => view.toggleSort(fieldSpec.key);
 		}
 
+		// header() gives full control of the th content (a select-all checkbox, a
+		// filter icon…); stopPropagation so its own clicks don't trigger the sort.
+		const content = fieldSpec.header
+			? el("span", { onclick: (e) => e.stopPropagation() }, fieldSpec.header(fieldSpec))
+			: fieldSpec.label;
+
 		return el("th", props,
-			fieldSpec.label,
+			content,
 			fieldSpec.sortable ? el("span", { class: "qrp-sort" }, () => indicator(fieldSpec)) : null
 		);
 	};

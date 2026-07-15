@@ -245,3 +245,22 @@ test("tableSummary shows Showing X–Y of Z, reactively", () => {
 	store.rows = [];
 	assert.equal(summary.textContent, "No results");
 });
+
+test("custom header content renders and its clicks don't trigger sort", () => {
+	const store = state({ rows: [{ id: 1 }, { id: 2 }] });
+	let boxClicks = 0;
+	const t = table({
+		rows: () => store.rows, key: (r) => r.id,
+		sort: state({ key: "id", dir: 1 }),
+		fields: [
+			{ key: "sel", sortable: true, header: () => el("input", { type: "checkbox", class: "all", onclick: () => boxClicks++ }) },
+			{ key: "id", label: "ID" }
+		]
+	});
+	const box = t.querySelector("thead .all");
+	assert.ok(box, "custom header rendered");
+	const sortBefore = t.view.sort.dir;
+	box.click();
+	assert.equal(boxClicks, 1);
+	assert.equal(t.view.sort.dir, sortBefore, "header click did not sort");
+});

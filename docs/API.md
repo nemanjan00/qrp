@@ -792,6 +792,9 @@ interface Column<T> {
 	formatter?: (value: any, item: T) => Renderable;
 	/** item => Element — a custom cell (overrides formatter). */
 	render?: (item: T) => Renderable;
+	/** column => Renderable — custom header content (a select-all box, filter…);
+	 *  its own clicks don't trigger the column sort. Overrides `label`. */
+	header?: (column: Column<T>) => Renderable;
 	sortable?: boolean;
 	/** Sort by the formatter output instead of the raw value. */
 	sortByFormatted?: boolean;
