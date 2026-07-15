@@ -544,7 +544,7 @@ in strict mode.
 ## 📖 API reference
 
 Full reference — every export, signature, and a usage snippet per module — in
-[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md).
+[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md). Styling & theming: [`docs/STYLING.md`](docs/STYLING.md).
 
 ## 🧪 Tests & tooling
 

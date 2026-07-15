@@ -108,7 +108,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   REPLACEMENT (refetch) without rebuilding the element. `key` option = the
   `:key` equivalent (a function → stable id).
 - `qrp.css` — optional minimal baseline (design tokens + semantic classes);
-  link it yourself, qrp never injects it.
+  link it yourself, qrp never injects it. Styling guide: `docs/STYLING.md`.
 - `proto/index.js` — prototype-level enhancement helpers.
 
 ## Types & docs

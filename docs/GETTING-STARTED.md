@@ -387,6 +387,7 @@ dashboard needs them:
 
 - **[Full API reference](./API.md)** — every export, signature, and example.
 - **[Sharp edges](./SHARP-EDGES.md)** — the handful of behaviors worth knowing once.
+- **[Styling](./STYLING.md)** — bring your own CSS, the qrp.css baseline, or a framework.
 - **[Live demo](https://qrp.nemanja.top/)** — every feature running.
 - **[Runnable examples](../examples/)** — `table.html`, `todomvc.html`, and an
   [ESP32 dashboard](../examples/esp32/) that fits in a microcontroller's flash.
