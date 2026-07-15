@@ -8,6 +8,20 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.5.1
+
+- **Runaway-effect guard reworked from wall-clock rate to re-entrancy depth.**
+  0.5.0's guard (inherited from 0.4.10) counted an effect's runs in a ~1s window,
+  which false-flagged a legitimately *hot* effect — thousands of sequential
+  updates to one cell (bulk writes, animation, a benchmark) — as a runaway and
+  tore it down. The guard now detects the true signature — an effect re-entered
+  while already on the stack (the A→B→A cascade / stack-overflow class) — via
+  re-entrancy depth. Sequential hot updates never re-enter (depth stays 1), so
+  they're never flagged; the synchronous cascades that matter still are.
+  `loopLimit` now bounds depth (same default 1000; `Infinity` disables). Async
+  self-loops aren't re-entrant so aren't caught here — but `createHttp`'s loader
+  is leak-free (0.4.10), which removed the one that shipped in practice.
+
 ## 0.5.0
 
 - **New module: `datagrid`** (`@nemanjan00/qrp/datagrid`, ~0.8 KB gzip). A
@@ -29,17 +43,6 @@ _(nothing yet)_
 - **Marker mis-append now logs at `console.error`** (was `warn`) — so a bare
   `parent.append(when(…))` in headless/CI surfaces (most harnesses fail on
   console.error); the in-DOM breadcrumb is unchanged.
-- **Runaway-effect guard reworked from wall-clock rate to re-entrancy depth.**
-  0.4.10's guard counted an effect's runs in a ~1s window, which false-flagged a
-  legitimately *hot* effect — thousands of sequential updates to one cell (bulk
-  writes, animation, a benchmark) — as a runaway and tore it down. The guard now
-  detects the true signature — an effect re-entered while already on the stack
-  (the A→B→A cascade / stack-overflow class) — via re-entrancy depth. Sequential
-  hot updates never re-enter (depth stays 1), so they're never flagged; the
-  synchronous cascades that matter still are. `loopLimit` now bounds depth (same
-  default 1000; `Infinity` disables). Async self-loops aren't re-entrant so aren't
-  caught here — but `createHttp`'s loader is leak-free (above), which removed the
-  one that shipped in practice.
 
 ## 0.4.10
 
