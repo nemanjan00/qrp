@@ -56,6 +56,21 @@ legitimately high-frequency effect. The fix is almost always to **read less**:
 load outside the effect, guard the write (`if(next !== state.x)`), or read the
 trigger with [`untracked`](./API.md#qrp--core).
 
+**Thunk-vs-value is the papercut to internalize first.** A function child/prop is
+*reactive*; a bare value is a one-time snapshot. The two look almost identical and
+only one updates — this is the tax for having no compiler:
+
+```js
+el("span", {}, () => s.count)   // ✓ reactive — re-renders on change
+el("span", {}, s.count)         // ✗ frozen — snapshot at construction
+
+table({ rows: () => store.rows })   // ✓ reactive rows
+table({ rows: store.rows })         // ✗ frozen at the value it had then
+```
+
+If something "won't update," this is the first thing to check: did you pass a
+value where a `() =>` thunk was meant?
+
 ## DOM & rendering
 
 **A DOM node lives in exactly one place.** Appending "the same" node in two spots
@@ -80,6 +95,24 @@ in place.
 `console.warn` (two items can't share one element). For a feed with repeats, use a
 composite key: `(r) => `${r.id}:${r.at}``.
 
+**Attach route content through `el()`/`mount()`, never a bare
+`outlet.append(marker)`.** The router hands each route a real `outlet` element;
+wrap the page body in one `el()` root (or `mount(outlet, () => …)`) so every
+`when()`/`list()` marker is a qrp child and renders:
+
+```js
+// ✗ marker handed to native append → renders the breadcrumb text
+outlet.append(header, when(() => empty, …, () => table));
+// ✓ one el() root — every marker is a qrp child
+outlet.append(el("div", {}, header, when(() => empty, …, () => table)));
+```
+
+**Reach for `el()` and `` html`` `` by shape, not dogma.** `el()` shines for
+dynamic/branchy nodes (reactive children, event handlers); a deeply nested
+*static* cell (icon + title + subtitle) becomes hard-to-balance `el(...)` paren
+soup. For dense static structure, [`` html`` ``](./API.md#html--html-templates) reads better —
+mix the two: `html` for the scaffold, `el()`/thunks for the live bits.
+
 ## Behaviors
 
 **UI built inside an event handler has no owner scope.** A modal opened from
@@ -99,6 +132,29 @@ const close = () => { dispose(); remove(); };   // effects + DOM both gone
 already parsed and consumed) and emits `error` on the bus; a 401 also emits
 `auth:unauthorized`. For binary/non-JSON, pass
 [`responseType`](./API.md#http).
+
+**Issuing a request inside an `effect()` is safe.** The reactive
+`loading.pending` counter is mutated `untracked`, so calling `http.get/post`
+synchronously in an effect (the "refetch when filters change" pattern) does not
+subscribe that effect to the loader — no infinite request loop. Pass a custom
+transport with [`createHttp({ fetch })`](./API.md#http) to mock or wrap it.
+
+## Routing & URL
+
+**Navigate with a real `<a href>`, not `onclick` + `navigate()`.** The router's
+delegated click handler upgrades in-app anchors to client-side nav *and* leaves
+middle-click / ⌘/Ctrl-click / `target`/`download`/`rel=external` to the browser.
+A `<button onclick={() => navigate(...)}>` looks identical but silently breaks
+open-in-new-tab — there's no anchor for the browser to act on. Make row/nav
+targets anchors; reserve `navigate()` for post-action redirects (after a save).
+
+**`query()` (browser) and `setQuery()` (core) are two different URL channels —
+pick one.** [`query()`](./API.md#browser) is a two-way reactive
+`URLSearchParams` object (write `q.status = "x"`); [`setQuery()`](./API.md#qrp--core)
+drives the router's query and updates `currentRoute.query`. Writing the same keys
+through both makes them fight. For filters that live in the URL, use `query()` and
+write to it directly. Both are **string-valued** — there's no first-class array
+param yet, so encode multi-value filters yourself (e.g. comma-join/split).
 
 ## Serving
 
