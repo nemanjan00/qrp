@@ -1,7 +1,8 @@
 /**
  * @module collection
  * Reactive sort / filter / paginate over a dataset. `collection(source, options)`
- * returns `{ sort, filter, page, items(), total(), pageCount(), toggleSort() }`;
+ * returns `{ sort, filter, page, items(), filtered(), total(), pageCount(),
+ * toggleSort() }`;
  * `items()` is reactive — feed it to `list()`. `options`:
  * `{ sort?, page?, filter?, filterFn?, compare? }`.
  */
@@ -31,6 +32,8 @@ export interface Collection<T> {
 	page: PageState;
 	/** Reactive: sorted → filtered → paged items. Feed to list(). */
 	items(): T[];
+	/** Reactive: the full filtered set (unpaged, unsorted) — for select-all/export. */
+	filtered(): T[];
 	/** Count after filtering (before paging). */
 	total(): number;
 	/** Number of pages at the current size. */

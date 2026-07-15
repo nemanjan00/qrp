@@ -28,6 +28,10 @@
 			"types": "./collection/index.d.ts",
 			"default": "./dist/collection.js"
 		},
+		"./datagrid": {
+			"types": "./datagrid/index.d.ts",
+			"default": "./dist/datagrid.js"
+		},
 		"./http": {
 			"types": "./http/index.d.ts",
 			"default": "./dist/http.js"

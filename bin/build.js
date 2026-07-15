@@ -16,7 +16,7 @@ import process from "node:process";
 
 // Single-index modules: dist/<name>.js <- <name>/index.js
 const INDEX_MODULES = [
-	"qrp", "html", "forms", "table", "collection", "http",
+	"qrp", "html", "forms", "table", "collection", "datagrid", "http",
 	"events", "toasts", "browser", "proto"
 ];
 

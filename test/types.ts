@@ -5,6 +5,7 @@ import { state, effect, derive, el, list, when, mount, router, define, navigate,
 import { html, ref } from "../html/index.js";
 import { table } from "../table/index.js";
 import { collection } from "../collection/index.js";
+import { dataGrid } from "../datagrid/index.js";
 import { form, registerInput, inputs, field, parseKV } from "../forms/index.js";
 import { createHttp } from "../http/index.js";
 import { bus, emitter, fromEvent } from "../events/index.js";
@@ -65,6 +66,15 @@ const view = collection<User>(() => [], { filter: state({ q: "" }), filterFn: (u
 const count: number = view.total();
 const t = table<User>({ rows: () => [], key: (u) => u.id, fields: [{ key: "name", label: "Name", sortable: true }] });
 const pages: number = t.view.pageCount();
+const matches: User[] = view.filtered();
+
+// datagrid
+const grid = dataGrid<User>(() => [], { key: (u) => u.id, columns: [{ key: "name", label: "Name" }], pageSizes: [10, 25] });
+const picked: User[] = grid.selectedItems();
+const allOn: boolean = grid.allSelected();
+const win: number[] = grid.pageWindow(5);
+grid.toggle({ id: 1, name: "x", signups: 0 });
+grid.toggleColumn("name");
 
 // http
 const api = createHttp({ baseUrl: "/api", token: () => "tok" });

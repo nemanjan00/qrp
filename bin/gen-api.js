@@ -21,6 +21,7 @@ const MODULES = [
 	{ title: "forms", imp: "@nemanjan00/qrp/forms", files: ["forms/index.d.ts"] },
 	{ title: "collection", imp: "@nemanjan00/qrp/collection", files: ["collection/index.d.ts"] },
 	{ title: "table", imp: "@nemanjan00/qrp/table", files: ["table/index.d.ts"] },
+	{ title: "datagrid", imp: "@nemanjan00/qrp/datagrid", files: ["datagrid/index.d.ts"] },
 	{ title: "http", imp: "@nemanjan00/qrp/http", files: ["http/index.d.ts"] },
 	{ title: "events", imp: "@nemanjan00/qrp/events", files: ["events/index.d.ts"] },
 	{ title: "toasts", imp: "@nemanjan00/qrp/toasts", files: ["toasts/index.d.ts"] },

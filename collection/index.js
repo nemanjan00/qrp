@@ -29,7 +29,8 @@ import { state } from "../qrp/index.js";
  * @param {object} [options.filter] state consumed by filterFn (e.g. { q })
  * @param {Function} [options.filterFn] (item, filterState) => boolean
  * @param {Function} [options.compare] (a, b, sortState) => number (custom sort)
- * @returns {object} { sort, filter, page, items, total, pageCount, toggleSort }
+ * @returns {object} { sort, filter, page, items, filtered, total, pageCount,
+ *   toggleSort }
  */
 export const collection = (source, options = {}) => {
 	const sort = options.sort || state({ key: null, dir: 1 });
@@ -90,6 +91,10 @@ export const collection = (source, options = {}) => {
 
 			return all.slice(start, start + page.size);
 		},
+
+		// The full filtered set (unpaged, unsorted) — for "select all across
+		// pages", export-all, or a count of matches. Reactive.
+		filtered: () => filtered(),
 
 		total: () => filtered().length,
 
