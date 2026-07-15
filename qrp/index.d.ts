@@ -87,7 +87,15 @@ export function raw<T>(obj: T): T;
  * const runner = effect(() => render(state.value));
  * runner.dispose();   // stop it
  */
-export function effect(fn: () => void): EffectHandle;
+export function effect(fn: () => void, options?: { name?: string }): EffectHandle;
+
+/** Context passed to an onEffectError handler. */
+export interface EffectErrorContext {
+	/** "create" = the effect's first run; "update" = a reactive re-run. */
+	phase: "create" | "update";
+	/** The name from `effect(fn, { name })`, if any. */
+	name?: string;
+}
 
 /**
  * Register a handler called when any effect (a render binding, a derive, a user
@@ -95,9 +103,9 @@ export function effect(fn: () => void): EffectHandle;
  * reporting; without it a throwing binding is only observable at the write site.
  * Returns an unsubscribe function.
  * @example
- * onEffectError((error) => Sentry.captureException(error));
+ * onEffectError((error, { phase, name }) => Sentry.captureException(error, { tags: { phase, name } }));
  */
-export function onEffectError(handler: (error: unknown, effect?: unknown) => void): () => void;
+export function onEffectError(handler: (error: unknown, context: EffectErrorContext) => void): () => void;
 
 /** Read state inside fn WITHOUT tracking it as a dependency. */
 export function untracked<T>(fn: () => T): T;

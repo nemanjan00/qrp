@@ -203,8 +203,13 @@ test("onEffectError fires before the error propagates, then unsubscribes", () =>
 	const seen = [];
 	const off = onEffectError((err) => seen.push(err.message));
 
-	assert.throws(() => effect(() => { throw new Error("kaboom"); }), /kaboom/);
+	let ctx;
+	const off2 = onEffectError((_e, c) => { ctx = c; });
+	assert.throws(() => effect(() => { throw new Error("kaboom"); }, { name: "widget" }), /kaboom/);
 	assert.deepEqual(seen, ["kaboom"], "handler saw the error");
+	assert.equal(ctx.phase, "create", "first run = create phase");
+	assert.equal(ctx.name, "widget", "effect name forwarded");
+	off2();
 
 	off();
 	assert.throws(() => effect(() => { throw new Error("again"); }), /again/);
@@ -216,8 +221,12 @@ test("onEffectError also catches throws on re-run", () => {
 	const off = onEffectError((err) => seen.push(err.message));
 	const s = state({ n: 0 });
 
+	let phase;
+	const offP = onEffectError((_e, c) => { phase = c.phase; });
 	effect(() => { if(s.n > 0) { throw new Error("on-rerun"); } });
 	assert.throws(() => { s.n = 1; }, /on-rerun/);
 	assert.deepEqual(seen, ["on-rerun"]);
+	assert.equal(phase, "update", "a reactive re-run = update phase");
+	offP();
 	off();
 });

@@ -62,7 +62,7 @@ Unwrap a reactive proxy back to its raw object (or return as-is).
 ### `effect`
 
 ```ts
-effect(fn: () => void): EffectHandle
+effect(fn: () => void, options?: { name?: string }): EffectHandle
 ```
 
 Run fn now and re-run it whenever any state key it read changes. Effects
@@ -84,7 +84,7 @@ runner.dispose();   // stop it
 ### `onEffectError`
 
 ```ts
-onEffectError(handler: (error: unknown, effect?: unknown) => void): () => void
+onEffectError(handler: (error: unknown, context: EffectErrorContext) => void): () => void
 ```
 
 Register a handler called when any effect (a render binding, a derive, a user
@@ -93,7 +93,7 @@ reporting; without it a throwing binding is only observable at the write site.
 Returns an unsubscribe function.
 
 ```js
-onEffectError((error) => Sentry.captureException(error));
+onEffectError((error, { phase, name }) => Sentry.captureException(error, { tags: { phase, name } }));
 ```
 
 ### `untracked`
@@ -395,6 +395,17 @@ interface Derived<T> {
 ```
 
 A reactive computed value produced by derive().
+
+```ts
+interface EffectErrorContext {
+	/** "create" = the effect's first run; "update" = a reactive re-run. */
+	phase: "create" | "update";
+	/** The name from `effect(fn, { name })`, if any. */
+	name?: string;
+}
+```
+
+Context passed to an onEffectError handler.
 
 ```ts
 interface ListMarker<T> {

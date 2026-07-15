@@ -260,9 +260,11 @@ const errorHandlers = new Set();
  * Register a handler called whenever an effect (a render binding, a derive, a
  * user effect) throws — before the error propagates. This is the central place
  * to wire crash reporting; without it a throwing binding is only observable at
- * the write site. Returns an unsubscribe function.
+ * the write site. Returns an unsubscribe function. The handler gets the error
+ * and a context: `{ phase }` — "create" (first run) or "update" (a reactive
+ * re-run) — plus `name` if the effect was created with `effect(fn, { name })`.
  *
- *   onEffectError((error) => Sentry.captureException(error));
+ *   onEffectError((error, { phase, name }) => Sentry.captureException(error, { tags: { phase, name } }));
  */
 export const onEffectError = (handler) => {
 	errorHandlers.add(handler);
@@ -270,10 +272,10 @@ export const onEffectError = (handler) => {
 	return () => errorHandlers.delete(handler);
 };
 
-const reportEffectError = (error, runner) => {
+const reportEffectError = (error, context) => {
 	errorHandlers.forEach(handler => {
 		try {
-			handler(error, runner);
+			handler(error, context);
 		} catch(handlerError) {
 			// a reporter must never mask the original failure
 			console.error("qrp: onEffectError handler threw", handlerError);
@@ -288,7 +290,9 @@ const reportEffectError = (error, runner) => {
  * Effects created inside a component (or inside another effect) are owned by
  * it and disposed with it — no manual unsubscribe bookkeeping.
  */
-export const effect = (fn) => {
+export const effect = (fn, options = {}) => {
+	let ran = false;
+
 	const runner = () => {
 		cleanupEffect(runner);
 
@@ -297,6 +301,7 @@ export const effect = (fn) => {
 
 		try {
 			fn();
+			ran = true;
 		} catch(error) {
 			// Error boundary: an effect that throws is TORN DOWN — its (possibly
 			// partial) subscriptions are removed so it can't re-run or re-throw
@@ -308,7 +313,9 @@ export const effect = (fn) => {
 			// Central observability: report to any onEffectError handlers before
 			// the error propagates. This is where you wire Sentry etc. — without
 			// it a throwing render binding is only visible at the write site.
-			reportEffectError(error, runner);
+			// Context: phase (create = first run, update = a reactive re-run) and
+			// the optional effect name, for crash-report attribution.
+			reportEffectError(error, { phase: ran ? "update" : "create", name: options.name });
 
 			throw error;
 		} finally {
