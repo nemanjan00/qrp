@@ -262,28 +262,48 @@ test("lru.clear empties the store", () => {
 
 // --- validate ---------------------------------------------------------------
 
-test("validate returns [] for valid data, errors for invalid", () => {
+test("validate returns { errors, value }; [] errors for valid data", () => {
 	const schema = {
 		name: { type: "string", required: true, min: 2 },
 		age: { type: "number", min: 0, max: 120 },
 		role: { enum: ["admin", "user"] }
 	};
-	assert.deepEqual(validate(schema, { name: "Ada", age: 36, role: "admin" }), []);
+	assert.deepEqual(validate(schema, { name: "Ada", age: 36, role: "admin" }).errors, []);
 
-	const errs = validate(schema, { name: "A", age: 200, role: "root" });
+	const errs = validate(schema, { name: "A", age: 200, role: "root" }).errors;
 	const paths = errs.map((e) => e.path).sort();
 	assert.deepEqual(paths, ["age", "name", "role"]);
 });
 
-test("validate handles required, custom check, and nested fields", () => {
+test("validate COERCES form strings and checks the coerced value", () => {
+	const schema = {
+		age: { type: "number", min: 0, max: 120 },
+		active: { type: "boolean" },
+		name: { type: "string" }
+	};
+	// strings from inputs → declared types; checks run on coerced value
+	const { errors, value } = validate(schema, { age: "37", active: "true", name: "Ada" });
+	assert.deepEqual(errors, []);
+	assert.strictEqual(value.age, 37);
+	assert.strictEqual(value.active, true);
+	assert.strictEqual(value.name, "Ada");
+
+	// coerced value is what fails the bound (200 > 120), not the raw string
+	assert.equal(validate(schema, { age: "200" }).errors[0].path, "age");
+	// un-coercible stays a string and fails the type check
+	assert.equal(validate(schema, { age: "abc" }).errors[0].path, "age");
+});
+
+test("validate handles required, custom check, and nested fields (+ coerces nested)", () => {
 	const schema = {
 		email: { required: true, pattern: /@/, message: "needs @" },
 		pin: { check: (v) => v === 1234 ? true : "wrong pin" },
-		prefs: { fields: { theme: { enum: ["light", "dark"] } } }
+		prefs: { fields: { theme: { enum: ["light", "dark"] }, size: { type: "number" } } }
 	};
-	const errs = validate(schema, { pin: 9, prefs: { theme: "neon" } });
-	const map = Object.fromEntries(errs.map((e) => [e.path, e.message]));
+	const { errors, value } = validate(schema, { pin: 9, prefs: { theme: "neon", size: "14" } });
+	const map = Object.fromEntries(errors.map((e) => [e.path, e.message]));
 	assert.equal(map.email, "needs @");
 	assert.equal(map.pin, "wrong pin");
 	assert.equal(map["prefs.theme"], "prefs.theme must be one of light, dark");
+	assert.strictEqual(value.prefs.size, 14, "nested value coerced too");
 });

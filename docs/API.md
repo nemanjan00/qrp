@@ -1318,10 +1318,12 @@ Inject a UMD/global <script> once (deduped by URL); returns reactive load state.
 ### `validate`
 
 ```ts
-validate(schema: Schema, data: any): ValidationError[]
+validate(schema: Schema, data: any): ValidationResult
 ```
 
-Validate data against a schema; returns errors ([] when valid).
+Validate + coerce data against a schema. `errors` is [] when valid; `value` is
+a coerced copy (form strings become their declared type — "5"→5, "true"→true)
+ready to send as the patch.
 
 #### Supporting types
 
@@ -1421,6 +1423,10 @@ type Schema = Record<string, Rule>;
 
 ```ts
 interface ValidationError { path: string; message: string; }
+```
+
+```ts
+interface ValidationResult { errors: ValidationError[]; value: any; }
 ```
 
 

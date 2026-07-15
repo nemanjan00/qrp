@@ -15,6 +15,7 @@ import { trapFocus } from "../behaviors/trap-focus.js";
 import { disclosure } from "../behaviors/disclosure.js";
 import { busyWhile } from "../behaviors/busy-while.js";
 import { memoize } from "../utils/memoize.js";
+import { validate } from "../utils/validate.js";
 import { limit } from "../utils/limit.js";
 import { debounce, throttle } from "../utils/debounce.js";
 import { paginate } from "../utils/paginate.js";
@@ -115,6 +116,8 @@ deb("x"); deb.cancel();
 const thr = throttle(() => {}, 100);
 thr(); thr.cancel();
 createHttp().get("/x", { responseType: "arraybuffer" }).then((b: any) => b);
+const vres = validate({ age: { type: "number", min: 0 } }, { age: "5" });
+const vErrCount: number = vres.errors.length; const vVal: any = vres.value;
 
 // silence "unused" without changing meaning
-void [len, item, node, filled, token, fEl, fld, kv, count, pages, pending, sum, page, offErr, rp, rid, limitedP, deb, thr];
+void [len, item, node, filled, token, fEl, fld, kv, count, pages, pending, sum, page, offErr, rp, rid, limitedP, deb, thr, vErrCount, vVal];

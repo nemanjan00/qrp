@@ -15,5 +15,10 @@ export interface Rule {
 }
 export type Schema = Record<string, Rule>;
 export interface ValidationError { path: string; message: string; }
-/** Validate data against a schema; returns errors ([] when valid). */
-export function validate(schema: Schema, data: any): ValidationError[];
+export interface ValidationResult { errors: ValidationError[]; value: any; }
+/**
+ * Validate + coerce data against a schema. `errors` is [] when valid; `value` is
+ * a coerced copy (form strings become their declared type — "5"→5, "true"→true)
+ * ready to send as the patch.
+ */
+export function validate(schema: Schema, data: any): ValidationResult;
