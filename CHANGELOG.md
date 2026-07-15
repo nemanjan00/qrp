@@ -8,6 +8,13 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.4.9
+
+- **Tree-shaking:** added `"sideEffects": ["**/*.css"]` so a consumer's bundler
+  (webpack especially — it needs the flag) reliably drops unused re-exports.
+  Importing one util from the barrel no longer pulls in the others; CSS imports
+  stay side-effectful.
+
 ## 0.4.8
 
 - **Markers self-diagnose a bare DOM append.** The one unsupported position —
