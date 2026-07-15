@@ -29,6 +29,8 @@ const full = derive(() => `${s.user.name} ${s.n}`);
 const len: number = full.value.length;
 const h = effect(() => { void s.n; });
 h.dispose();
+const guarded = effect(() => { void s.n; }, { name: "n", loopLimit: 50 });
+guarded.dispose();
 
 // dom + list + when
 const row = el("tr", { class: () => (s.n > 0 ? "on" : ""), onclick: () => s.n++ }, () => `${s.n}`);
@@ -106,7 +108,10 @@ const sum: number = mfn(1, 2);
 const page: number[] = paginate([1, 2, 3, 4], 0, 2);
 
 // new surface
-const offErr: () => void = onEffectError((err: unknown) => void err);
+const offErr: () => void = onEffectError((err: unknown, ctx) => {
+	const phase: "create" | "update" | "loop" = ctx.phase;
+	void err; void phase;
+});
 const rp: string = currentRoute.path;
 const rid: string | undefined = currentRoute.params.id;
 const limited = limit(async (id: number) => id * 2, { max: 3, perSecond: 5, timeout: 1000 });

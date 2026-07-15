@@ -61,7 +61,9 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 `/index.js` is always written out.
 
 - `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`,
-  `onEffectError` for central crash reporting), DOM (`el`, `reactive`, `bind`,
+  `onEffectError` for central crash reporting — `phase: "loop"` when the
+  runaway-effect guard tears down an effect that writes state it reads; tune with
+  `effect(fn, { loopLimit })`), DOM (`el`, `reactive`, `bind`,
   `clear`), keyed lists (`list` — element reuse + `itemFor` delegation),
   conditional subtrees (`when` — swaps branch + disposes old scope), components
   (`mount`/`scope`/`onDispose`), custom elements (`define`), routing

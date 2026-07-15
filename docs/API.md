@@ -73,7 +73,7 @@ Unwrap a reactive proxy back to its raw object (or return as-is).
 ### `effect`
 
 ```ts
-effect(fn: () => void, options?: { name?: string }): EffectHandle
+effect(fn: () => void, options?: { name?: string; loopLimit?: number }): EffectHandle
 ```
 
 Run fn now and re-run it whenever any state key it read changes. Effects
@@ -84,8 +84,12 @@ An effect that reads and writes the *same* key runs once and settles (the
 trigger skips the currently-running effect) — it does not self-loop. An
 effect that **throws** is torn down (unsubscribed) and the error propagates
 to the caller (the write site, or `effect()` on first run); the rest of the
-system is unaffected. Two effects that write *each other's* keys will recurse
-synchronously with no depth guard — don't do that.
+system is unaffected. An effect that (transitively) writes state it reads —
+two effects writing *each other's* keys, or a loader that sets state the
+effect depends on — re-fires forever; a runaway guard catches this: past
+`loopLimit` re-runs within ~1s the effect is torn down and reported via
+{@link onEffectError} with `phase: "loop"` (default ceiling 1000; set
+`loopLimit: Infinity` to disable for a legitimately high-frequency effect).
 
 ```js
 const runner = effect(() => render(state.value));
@@ -429,8 +433,12 @@ A reactive computed value produced by derive().
 
 ```ts
 interface EffectErrorContext {
-	/** "create" = the effect's first run; "update" = a reactive re-run. */
-	phase: "create" | "update";
+	/**
+	 * "create" = the effect's first run; "update" = a reactive re-run;
+	 * "loop" = the runaway guard tripped (see `loopLimit`) and the effect was
+	 * stopped.
+	 */
+	phase: "create" | "update" | "loop";
 	/** The name from `effect(fn, { name })`, if any. */
 	name?: string;
 }

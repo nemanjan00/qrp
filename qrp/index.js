@@ -24,6 +24,23 @@
 let activeEffect = null;
 const effectStack = [];
 
+// Runaway-effect guard. An effect that (transitively) writes state it reads
+// re-fires forever: the classic footgun is a loader called from an effect that
+// sets state the same effect depends on — synchronously it recurses until the
+// stack overflows; asynchronously (a fetch that resolves later) it spins an
+// unbounded fetch loop that ends in net::ERR_INSUFFICIENT_RESOURCES and a tab
+// crash. Neither is caught by the `runner === activeEffect` self-guard in
+// trigger (async re-fires with activeEffect null; an A→B→A cascade never has A
+// as activeEffect when it re-runs). We instead count each runner's executions
+// in a sliding wall-clock window; past the ceiling the effect is a runaway, so
+// we tear it DOWN (breaking the cycle so the page survives) and report it via
+// onEffectError with phase "loop" — turning a tab crash into a catchable,
+// named error. The default ceiling is far above any legitimate effect (even a
+// per-frame animation binding is ~60/s); raise or disable it per effect with
+// `effect(fn, { loopLimit })` (Infinity/0 = off).
+const LOOP_WINDOW_MS = 1000;
+const DEFAULT_LOOP_LIMIT = 1000;
+
 // target -> Map(key -> Set(effect runners))
 const targetMap = new WeakMap();
 
@@ -261,8 +278,9 @@ const errorHandlers = new Set();
  * user effect) throws — before the error propagates. This is the central place
  * to wire crash reporting; without it a throwing binding is only observable at
  * the write site. Returns an unsubscribe function. The handler gets the error
- * and a context: `{ phase }` — "create" (first run) or "update" (a reactive
- * re-run) — plus `name` if the effect was created with `effect(fn, { name })`.
+ * and a context: `{ phase }` — "create" (first run), "update" (a reactive
+ * re-run), or "loop" (the runaway guard tripped and the effect was stopped) —
+ * plus `name` if the effect was created with `effect(fn, { name })`.
  *
  *   onEffectError((error, { phase, name }) => Sentry.captureException(error, { tags: { phase, name } }));
  */
@@ -292,8 +310,40 @@ const reportEffectError = (error, context) => {
  */
 export const effect = (fn, options = {}) => {
 	let ran = false;
+	const loopLimit = options.loopLimit ?? DEFAULT_LOOP_LIMIT;
 
 	const runner = () => {
+		// Runaway guard: count executions in a sliding window; past the ceiling
+		// this effect is looping (see LOOP_WINDOW_MS note). Tear it down BEFORE
+		// running fn again — that both breaks the cycle (a disposed runner is
+		// skipped by trigger, so no further re-fire) and stops it kicking off
+		// another loader iteration — then report and throw.
+		const now = Date.now();
+
+		if(now - runner.windowStart > LOOP_WINDOW_MS) {
+			runner.windowStart = now;
+			runner.runs = 0;
+		}
+
+		runner.runs += 1;
+
+		if(loopLimit && runner.runs > loopLimit) {
+			disposeEffect(runner);
+
+			const error = new Error(
+				`qrp: effect${options.name ? ` "${options.name}"` : ""} re-ran ` +
+				`over ${loopLimit} times within ${LOOP_WINDOW_MS}ms — likely an ` +
+				"infinite loop (an effect writing state it transitively reads, e.g. " +
+				"a loader that sets state the effect depends on). The effect has been " +
+				"stopped. Name it with effect(fn, { name }) to identify it, or raise " +
+				"the ceiling with effect(fn, { loopLimit }) if this is legitimate.",
+			);
+
+			reportEffectError(error, { phase: "loop", name: options.name });
+
+			throw error;
+		}
+
 		cleanupEffect(runner);
 
 		effectStack.push(runner);
@@ -328,6 +378,8 @@ export const effect = (fn, options = {}) => {
 	runner.children = [];
 	runner.disposers = [];
 	runner.disposed = false;
+	runner.windowStart = 0;
+	runner.runs = 0;
 	runner.dispose = () => disposeEffect(runner);
 
 	if(activeEffect) {

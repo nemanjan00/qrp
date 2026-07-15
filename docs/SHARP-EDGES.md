@@ -35,6 +35,27 @@ propagates. Register [`onEffectError`](./API.md#qrp--core) to observe them
 centrally (Sentry, etc.) — otherwise a throwing binding is only visible at the
 write site.
 
+**An effect that writes state it (transitively) reads loops forever.** The
+classic version is a loader called from an effect that sets state the *same*
+effect depends on:
+
+```js
+// ✗ re-fires forever: reads metrics, writes metrics
+effect(() => { if(!state.metrics) { loadMetrics().then(m => state.metrics = m); } });
+```
+
+Synchronously this recurses until the stack overflows; with an async loader
+(`fetch`) it spins an unbounded request loop that ends in
+`net::ERR_INSUFFICIENT_RESOURCES` and a tab crash. Two effects that write *each
+other's* keys are the same bug. qrp has a **runaway guard**: past ~1000 re-runs
+in a second an effect is torn down and reported through
+[`onEffectError`](./API.md#qrp--core) with `phase: "loop"` — a catchable, named
+error instead of a dead tab. Name effects (`effect(fn, { name })`) so the report
+points at the culprit; raise the ceiling with `effect(fn, { loopLimit })` for a
+legitimately high-frequency effect. The fix is almost always to **read less**:
+load outside the effect, guard the write (`if(next !== state.x)`), or read the
+trigger with [`untracked`](./API.md#qrp--core).
+
 ## DOM & rendering
 
 **A DOM node lives in exactly one place.** Appending "the same" node in two spots

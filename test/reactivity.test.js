@@ -230,3 +230,38 @@ test("onEffectError also catches throws on re-run", () => {
 	offP();
 	off();
 });
+
+// --- runaway-effect (loop) guard --------------------------------------------
+
+test("a runaway effect is torn down and reported with phase 'loop'", () => {
+	const phases = [];
+	const off = onEffectError((_e, c) => phases.push(c.phase));
+	const s = state({ a: 0, b: 0 });
+
+	// Two effects writing each other's keys form an infinite synchronous
+	// cascade; the second effect's creation closes the cycle and kicks it off.
+	effect(() => { s.b = s.a + 1; }, { loopLimit: 10, name: "a->b" });
+
+	assert.throws(
+		() => effect(() => { s.a = s.b + 1; }, { loopLimit: 10, name: "b->a" }),
+		/likely an infinite loop/,
+		"the runaway throws once the ceiling is crossed",
+	);
+
+	assert.ok(phases.includes("loop"), "the runaway is reported with phase 'loop'");
+	off();
+});
+
+test("normal re-runs under the ceiling never trip the loop guard", () => {
+	let loops = 0;
+	const off = onEffectError((_e, c) => { if(c.phase === "loop") { loops += 1; } });
+	const s = state({ n: 0 });
+
+	let runs = 0;
+	effect(() => { void s.n; runs += 1; });
+	Array.from({ length: 50 }, (_, i) => i + 1).forEach(i => { s.n = i; });
+
+	assert.equal(runs, 51, "ran once on create + once per write");
+	assert.equal(loops, 0, "50 legitimate re-runs stay well under the default ceiling");
+	off();
+});

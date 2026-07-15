@@ -8,6 +8,20 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.4.10
+
+- **Runaway-effect guard.** An effect that (transitively) writes state it reads
+  used to loop forever — synchronously until the stack overflowed, or, with an
+  async loader, as an unbounded `fetch` loop ending in
+  `net::ERR_INSUFFICIENT_RESOURCES` and a tab crash. The `runner === activeEffect`
+  self-guard never caught it (async re-fires with no active effect; an A→B→A
+  cascade never has A active when it re-runs). Effects now count their re-runs in
+  a sliding ~1s window; past `loopLimit` (default 1000) the effect is torn down
+  and reported through `onEffectError` with the new `phase: "loop"` — a catchable,
+  named error instead of a dead tab. Opt out / tune per effect with
+  `effect(fn, { loopLimit })` (`Infinity` disables). See
+  [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md).
+
 ## 0.4.9
 
 - **Tree-shaking:** added `"sideEffects": ["**/*.css"]` so a consumer's bundler
