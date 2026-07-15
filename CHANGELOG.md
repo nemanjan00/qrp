@@ -8,6 +8,17 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.4.7
+
+- **Public renderable protocol.** `Symbol.for("qrp.renderable")` — any object
+  with `[renderable](parent)` renders in child position exactly like `when`/`list`
+  (which are now just its first implementations; the normalizer no longer
+  special-cases their brands). Userland can build peers — `switchOn`,
+  `virtualList`, a suspense-alike — at full first-party parity, no wrapper element
+  needed. The method appends its nodes and registers an `onDispose` that removes
+  its own nodes + anchor (nested-teardown contract). Internal brands
+  `__qrpWhen`/`__qrpList` were removed (they were undocumented).
+
 ## 0.4.6
 
 - **Fix (P0): nested-marker teardown leak.** A `when()`/`list()` nested inside a
