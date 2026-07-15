@@ -8,6 +8,14 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.4.8
+
+- **Markers self-diagnose a bare DOM append.** The one unsupported position —
+  `parent.append(marker)` — used to fail as a silent `[object Object]`. Markers
+  now `console.warn` and stringify to a `[qrp when() — render via el()/mount()…]`
+  breadcrumb at the call site. (Can't fire in normal use — qrp routes markers via
+  the renderable symbol before any string coercion.)
+
 ## 0.4.7
 
 - **Public renderable protocol.** `Symbol.for("qrp.renderable")` — any object
