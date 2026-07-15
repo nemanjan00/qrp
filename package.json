@@ -1,6 +1,6 @@
 {
 	"name": "@nemanjan00/qrp",
-	"version": "0.4.8",
+	"version": "0.4.9",
 	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step — the devDependencies below are only for tests, lint, and git hooks.",
 	"type": "module",
 	"license": "MIT",
