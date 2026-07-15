@@ -381,6 +381,58 @@ Card("Account",
   Field("Alerts", Toggle(acct, "alerts")));`),
 				compositionDemo())));
 
+		// ============================================================ PERFORMANCE
+		// all eight ops, including the two worst (create 10k, clear 10k) — the
+		// README shows all eight, so does this. Bar length = COST relative to
+		// vanilla on a fixed 2× scale, so LONGER = SLOWER (same as the headline
+		// chart); the marker line sits at 1.0× (hand-written vanilla parity).
+		const perfData = [
+			["create 1,000 rows", 0.9], ["create 10,000 rows", 1.3], ["replace all rows", 1.0],
+			["update every 10th", 0.9], ["swap 2 in 10,000", 1.3], ["remove a row", 1.2],
+			["select a row", 1.5], ["clear 10,000 rows", 1.8]
+		];
+		const perfSection = () => {
+			const shown = state({ on: false });
+			const bars = el("div", { class: "bars" }, perfData.map(([label, ratio]) =>
+				el("div", { class: "bar-row" },
+					el("span", {}, label),
+					el("div", { class: "bar-track" },
+						el("div", { class: "vanilla-line" }),
+						el("div", { class: "bar-fill", style: () => `width:${shown.on ? Math.min(100, ratio / 2 * 100) : 0}%;background:${ratio <= 1.05 ? "var(--accent2)" : "var(--accent)"}` })),
+					el("span", { class: "bar-num" }, `${ratio}×`))));
+			const wrap = el("div", {},
+				el("div", { class: "dim", style: "font-size:.78rem;margin-bottom:.8rem" }, "longer = slower. The line is hand-written vanilla (1×); bars left of it beat raw DOM, right of it are slower."),
+				bars);
+			const vis = seen(wrap, { threshold: 0.3 });
+			effect(() => { if(vis.matches) shown.on = true; });
+			return wrap;
+		};
+		const vsRow = (name, note, frac, hi) => el("div", { style: "display:grid;grid-template-columns:90px 1fr auto;gap:1rem;align-items:center;font-size:.85rem" },
+			el("strong", { style: hi ? "color:var(--accent2)" : "color:var(--muted)" }, name),
+			el("div", { class: "bar-track", style: "height:14px" }, el("div", { class: "bar-fill", style: `width:${frac}%;background:${hi ? "var(--accent2)" : "var(--muted)"}` })),
+			el("span", { class: "bar-num", style: "min-width:150px;text-align:right" }, note));
+		const perfHeadline = () => el("div", { class: "headline-stat" },
+			el("div", { class: "hs-num" }, "1", el("span", {}, " / 40,002")),
+			el("div", { class: "hs-label" },
+				el("strong", {}, "DOM nodes touched"), " when you change one field in a 10,000-row table."),
+			el("div", { class: "hs-sub" },
+				"The ", el("code", {}, "Proxy"), " setter fires one tracked effect that writes the one text node it already references — ",
+				el("strong", { style: "color:var(--accent)" }, "~0.8 µs"), ", no diff, no re-render, O(1) regardless of table size. ",
+				el("span", { class: "dim" }, "That “1 of 40,002” is machine-independent — architectural, not a timing.")),
+			el("div", { style: "max-width:520px;margin:2rem auto 0;display:flex;flex-direction:column;gap:.6rem" },
+				el("div", { class: "dim", style: "font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;text-align:left" }, "JS per single-cell update — shorter is faster (both touch 1 node)"),
+				vsRow("qrp", "~0.8 µs · 1 node", 1.5, true),
+				vsRow("React 18", "~800 µs · 1 node", 100, false)),
+			el("div", { class: "hs-sub", style: "margin-top:1.2rem;font-size:.85rem" },
+				"Both touch exactly one node. React spends ", el("strong", {}, "~1000×"), " the JavaScript to find ",
+				el("em", {}, "which"), " — re-running the component and reconciling 10,000 children; qrp's subscription already points at it. ",
+				el("span", { class: "dim" }, "Measured in real Chromium — reproduce with examples/react-compare.html.")));
+		app.appendChild(section("perf", "Performance", "Change one field. Touch one node.",
+			"The operation where the architecture is categorically different: a single-cell update. Then the full suite — all eight ops, paint-timed in real Chromium against a hand-written keyed vanilla-DOM control (the floor, not another framework). Includes the two we're slower on: clear (1.8×) is the honest weak spot.",
+			perfHeadline(),
+			el("h3", { style: "margin:2.5rem 0 1rem;font-size:1rem;color:var(--muted)" }, "The full suite, vs hand-written vanilla DOM"),
+			perfSection()));
+
 		// ============================================================ REACTIVITY
 		const reactivityDemo = () => {
 			const s = state({ first: "Ada", last: "Lovelace" });
@@ -684,32 +736,6 @@ el("span", {}, () => \`\${size.width}px\`);
 el("button", { onclick: () => prefs.likes++ });`),
 				browserDemo())));
 
-		// ============================================================ PERFORMANCE
-		// all eight ops, including the two worst (create 10k, clear 10k) — the
-		// README shows all eight, so does this. Bar length = COST relative to
-		// vanilla on a fixed 2× scale, so LONGER = SLOWER (same as the headline
-		// chart); the marker line sits at 1.0× (hand-written vanilla parity).
-		const perfData = [
-			["create 1,000 rows", 0.9], ["create 10,000 rows", 1.3], ["replace all rows", 1.0],
-			["update every 10th", 0.9], ["swap 2 in 10,000", 1.3], ["remove a row", 1.2],
-			["select a row", 1.5], ["clear 10,000 rows", 1.8]
-		];
-		const perfSection = () => {
-			const shown = state({ on: false });
-			const bars = el("div", { class: "bars" }, perfData.map(([label, ratio]) =>
-				el("div", { class: "bar-row" },
-					el("span", {}, label),
-					el("div", { class: "bar-track" },
-						el("div", { class: "vanilla-line" }),
-						el("div", { class: "bar-fill", style: () => `width:${shown.on ? Math.min(100, ratio / 2 * 100) : 0}%;background:${ratio <= 1.05 ? "var(--accent2)" : "var(--accent)"}` })),
-					el("span", { class: "bar-num" }, `${ratio}×`))));
-			const wrap = el("div", {},
-				el("div", { class: "dim", style: "font-size:.78rem;margin-bottom:.8rem" }, "longer = slower. The line is hand-written vanilla (1×); bars left of it beat raw DOM, right of it are slower."),
-				bars);
-			const vis = seen(wrap, { threshold: 0.3 });
-			effect(() => { if(vis.matches) shown.on = true; });
-			return wrap;
-		};
 		// ============================================================ when() (conditional)
 		const whenDemo = () => {
 			const st = state({ editing: false, name: "Katherine Johnson" });
@@ -872,31 +898,6 @@ effect(() => applyTheme(
 				themeDemo())));
 
 		// the headline: change ONE cell in a 10k table → 1 node of 40,002
-		const vsRow = (name, note, frac, hi) => el("div", { style: "display:grid;grid-template-columns:90px 1fr auto;gap:1rem;align-items:center;font-size:.85rem" },
-			el("strong", { style: hi ? "color:var(--accent2)" : "color:var(--muted)" }, name),
-			el("div", { class: "bar-track", style: "height:14px" }, el("div", { class: "bar-fill", style: `width:${frac}%;background:${hi ? "var(--accent2)" : "var(--muted)"}` })),
-			el("span", { class: "bar-num", style: "min-width:150px;text-align:right" }, note));
-		const perfHeadline = () => el("div", { class: "headline-stat" },
-			el("div", { class: "hs-num" }, "1", el("span", {}, " / 40,002")),
-			el("div", { class: "hs-label" },
-				el("strong", {}, "DOM nodes touched"), " when you change one field in a 10,000-row table."),
-			el("div", { class: "hs-sub" },
-				"The ", el("code", {}, "Proxy"), " setter fires one tracked effect that writes the one text node it already references — ",
-				el("strong", { style: "color:var(--accent)" }, "~0.8 µs"), ", no diff, no re-render, O(1) regardless of table size. ",
-				el("span", { class: "dim" }, "That “1 of 40,002” is machine-independent — architectural, not a timing.")),
-			el("div", { style: "max-width:520px;margin:2rem auto 0;display:flex;flex-direction:column;gap:.6rem" },
-				el("div", { class: "dim", style: "font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;text-align:left" }, "JS per single-cell update — shorter is faster (both touch 1 node)"),
-				vsRow("qrp", "~0.8 µs · 1 node", 1.5, true),
-				vsRow("React 18", "~800 µs · 1 node", 100, false)),
-			el("div", { class: "hs-sub", style: "margin-top:1.2rem;font-size:.85rem" },
-				"Both touch exactly one node. React spends ", el("strong", {}, "~1000×"), " the JavaScript to find ",
-				el("em", {}, "which"), " — re-running the component and reconciling 10,000 children; qrp's subscription already points at it. ",
-				el("span", { class: "dim" }, "Measured in real Chromium — reproduce with examples/react-compare.html.")));
-		app.appendChild(section("perf", "Performance", "Change one field. Touch one node.",
-			"The operation where the architecture is categorically different: a single-cell update. Then the full suite — all eight ops, paint-timed in real Chromium against a hand-written keyed vanilla-DOM control (the floor, not another framework). Includes the two we're slower on: clear (1.8×) is the honest weak spot.",
-			perfHeadline(),
-			el("h3", { style: "margin:2.5rem 0 1rem;font-size:1rem;color:var(--muted)" }, "The full suite, vs hand-written vanilla DOM"),
-			perfSection()));
 
 		// ============================================================ MODULES
 		const modules = [
