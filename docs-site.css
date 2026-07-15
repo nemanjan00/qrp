@@ -1,0 +1,62 @@
+/* docs-site.css — shared styling for the rendered doc pages (start / api /
+   styling / sharp). One source; each page links this and calls renderDocPage()
+   from docs-site.js. */
+:root {
+	--bg: #0a0d12; --surface: #121821; --surface2: #19212c; --border: #232d3b;
+	--fg: #e8ebf0; --muted: #8894a6; --accent: #ffb23e; --accent2: #34d399; --radius: 10px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; }
+nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--border); }
+.nav-inner { max-width: 1180px; margin: 0 auto; padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 1.2rem; }
+.brand { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.03em; }
+.brand b { color: var(--accent); }
+.nav-links { margin-left: auto; display: flex; gap: 1.3rem; font-size: 0.9rem; }
+.nav-links a { color: var(--muted); }
+.nav-links a:hover { color: var(--fg); text-decoration: none; }
+.layout { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 220px 1fr; gap: 2.5rem; padding: 2rem 1.5rem 5rem; }
+aside { position: sticky; top: 68px; align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; }
+.search { width: 100%; padding: 0.55rem 0.7rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; font: inherit; margin-bottom: 1rem; }
+.search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.toc { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
+.toc li { margin: 0.1rem 0; }
+.toc a { color: var(--muted); display: block; padding: 0.15rem 0.4rem; border-radius: 6px; }
+.toc a:hover { color: var(--fg); background: var(--surface); text-decoration: none; }
+.toc .sub { padding-left: 0.9rem; font-size: 0.83rem; }
+main { min-width: 0; }
+main h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; }
+main h2 { font-size: 1.5rem; font-weight: 700; margin: 2.5rem 0 0.8rem; padding-top: 0.6rem; border-top: 1px solid var(--border); scroll-margin-top: 80px; }
+main h2 code, main h3 code { background: none; padding: 0; color: var(--accent); }
+main h3 { font-size: 1.15rem; margin: 1.6rem 0 0.5rem; color: var(--fg); scroll-margin-top: 80px; }
+main p { color: #c9d1dc; }
+main a { color: var(--accent); }
+/* underline links inside prose so they're not distinguished by color alone (a11y) */
+main p a, main li a, main blockquote a { text-decoration: underline; }
+main :not(pre) > code { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 0.1rem 0.35rem; font-size: 0.86em; color: var(--accent2); }
+main pre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-size: 0.83rem; line-height: 1.7; }
+main pre code { color: #d7dde6; }
+main blockquote { margin: 1rem 0; padding: 0.6rem 1rem; border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; color: var(--muted); }
+main ul, main ol { padding-left: 1.3rem; color: #c9d1dc; }
+main li { margin: 0.25rem 0; }
+main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+.tablewrap { overflow-x: auto; margin: 1rem 0; }
+main table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+main th, main td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+main th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+main td code { white-space: nowrap; }
+.hidden { display: none; }
+.note { color: var(--muted); font-size: 0.82rem; margin-top: 2rem; }
+.loading { color: var(--muted); padding: 3rem 0; }
+/* reserve height so the async-rendered doc doesn't shift layout (CLS) */
+#doc { min-height: 100vh; }
+@media (max-width: 800px) {
+	.layout { grid-template-columns: 1fr; }
+	/* content first; the async-populated TOC fills in below so it can't
+	   shove the doc down (eliminates CLS on the mobile audit) */
+	main#doc { order: 1; } aside { order: 2; position: static; max-height: none; }
+	.nav-links a[href^="#"] { display: none; }
+}

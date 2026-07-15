@@ -6,67 +6,7 @@
 	<title>qrp — API reference</title>
 	<meta name="description" content="qrp API reference — every export, signature, and usage snippet. Rendered from docs/API.md, live, with qrp.">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
-	<style>
-		:root {
-			--bg: #0a0d12; --surface: #121821; --surface2: #19212c; --border: #232d3b;
-			--fg: #e8ebf0; --muted: #8894a6; --accent: #ffb23e; --accent2: #34d399; --radius: 10px;
-		}
-		* { box-sizing: border-box; }
-		html { scroll-behavior: smooth; }
-		body { margin: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; }
-		a { color: var(--accent); text-decoration: none; }
-		a:hover { text-decoration: underline; }
-		code, pre { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; }
-		nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--border); }
-		.nav-inner { max-width: 1180px; margin: 0 auto; padding: 0.8rem 1.5rem; display: flex; align-items: center; gap: 1.2rem; }
-		.brand { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.03em; }
-		.brand b { color: var(--accent); }
-		.nav-links { margin-left: auto; display: flex; gap: 1.3rem; font-size: 0.9rem; }
-		.nav-links a { color: var(--muted); }
-		.nav-links a:hover { color: var(--fg); text-decoration: none; }
-		.layout { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 220px 1fr; gap: 2.5rem; padding: 2rem 1.5rem 5rem; }
-		aside { position: sticky; top: 68px; align-self: start; max-height: calc(100vh - 90px); overflow-y: auto; }
-		.search { width: 100%; padding: 0.55rem 0.7rem; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; font: inherit; margin-bottom: 1rem; }
-		.search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-		.toc { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
-		.toc li { margin: 0.1rem 0; }
-		.toc a { color: var(--muted); display: block; padding: 0.15rem 0.4rem; border-radius: 6px; }
-		.toc a:hover { color: var(--fg); background: var(--surface); text-decoration: none; }
-		.toc .sub { padding-left: 0.9rem; font-size: 0.83rem; }
-		main { min-width: 0; }
-		main h1 { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; }
-		main h2 { font-size: 1.5rem; font-weight: 700; margin: 2.5rem 0 0.8rem; padding-top: 0.6rem; border-top: 1px solid var(--border); scroll-margin-top: 80px; }
-		main h2 code, main h3 code { background: none; padding: 0; color: var(--accent); }
-		main h3 { font-size: 1.15rem; margin: 1.6rem 0 0.5rem; color: var(--fg); scroll-margin-top: 80px; }
-		main p { color: #c9d1dc; }
-		main a { color: var(--accent); }
-		/* underline links inside prose so they're not distinguished by color alone (a11y) */
-		main p a, main li a, main blockquote a { text-decoration: underline; }
-		main :not(pre) > code { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 0.1rem 0.35rem; font-size: 0.86em; color: var(--accent2); }
-		main pre { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-size: 0.83rem; line-height: 1.7; }
-		main pre code { color: #d7dde6; }
-		main blockquote { margin: 1rem 0; padding: 0.6rem 1rem; border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0; color: var(--muted); }
-		main ul, main ol { padding-left: 1.3rem; color: #c9d1dc; }
-		main li { margin: 0.25rem 0; }
-		main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
-		.tablewrap { overflow-x: auto; margin: 1rem 0; }
-		main table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
-		main th, main td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-		main th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
-		main td code { white-space: nowrap; }
-		.hidden { display: none; }
-		.note { color: var(--muted); font-size: 0.82rem; margin-top: 2rem; }
-		.loading { color: var(--muted); padding: 3rem 0; }
-		/* reserve height so the async-rendered doc doesn't shift layout (CLS) */
-		#doc { min-height: 100vh; }
-		@media (max-width: 800px) {
-			.layout { grid-template-columns: 1fr; }
-			/* content first; the async-populated TOC fills in below so it can't
-			   shove the doc down (eliminates CLS on the mobile audit) */
-			main#doc { order: 1; } aside { order: 2; position: static; max-height: none; }
-			.nav-links a[href^="#"] { display: none; }
-		}
-	</style>
+	<link rel="stylesheet" href="./docs-site.css">
 </head>
 <body>
 	<nav>
@@ -85,177 +25,20 @@
 
 	<div class="layout">
 		<aside>
-			<input class="search" id="search" type="search" aria-label="Filter API reference" placeholder="Filter…" autocomplete="off">
+			<input class="search" id="search" type="search" aria-label="Filter the API reference" placeholder="Filter…" autocomplete="off">
 			<nav id="toc" aria-label="API sections"></nav>
 		</aside>
-		<main id="doc"><div class="loading">Loading API reference…</div></main>
+		<main id="doc"><div class="loading">Loading the API reference…</div></main>
 	</div>
 
+	<!-- renderDocPage() pulls state/el/list from the core entry; that is the only
+	     bare specifier docs-site.js needs, so the map is one line, not the full set. -->
 	<script type="importmap">
-		{
-			"imports": {
-				"@nemanjan00/qrp": "./qrp/index.js",
-				"@nemanjan00/qrp/": "./",
-				"@nemanjan00/qrp/html": "./html/index.js",
-				"@nemanjan00/qrp/forms": "./forms/index.js",
-				"@nemanjan00/qrp/table": "./table/index.js",
-				"@nemanjan00/qrp/collection": "./collection/index.js",
-				"@nemanjan00/qrp/http": "./http/index.js",
-				"@nemanjan00/qrp/events": "./events/index.js",
-				"@nemanjan00/qrp/toasts": "./toasts/index.js",
-				"@nemanjan00/qrp/browser": "./browser/index.js",
-				"@nemanjan00/qrp/proto": "./proto/index.js",
-				"@nemanjan00/qrp/behaviors/portal": "./behaviors/portal.js",
-				"@nemanjan00/qrp/behaviors/dismissable": "./behaviors/dismissable.js",
-				"@nemanjan00/qrp/behaviors/trap-focus": "./behaviors/trap-focus.js",
-				"@nemanjan00/qrp/behaviors/anchored": "./behaviors/anchored.js",
-				"@nemanjan00/qrp/behaviors/disclosure": "./behaviors/disclosure.js",
-				"@nemanjan00/qrp/behaviors/busy-while": "./behaviors/busy-while.js",
-				"@nemanjan00/qrp/utils": "./utils/index.js",
-				"@nemanjan00/qrp/utils/memoize": "./utils/memoize.js",
-				"@nemanjan00/qrp/utils/lru": "./utils/lru.js",
-				"@nemanjan00/qrp/utils/cache": "./utils/cache.js",
-				"@nemanjan00/qrp/utils/paginate": "./utils/paginate.js"
-			}
-		}
+		{ "imports": { "@nemanjan00/qrp": "./qrp/index.js" } }
 	</script>
 	<script type="module">
-		import { state, el, effect, list } from "@nemanjan00/qrp";
-
-		// ---- a compact Markdown → DOM renderer (the subset docs/API.md uses) ----
-		// Dogfoods qrp: no markdown library, just el() building real nodes.
-
-		// cross-doc .md links -> their rendered pages; other relative paths kept
-		const DOC_PAGES = { "API.md": "api.html", "GETTING-STARTED.md": "start.html", "STYLING.md": "styling.html", "SHARP-EDGES.md": "sharp.html" };
-		const resolveHref = (href) => {
-			if(/^(https?:|#)/.test(href)) { return href; }
-			const m = href.match(/^\.\/([A-Z0-9-]+\.md)(#.*)?$/);
-			if(m && DOC_PAGES[m[1]]) { return DOC_PAGES[m[1]] + (m[2] || ""); }
-			return href.replace(/^\.\.\/examples/, "examples").replace(/^\.\.\//, "./");
-		};
-
-		// inline: `code`, **bold**, *italic*, [text](url)
-		const inline = (text) => {
-			const out = [];
-			const re = /`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*|\[([^\]]+)\]\(([^)]+)\)/g;
-			let last = 0, m;
-			while((m = re.exec(text))) {
-				if(m.index > last) { out.push(text.slice(last, m.index)); }
-				if(m[1] !== undefined) { out.push(el("code", {}, m[1])); }
-				else if(m[2] !== undefined) { out.push(el("strong", {}, ...inline(m[2]))); }
-				else if(m[3] !== undefined) { out.push(el("em", {}, ...inline(m[3]))); }
-				else { out.push(el("a", { href: resolveHref(m[5]) }, ...inline(m[4]))); }
-				last = m.index + m[0].length;
-			}
-			if(last < text.length) { out.push(text.slice(last)); }
-			return out;
-		};
-
-		// GitHub-compatible slug: strip punctuation, spaces -> hyphens (do NOT
-		// collapse runs), so anchors match the ones in the Markdown on GitHub.
-		const slug = (s) => s.toLowerCase().replace(/`/g, "").replace(/[^\w\s-]/g, "").trim().replace(/\s/g, "-");
-
-		// block-level parse → array of DOM nodes; also collects headings for the TOC
-		const renderMarkdown = (md) => {
-			const lines = md.replace(/\r/g, "").split("\n");
-			const nodes = [];
-			const toc = [];
-			let i = 0;
-			const tocText = (t) => t.replace(/`/g, "").replace(/\*\*/g, "");
-
-			while(i < lines.length) {
-				const line = lines[i];
-
-				// fenced code
-				if(/^```/.test(line)) {
-					const buf = [];
-					i++;
-					while(i < lines.length && !/^```/.test(lines[i])) { buf.push(lines[i++]); }
-					i++;
-					nodes.push(el("pre", {}, el("code", {}, buf.join("\n"))));
-					continue;
-				}
-				// headings
-				const hm = line.match(/^(#{1,4})\s+(.*)$/);
-				if(hm) {
-					const level = hm[1].length;
-					const id = slug(hm[2]);
-					nodes.push(el("h" + level, { id }, ...inline(hm[2])));
-					if(level === 2 || level === 3) { toc.push({ level, id, text: tocText(hm[2]) }); }
-					i++;
-					continue;
-				}
-				// hr
-				if(/^---+\s*$/.test(line)) { nodes.push(el("hr")); i++; continue; }
-				// blockquote
-				if(/^>\s?/.test(line)) {
-					const buf = [];
-					while(i < lines.length && /^>\s?/.test(lines[i])) { buf.push(lines[i++].replace(/^>\s?/, "")); }
-					nodes.push(el("blockquote", {}, ...inline(buf.join(" "))));
-					continue;
-				}
-				// table
-				if(/^\|/.test(line) && i + 1 < lines.length && /^\|[\s:|-]+\|?\s*$/.test(lines[i + 1])) {
-					const cells = (row) => row.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
-					const head = cells(line);
-					i += 2;
-					const body = [];
-					while(i < lines.length && /^\|/.test(lines[i])) { body.push(cells(lines[i++])); }
-					nodes.push(el("div", { class: "tablewrap" },
-						el("table", {},
-							el("thead", {}, el("tr", {}, head.map((h) => el("th", {}, ...inline(h))))),
-							el("tbody", {}, body.map((r) => el("tr", {}, r.map((c) => el("td", {}, ...inline(c)))))))));
-					continue;
-				}
-				// lists
-				if(/^\s*([-*]|\d+\.)\s+/.test(line)) {
-					const ordered = /^\s*\d+\.\s+/.test(line);
-					const items = [];
-					while(i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i])) {
-						items.push(lines[i++].replace(/^\s*([-*]|\d+\.)\s+/, ""));
-					}
-					nodes.push(el(ordered ? "ol" : "ul", {}, items.map((it) => el("li", {}, ...inline(it)))));
-					continue;
-				}
-				// blank
-				if(/^\s*$/.test(line)) { i++; continue; }
-				// paragraph (gather until blank / block start)
-				const buf = [line];
-				i++;
-				while(i < lines.length && !/^\s*$/.test(lines[i]) && !/^(#{1,4}\s|```|\||>|---+\s*$|\s*([-*]|\d+\.)\s)/.test(lines[i])) {
-					buf.push(lines[i++]);
-				}
-				nodes.push(el("p", {}, ...inline(buf.join(" "))));
-			}
-			return { nodes, toc };
-		};
-
-		// ---- fetch the markdown (single source) and render ----
-		fetch("./docs/API.md").then((r) => {
-			if(!r.ok) { throw new Error("HTTP " + r.status); }
-			return r.text();
-		}).then((md) => {
-			const { nodes, toc } = renderMarkdown(md);
-			const doc = document.getElementById("doc");
-			doc.replaceChildren(...nodes);
-
-			// searchable TOC (module-level h2s + their h3s), filtered reactively
-			const q = state({ term: "" });
-			const entries = toc.map((t) => ({ ...t, hay: t.text.toLowerCase() }));
-			const tocEl = document.getElementById("toc");
-			tocEl.replaceChildren(el("ul", { class: "toc", style: "padding:0" },
-				list(
-					() => entries.filter((e) => !q.term || e.hay.includes(q.term)),
-					(e) => e.id,
-					(e) => el("li", {}, el("a", { href: "#" + e.id, class: e.level === 3 ? "sub" : "" }, e.text)))));
-
-			document.getElementById("search").addEventListener("input", (ev) => { q.term = ev.target.value.toLowerCase(); });
-		}).catch((err) => {
-			document.getElementById("doc").replaceChildren(
-				el("p", {}, "Could not load the API reference (", el("code", {}, String(err.message || err)), ")."),
-				el("p", { class: "note" }, "Serve this over HTTP (e.g. python -m http.server) so ./docs/API.md is fetchable, or read it directly: ",
-					el("a", { href: "./docs/API.md" }, "docs/API.md"), "."));
-		});
+		import { renderDocPage } from "./docs-site.js";
+		renderDocPage({ md: "./docs/API.md", noun: "the API reference", sections: "API" });
 	</script>
 </body>
 </html>

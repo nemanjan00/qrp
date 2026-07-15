@@ -217,6 +217,28 @@ husky + lint-staged run on every commit (`.husky/pre-commit`): `lint-staged`
 (eslint --fix on staged `*.js`) then `npm test`. Config lives in `package.json`
 (`lint-staged`) and `prepare: husky`.
 
+## Releasing (do this in order — bumping AFTER publish causes drift)
+
+The npm-published version is the source of truth; a missing git tag makes "is it
+bumped?" unanswerable, so **tag every release**. Any change that reaches `dist/`
+(anything under a shipped module, i.e. not docs/examples-only) needs a version
+bump before it's published. Order:
+
+1. **Land the code** (committed, green: `npm test` + `npm run typecheck` + `npm run lint`).
+2. **Move the CHANGELOG `Unreleased` bullets into a new `## X.Y.Z` section.** Patch
+   for fixes, minor for a new export/module (pre-1.0, so breaking changes can ride
+   a minor/patch — mark them ⚠️). Never append post-publish changes to an
+   already-published section.
+3. `npm version X.Y.Z --no-git-tag-version` (updates package.json + lock), then
+   commit as `X.Y.Z`.
+4. `git tag vX.Y.Z` at that commit. (The user runs `npm publish` and
+   `git push --tags` — the sandbox never publishes or pushes.)
+
+Docs/examples-only changes (`docs/`, `*.html`, `examples/`, README prose) do
+**not** need a bump — they aren't in the npm `files` allowlist. README *does*
+ship, so keep its size/benchmark/version numbers current, but a README-only edit
+still rides the next real release.
+
 ## Keeping this file in sync
 
 Update this CLAUDE.md and `README.md` whenever modules, exports, or conventions

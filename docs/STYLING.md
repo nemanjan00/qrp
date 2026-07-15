@@ -118,6 +118,31 @@ Classes qrp puts on the elements it builds, so you can style them from any CSS.
 | `textarea-input` | the `textual()` editor |
 | `description` | a field's help text |
 
+The nesting `form()` emits, so you know exactly what to target — the section
+title is a bare `<h3>` *outside* the section wrapper, and each row is
+`label → control → optional description` with no wrapper around the control:
+
+```html
+<div class="settings-container">
+  <h3>Section name</h3>                      <!-- one per section, bare -->
+  <div class="settings-section">
+    <div class="setting-item">
+      <label for="…">Field name</label>
+      <input|select|textarea …>              <!-- the control; id ↔ label's for -->
+      <div class="description">Help text</div><!-- only if spec.description -->
+    </div>
+    <!-- … more .setting-item … -->
+  </div>
+  <!-- … more <h3> + .settings-section … -->
+</div>
+```
+
+`.setting-item` is where you set the row layout — e.g. `display:grid` or a
+`flex` column; it does **not** come pre-styled unless you link `qrp.css`. The
+`radio` input type nests differently: the control is a
+`<div class="radio-group">` of `<label class="radio-option"><input type=radio>…`,
+so a `<label for>` can't target it — style `.radio-group` directly.
+
 **Baseline components in `qrp.css`** (not emitted — apply them yourself when
 hand-building modals, cards, buttons, badges, spinners): `qrp-btn`
 (`qrp-btn-primary`), `qrp-card` (`qrp-card-header`), `qrp-badge`
