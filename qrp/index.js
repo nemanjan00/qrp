@@ -430,7 +430,18 @@ export const scoped = (fn) => {
  * Returns { dispose } which tears down the component's effects and DOM.
  */
 export const mount = (parent, component) => {
-	const inner = scope(() => component(parent));
+	const inner = scope(() => {
+		const result = component(parent);
+
+		// Support both styles: a component that appends to the `view` it's given,
+		// AND one that RETURNS a renderable (`() => el(...)`). Append the return
+		// unless it's already a child of parent (the append-to-view style returns
+		// the node it just appended — don't double it). Done inside the scope so
+		// any effects a returned marker creates are owned by this mount.
+		if(result != null && !(result instanceof Node && result.parentNode === parent)) {
+			appendChild(parent, result);
+		}
+	});
 
 	return {
 		dispose: () => {
@@ -476,6 +487,18 @@ const toNodes = (value) => {
 
 	if(Array.isArray(value)) {
 		return value.flatMap(toNodes);
+	}
+
+	// A when()/list() marker RETURNED rather than passed straight as an el()
+	// child (nested in a branch, a list render, a mount, a reactive hole).
+	// Materialize it into a fragment — the anchor's parentNode re-resolves to the
+	// real parent once these nodes are inserted, so later swaps still work.
+	if(value && (value.__qrpWhen || value.__qrpList)) {
+		const frag = document.createDocumentFragment();
+
+		appendChild(frag, value);
+
+		return [...frag.childNodes];
 	}
 
 	// A reactive() proxy: unwrap to the real node the DOM will accept.

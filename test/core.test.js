@@ -333,3 +333,19 @@ test("scoped returns the built value and a dispose that tears its effects down",
 	s.n = 2;
 	assert.equal(runs, 2, "effect disposed — no leak");
 });
+
+test("mount appends the component's RETURN value (the docs' () => el(...) style)", () => {
+	const parent = document.createElement("div");
+	const s = state({ n: 0 });
+	mount(parent, () => el("button", { onclick: () => s.n++ }, () => `n ${s.n}`));
+	assert.equal(parent.children.length, 1);
+	assert.equal(parent.querySelector("button").textContent, "n 0");
+	s.n = 1;
+	assert.equal(parent.querySelector("button").textContent, "n 1");
+});
+
+test("mount does NOT double-append when the component appends to its view", () => {
+	const parent = document.createElement("div");
+	mount(parent, (view) => view.appendChild(el("p", {}, "once")));   // returns the appended node
+	assert.equal(parent.querySelectorAll("p").length, 1, "not doubled");
+});

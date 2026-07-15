@@ -41,10 +41,11 @@ write site.
 moves it. To render the same content twice, use a thunk `() => el(...)` (a fresh
 node each call) or `node.cloneNode(true)` — never a shared live node.
 
-**`when()`/`list()` markers are only valid as an `el()` or `html` child.** They're
-plain marker objects, not DOM; appended anywhere else (e.g. returned bare into a
-non-qrp `append`) they stringify to `[object Object]`. To nest one inside another
-branch, wrap it: `() => el("div", {}, when(...))`.
+**`when()`/`list()` markers render anywhere qrp accepts a Renderable** — an
+`el()`/`html` child, returned bare from another branch, a `list()` render, a
+`mount()` component. The one place they *don't* work is a **non-qrp** insertion
+(a raw `parent.appendChild(marker)` / `.append(marker)`), where they'd stringify
+to `[object Object]` — use `el()`/`mount()` to insert them, not the bare DOM API.
 
 **`when()` is value-keyed.** It re-renders when the condition's *value* changes
 (by `Object.is`), so `when(() => state.tab, tab => TABS[tab]())` switches tabs.

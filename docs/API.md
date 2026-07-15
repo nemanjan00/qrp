@@ -256,16 +256,19 @@ still happen in place; only a value change rebuilds. If the value is an object
 whose identity changes each read, that rebuilds every time — key on a primitive
 (`() => user?.id`) or mutate the object in place.
 
-A `WhenMarker` is only valid as an `el()`/`html` child; to nest one inside
-another branch, wrap it: `() => el("div", {}, when(...))`.
+A `WhenMarker` renders anywhere a Renderable is accepted — as an `el()`/`html`
+child, returned bare from another branch, a `list()` render, or a component
+(no wrapper element needed).
 
 ### `mount`
 
 ```ts
-mount(parent: HTMLElement, component: (parent: HTMLElement) => void): Mounted
+mount(parent: HTMLElement, component: (parent: HTMLElement) => unknown): Mounted
 ```
 
-Mount a component into a parent; returns a disposable.
+Mount a component into a parent; returns a disposable that tears down its
+effects and clears the parent. The component may either append to the `parent`
+it's given, or RETURN a renderable (`() => el(...)`) — both work.
 
 ### `define`
 

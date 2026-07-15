@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state, el, when, mount } from "../qrp/index.js";
+import { state, el, when, list, mount } from "../qrp/index.js";
 
 test("when renders the then branch and swaps to else on flip", () => {
 	const s = state({ on: true });
@@ -141,4 +141,26 @@ test("when collapses falsy values: else-branch doesn't churn on false↔0↔''",
 	s.v = 0;   // still falsy, different value
 	s.v = "";  // still falsy
 	assert.equal(elseBuilds, 1, "no rebuild among falsy values");
+});
+
+test("markers work when RETURNED (nested when, when->list, mount->when)", () => {
+	// nested when with no wrapper element
+	const s = state({ a: true, b: true });
+	const v1 = el("div", {}, when(() => s.a, () => when(() => s.b, () => el("p", {}, "AB"))));
+	assert.equal(v1.querySelector("p").textContent, "AB");
+	s.b = false;
+	assert.equal(v1.querySelector("p"), null);
+	s.b = true;
+	assert.equal(v1.querySelector("p").textContent, "AB");
+
+	// when -> list returned bare
+	const s2 = state({ on: true, rows: [{ id: 1, n: "x" }, { id: 2, n: "y" }] });
+	const v2 = el("div", {}, when(() => s2.on, () => list(() => s2.rows, (r) => r.id, (r) => el("li", {}, () => r.n))));
+	assert.equal(v2.querySelectorAll("li").length, 2);
+});
+
+test("a list render returning a when marker works", () => {
+	const s = state({ rows: [{ id: 1, on: true }, { id: 2, on: false }] });
+	const v = el("ul", {}, list(() => s.rows, (r) => r.id, (r) => when(() => r.on, () => el("li", {}, "yes"))));
+	assert.equal(v.querySelectorAll("li").length, 1);
 });
