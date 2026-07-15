@@ -43,6 +43,35 @@ test("query reflects the URL and is reactive", () => {
 	assert.match(location.search, /q=jawas/);
 });
 
+test("query({ arrays }) parses repeated params to an array and serializes back", () => {
+	history.replaceState(null, "", "/?status=A&status=B&q=hi");
+
+	const params = query({ arrays: ["status"] });
+
+	assert.deepEqual(params.status, ["A", "B"], "repeated key → array");
+	assert.equal(params.q, "hi", "undeclared key stays a string");
+
+	let seen;
+	effect(() => { seen = params.status.join(","); });
+	assert.equal(seen, "A,B");
+
+	// push updates the URL reactively (repeated-key form)
+	params.status.push("C");
+	assert.equal(seen, "A,B,C");
+	assert.match(location.search, /status=A&status=B&status=C/);
+
+	// assigning a new array works; empty array drops the key
+	params.status = [];
+	assert.equal(location.search.includes("status="), false, "empty array removes the key");
+});
+
+test("query({ arrays }) key is always an array even when absent from the URL", () => {
+	history.replaceState(null, "", "/?q=x");
+
+	const params = query({ arrays: ["ids"] });
+	assert.deepEqual(params.ids, [], "declared array key absent → []");
+});
+
 test("media wraps matchMedia matches", () => {
 	const m = media("(min-width: 600px)");
 

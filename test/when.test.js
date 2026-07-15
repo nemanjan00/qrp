@@ -233,17 +233,18 @@ test("userland renderable protocol: a custom switchOn composes at first-party pa
 });
 
 test("a marker coerced to a string (bare DOM append) self-diagnoses instead of [object Object]", () => {
-	const warned = [];
-	const orig = console.warn;
-	console.warn = (msg) => warned.push(msg);
+	const errored = [];
+	const orig = console.error;
+	console.error = (msg) => errored.push(msg);
 	try {
 		const parent = document.createElement("div");
 		parent.append(when(() => true, () => el("p", {}, "x")));   // the one unsupported position
 		assert.match(parent.textContent, /qrp when\(\) — render via el\(\)\/mount\(\)/);
 		assert.equal(parent.textContent.includes("[object Object]"), false);
-		assert.equal(warned.length, 1);
-		assert.match(warned[0], /bare DOM append/);
+		// logged at ERROR (not warn) so headless/CI catches it
+		assert.equal(errored.length, 1);
+		assert.match(errored[0], /bare DOM append/);
 	} finally {
-		console.warn = orig;
+		console.error = orig;
 	}
 });

@@ -80,9 +80,39 @@ export const persisted = (storageKey, defaults = {}) => {
  * Reading tracks; writing updates the address bar via replaceState;
  * back/forward navigation updates the state. The URL becomes your store —
  * shareable, bookmarkable, refresh-proof, no state library required.
+ *
+ * Keys are string-valued by default. Declare multi-value keys via
+ * `query({ arrays: ["status", "ids"] })`: those keys are ALWAYS arrays (absent →
+ * `[]`), parsed from repeated params (`?status=a&status=b` → `["a","b"]`) and
+ * serialized back to the repeated-key form — the same shape `createHttp` sends.
+ * Push/splice or assign a new array to update the URL; empty arrays drop the key.
+ *
+ * @param {object} [options]
+ * @param {string[]} [options.arrays] keys to treat as multi-value arrays
+ * @returns {object} reactive state mirroring the query string
  */
-export const query = () => {
-	const parse = () => Object.fromEntries(new URLSearchParams(location.search));
+export const query = (options = {}) => {
+	const arrays = new Set(options.arrays || []);
+
+	const parse = () => {
+		const search = new URLSearchParams(location.search);
+		const out = {};
+
+		// Single-valued keys: last wins (matches the prior Object.fromEntries).
+		search.forEach((value, key) => {
+			if(!arrays.has(key)) {
+				out[key] = value;
+			}
+		});
+
+		// Declared array keys are ALWAYS an array (possibly empty) so callers
+		// never branch on string-vs-array.
+		arrays.forEach((key) => {
+			out[key] = search.getAll(key);
+		});
+
+		return out;
+	};
 
 	const params = state(parse());
 
@@ -90,7 +120,15 @@ export const query = () => {
 		const search = new URLSearchParams();
 
 		Object.entries(params).forEach(([key, value]) => {
-			if(value != null && value !== "") {
+			if(Array.isArray(value)) {
+				// Repeated-key form; iterating reads length + indices, so a
+				// push/splice re-runs this effect and re-serializes.
+				value.forEach((item) => {
+					if(item != null && item !== "") {
+						search.append(key, item);
+					}
+				});
+			} else if(value != null && value !== "") {
 				search.set(key, value);
 			}
 		});
@@ -107,6 +145,8 @@ export const query = () => {
 		const incoming = parse();
 
 		Object.keys(raw(params)).forEach(key => {
+			// Declared array keys always exist in `incoming` (as []), so only
+			// undeclared keys that vanished from the URL are removed.
 			if(!(key in incoming)) {
 				delete params[key];
 			}

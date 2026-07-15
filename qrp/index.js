@@ -760,11 +760,13 @@ const setupWhen = (parent, marker) => {
 // A marker only stringifies if it was passed to a BARE DOM append
 // (`parent.append(marker)`) — qrp's own paths route it via the renderable
 // symbol before any String coercion. So a toString() here can't fire in normal
-// use; when it does, it means the one unsupported position. Warn loudly and
-// return a breadcrumb instead of a silent "[object Object]" — the whole bug
-// class self-diagnoses at the call site.
+// use; when it does, it means the one unsupported position. We log at ERROR
+// (not warn) so it surfaces in headless/CI runs — where the in-DOM breadcrumb
+// below isn't seen by a human, and most test harnesses fail on console.error —
+// AND still return the breadcrumb instead of a silent "[object Object]", so the
+// whole bug class self-diagnoses both in a real browser and in CI.
 const markerHint = (kind) => function() {
-	console.warn(`qrp: a ${kind}() marker was coerced to a string — you passed it to a bare DOM append(). Render it via el()/html/mount() (or a reactive child), not parent.append().`);
+	console.error(`qrp: a ${kind}() marker was coerced to a string — you passed it to a bare DOM append(). Render it via el()/html/mount() (or a reactive child), not parent.append().`);
 
 	return `[qrp ${kind}() — render via el()/mount(), not a bare DOM append]`;
 };

@@ -6,8 +6,13 @@
  * CSS anchor positioning can replace this — it's here for portability.
  */
 
+import { onDispose } from "../qrp/index.js";
+
 /**
  * Position `floating` relative to `trigger` and keep it there on scroll/resize.
+ * The teardown also registers with the current scope (`scope`/`scoped`/`mount`),
+ * so disposing the owner detaches the scroll/resize listeners — no need to track
+ * the undo by hand. The returned undo is idempotent (safe to also call manually).
  *
  * @param {Element} trigger the anchor element
  * @param {Element} floating the element to position
@@ -55,12 +60,20 @@ export const anchored = (trigger, floating, options = {}) => {
 	window.addEventListener("resize", update);
 	window.addEventListener("scroll", update, true);
 
+	let done = false;
 	const dispose = () => {
+		if(done) {
+			return;
+		}
+
+		done = true;
 		window.removeEventListener("resize", update);
 		window.removeEventListener("scroll", update, true);
 	};
 
 	dispose.update = update;
+
+	onDispose(dispose);
 
 	return dispose;
 };

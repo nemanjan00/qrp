@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { effect, el } from "../qrp/index.js";
+import { effect, el, scoped } from "../qrp/index.js";
 import { portal } from "../behaviors/portal.js";
 import { dismissable } from "../behaviors/dismissable.js";
 import { trapFocus } from "../behaviors/trap-focus.js";
@@ -148,4 +148,40 @@ test("busyWhile tracks in-flight promises reactively", () => {
 		assert.equal(b.state.pending, 0);
 		assert.equal(b.active, false);
 	});
+});
+
+// --- scope auto-registration (dispose() cleans up behaviors too) ------------
+
+test("behaviors built inside scoped() are torn down by dispose() alone", () => {
+	const node = el("div", {}, "modal");
+	const trigger = el("button", {}, "open");
+	document.body.append(trigger);
+
+	let onDismiss;
+	const { dispose } = scoped(() => {
+		portal(node);                                  // moves node into body
+		dismissable(node, () => {}, { escape: true }); // adds document listeners
+		anchored(trigger, node);                       // adds window listeners
+		onDismiss = true;
+	});
+
+	assert.equal(onDismiss, true);
+	assert.equal(node.parentNode, document.body, "portal attached the node");
+
+	// dispose() alone should undo ALL three behaviors (no manual undo tracking)
+	dispose();
+	assert.equal(node.parentNode, null, "portal teardown ran on dispose");
+
+	trigger.remove();
+});
+
+test("a behavior undo is idempotent (manual call + scope dispose is safe)", () => {
+	const node = el("div", {}, "x");
+	let undo;
+	const { dispose } = scoped(() => { undo = portal(node); });
+
+	assert.equal(node.parentNode, document.body);
+	undo();                                   // manual teardown
+	assert.equal(node.parentNode, null);
+	assert.doesNotThrow(() => dispose());     // scope dispose runs it again — no-op
 });

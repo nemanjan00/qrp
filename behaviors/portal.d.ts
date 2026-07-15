@@ -7,6 +7,15 @@
  * `dismissable` + `disclosure`. You bring the markup and CSS; they carry the
  * platform and a11y hard parts. UI built outside a render (a modal from an
  * onclick) should wrap its build in `scoped()` so its effects are owned.
+ *
+ * Each teardown-returning behavior (`portal`, `dismissable`, `trapFocus`,
+ * `anchored`) also registers its undo with the current scope via `onDispose`, so
+ * building them inside `scoped()`/`mount()` means `dispose()` alone tears down
+ * effects AND behaviors — you don't have to collect the undos by hand. The undos
+ * stay returned and are idempotent, so calling one manually is still fine.
  */
-/** Move `node` into `target` (default document.body); returns dispose(). */
+/**
+ * Move `node` into `target` (default document.body); returns an idempotent
+ * dispose(). Also auto-registers teardown with the current scope.
+ */
 export function portal(node: Node, target?: Node): () => void;

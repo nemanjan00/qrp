@@ -7,8 +7,19 @@
 /** localStorage-backed reactive state with cross-tab sync. */
 export function persisted<T extends Record<string, any>>(storageKey: string, defaults?: T): T;
 
-/** The URL query string as two-way reactive state. */
-export function query(): Record<string, string>;
+/** Options for {@link query}. */
+export interface QueryOptions {
+	/**
+	 * Keys to treat as multi-value arrays: always arrays (absent → `[]`), parsed
+	 * from and serialized to repeated params (`?status=a&status=b`).
+	 */
+	arrays?: string[];
+}
+/**
+ * The URL query string as two-way reactive state. String-valued by default;
+ * pass `{ arrays }` to make listed keys multi-value arrays.
+ */
+export function query(options?: QueryOptions): Record<string, string | string[]>;
 
 /** location.hash as reactive state: { hash }. Two-way. */
 export function hashState(): { hash: string };
