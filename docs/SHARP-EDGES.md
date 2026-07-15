@@ -153,8 +153,10 @@ pick one.** [`query()`](./API.md#browser) is a two-way reactive
 `URLSearchParams` object (write `q.status = "x"`); [`setQuery()`](./API.md#qrp--core)
 drives the router's query and updates `currentRoute.query`. Writing the same keys
 through both makes them fight. For filters that live in the URL, use `query()` and
-write to it directly. Both are **string-valued** — there's no first-class array
-param yet, so encode multi-value filters yourself (e.g. comma-join/split).
+write to it directly. Keys are **string-valued by default**; for multi-value
+filters declare them with `query({ arrays: ["status", "ids"] })` — those keys are
+always arrays, parsed from and serialized to the repeated-key form
+(`?status=a&status=b`).
 
 ## Serving
 

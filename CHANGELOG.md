@@ -10,6 +10,25 @@ _(nothing yet)_
 
 ## 0.4.10
 
+- **New module: `datagrid`** (`@nemanjan00/qrp/datagrid`, ~0.8 KB gzip). A
+  headless data-grid state machine over `collection()` — row selection
+  (select-all + indeterminate, keyed so it survives sort/filter/page and
+  refetch), column visibility, page-size, and a windowed pager. State only, no
+  markup (the batteries every admin table rebuilds). `grid.items()` feeds a
+  `list()`/`table()`.
+- **`collection().filtered()`** — the full filtered set (unpaged, unsorted), for
+  select-all-across-pages / export / match counts. (Powers `datagrid`.)
+- **Behaviors auto-register teardown with the current scope.** `portal`,
+  `dismissable`, `trapFocus`, and `anchored` now call `onDispose` internally, so
+  building them inside `scoped()`/`mount()` means `dispose()` alone tears down
+  effects AND behaviors — no hand-tracking the undos. The undos are still
+  returned and are now idempotent (manual call + scope dispose is safe).
+- **`query({ arrays })` — first-class multi-value URL params.** Declared keys are
+  always arrays (absent → `[]`), parsed from and serialized to the repeated-key
+  form (`?status=a&status=b`). Default keys stay string-valued (unchanged).
+- **Marker mis-append now logs at `console.error`** (was `warn`) — so a bare
+  `parent.append(when(…))` in headless/CI surfaces (most harnesses fail on
+  console.error); the in-DOM breadcrumb is unchanged.
 - **`createHttp` no longer leaks the loader subscription into a caller's effect.**
   The in-flight counter's `loading.pending += 1` *reads* `pending`; issuing a
   request synchronously inside an `effect()` (the normal "refetch when filters

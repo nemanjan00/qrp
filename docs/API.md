@@ -13,6 +13,7 @@ next to each module, so editors resolve them with no build step.
 - [forms](#forms)
 - [collection](#collection)
 - [table](#table)
+- [datagrid](#datagrid)
 - [http](#http)
 - [events](#events)
 - [toasts](#toasts)
@@ -712,7 +713,8 @@ import { … } from "@nemanjan00/qrp/collection"
 ```
 
 Reactive sort / filter / paginate over a dataset. `collection(source, options)`
-returns `{ sort, filter, page, items(), total(), pageCount(), toggleSort() }`;
+returns `{ sort, filter, page, items(), filtered(), total(), pageCount(),
+toggleSort() }`;
 `items()` is reactive — feed it to `list()`. `options`:
 `{ sort?, page?, filter?, filterFn?, compare? }`.
 
@@ -759,6 +761,8 @@ interface Collection<T> {
 	page: PageState;
 	/** Reactive: sorted → filtered → paged items. Feed to list(). */
 	items(): T[];
+	/** Reactive: the full filtered set (unpaged, unsorted) — for select-all/export. */
+	filtered(): T[];
 	/** Count after filtering (before paging). */
 	total(): number;
 	/** Number of pages at the current size. */
@@ -863,6 +867,116 @@ interface TableOptions<T> {
 	class?: string;
 	sortField?: string;
 	sortDesc?: boolean;
+}
+```
+
+
+## datagrid
+
+```js
+import { … } from "@nemanjan00/qrp/datagrid"
+```
+
+A headless data-grid state machine over collection(): row selection (with
+select-all + indeterminate), column visibility, page-size, and a windowed
+pager. State only — you bring markup + CSS (like the behaviors). `grid.items()`
+feeds a `list()`/`table()`, `grid.key` is the keyed-list id. `dataGrid(source,
+options)` where options add `{ key?, columns?, pageSizes? }` on top of every
+collection() option.
+
+### `dataGrid`
+
+```ts
+dataGrid<T>(source: () => readonly T[], options?: DataGridOptions<T>): DataGrid<T>
+```
+
+Headless data-grid state machine (selection, columns, paging) over collection().
+
+#### Supporting types
+
+```ts
+interface GridColumn {
+	key: string;
+	label?: string;
+	/** Start hidden. */
+	hidden?: boolean;
+	[extra: string]: any;
+}
+```
+
+A column entry for visibility toggling (superset-compatible with table fields).
+
+```ts
+interface DataGridOptions<T> extends CollectionOptions<T> {
+	/** item => stable id (default `item.id`); selection identity + keyed reuse. */
+	key?: (item: T) => string | number;
+	/** Column model for visibility toggling. */
+	columns?: GridColumn[];
+	/** Page-size options (default [10, 25, 50, 100]). */
+	pageSizes?: number[];
+}
+```
+
+```ts
+interface DataGrid<T> {
+	/** The underlying collection (sort/filter/paginate). */
+	view: Collection<T>;
+	/** The stable-id function — pass to list()/table(). */
+	key: (item: T) => string | number;
+
+	// collection passthroughs (grid is a one-stop controller)
+	/** Reactive current-page rows. Feed to list(). */
+	items(): T[];
+	/** Count after filtering (before paging). */
+	total(): number;
+	/** Number of pages at the current size. */
+	pageCount(): number;
+	/** Toggle sort on a key (asc, then flip). */
+	toggleSort(key: string): void;
+	sort: SortState;
+	filter: Record<string, any>;
+	page: PageState;
+
+	// selection (by stable id, across the whole filtered set)
+	/** Reactive map of selected ids `{ [id]: true }`. */
+	selection: Record<string, boolean>;
+	isSelected(item: T): boolean;
+	select(item: T): void;
+	deselect(item: T): void;
+	toggle(item: T): void;
+	/** Select every row in the current filtered set (all pages). */
+	selectAll(): void;
+	clearSelection(): void;
+	/** Select-all if not all selected, else clear. */
+	toggleAll(): void;
+	/** True when every filtered row is selected (header checkbox checked). */
+	allSelected(): boolean;
+	/** True when some but not all are selected (header checkbox indeterminate). */
+	someSelected(): boolean;
+	selectedIds(): string[];
+	/** Selected rows resolved against the current filtered set. */
+	selectedItems(): T[];
+
+	// column visibility
+	columns: GridColumn[];
+	isVisible(columnKey: string): boolean;
+	showColumn(columnKey: string): void;
+	hideColumn(columnKey: string): void;
+	toggleColumn(columnKey: string): void;
+	visibleColumns(): GridColumn[];
+
+	// paging
+	pageSizes: number[];
+	/** Set page size and jump back to the first page. */
+	setPageSize(size: number): void;
+	/** Go to a page index, clamped to [0, pageCount-1]. */
+	goto(index: number): void;
+	next(): void;
+	prev(): void;
+	hasNext(): boolean;
+	hasPrev(): boolean;
+	/** A clamped, current-centered window of page indices (default span 5). */
+	pageWindow(span?: number): number[];
 }
 ```
 
@@ -1129,10 +1243,11 @@ localStorage-backed reactive state with cross-tab sync.
 ### `query`
 
 ```ts
-query(): Record<string, string>
+query(options?: QueryOptions): Record<string, string | string[]>
 ```
 
-The URL query string as two-way reactive state.
+The URL query string as two-way reactive state. String-valued by default;
+pass `{ arrays }` to make listed keys multi-value arrays.
 
 ### `hashState`
 
@@ -1198,6 +1313,20 @@ seen(element: Element, options?: IntersectionObserverInit): { matches: boolean }
 
 IntersectionObserver as reactive state: { matches } (on screen).
 
+#### Supporting types
+
+```ts
+interface QueryOptions {
+	/**
+	 * Keys to treat as multi-value arrays: always arrays (absent → `[]`), parsed
+	 * from and serialized to repeated params (`?status=a&status=b`).
+	 */
+	arrays?: string[];
+}
+```
+
+Options for {@link query}.
+
 
 ## behaviors
 
@@ -1213,13 +1342,20 @@ via the `@nemanjan00/qrp/behaviors` barrel): `portal`, `dismissable`,
 platform and a11y hard parts. UI built outside a render (a modal from an
 onclick) should wrap its build in `scoped()` so its effects are owned.
 
+Each teardown-returning behavior (`portal`, `dismissable`, `trapFocus`,
+`anchored`) also registers its undo with the current scope via `onDispose`, so
+building them inside `scoped()`/`mount()` means `dispose()` alone tears down
+effects AND behaviors — you don't have to collect the undos by hand. The undos
+stay returned and are idempotent, so calling one manually is still fine.
+
 ### `portal`
 
 ```ts
 portal(node: Node, target?: Node): () => void
 ```
 
-Move `node` into `target` (default document.body); returns dispose().
+Move `node` into `target` (default document.body); returns an idempotent
+dispose(). Also auto-registers teardown with the current scope.
 
 ### `dismissable`
 
@@ -1227,7 +1363,8 @@ Move `node` into `target` (default document.body); returns dispose().
 dismissable(node: Node, onDismiss: (event: Event) => void, options?: DismissableOptions): () => void
 ```
 
-Call onDismiss on Escape or outside pointerdown; returns dispose().
+Call onDismiss on Escape or outside pointerdown; returns an idempotent
+dispose(). Also auto-registers teardown with the current scope.
 
 ### `trapFocus`
 
@@ -1236,6 +1373,7 @@ trapFocus(node: Element): () => void
 ```
 
 Trap Tab focus within node, focus its first focusable, restore on dispose.
+Returns an idempotent dispose(); also auto-registers teardown with the scope.
 
 ### `anchored`
 
@@ -1243,7 +1381,8 @@ Trap Tab focus within node, focus its first focusable, restore on dispose.
 anchored(trigger: Element, floating: HTMLElement, options?: AnchoredOptions): AnchoredDispose
 ```
 
-Position `floating` next to `trigger`; returns dispose() (with .update()).
+Position `floating` next to `trigger`; returns an idempotent dispose() (with
+.update()). Also auto-registers teardown with the current scope.
 
 ### `disclosure`
 

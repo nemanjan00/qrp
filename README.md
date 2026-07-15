@@ -348,7 +348,8 @@ unused exports tree-shake away.
 | `@nemanjan00/qrp/forms` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
 | `@nemanjan00/qrp/table` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
 | `@nemanjan00/qrp/collection` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
-| `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing, per-request `responseType` (json/text/binary) |
+| `@nemanjan00/qrp/datagrid` | Headless data-grid state over `collection`: keyed selection (select-all/indeterminate), column visibility, page-size, windowed pager — no markup |
+| `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing, per-request `responseType` (json/text/binary), pluggable `fetch` |
 | `@nemanjan00/qrp/events` | Global event bus on native `EventTarget`: `bus`, `emitter`, `request`/`respond`, `channel` |
 | `@nemanjan00/qrp/toasts` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
 | `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |

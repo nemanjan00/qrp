@@ -101,9 +101,18 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   don't re-add general-purpose utilities that aren't dashboard-shaped.)
 - `behaviors/*.js` — headless behaviors to build styled components (one file
   each): `portal`, `dismissable`, `trap-focus`, `anchored`, `disclosure`,
-  `busy-while`. Carry platform/a11y hard parts; caller brings markup + CSS.
+  `busy-while`. Carry platform/a11y hard parts; caller brings markup + CSS. The
+  teardown-returning ones (`portal`/`dismissable`/`trapFocus`/`anchored`) also
+  `onDispose`-register their (idempotent) undo, so building them inside
+  `scoped()`/`mount()` means `dispose()` alone cleans up effects AND behaviors.
 - `collection/index.js` — reactive sort/filter/paginate combiner over a
   dataset; `.items` drives a keyed `list()`. The `form()`-analog for data.
+  `.filtered()` exposes the full filtered set (unpaged/unsorted) for
+  select-all/export.
+- `datagrid/index.js` — headless data-grid state machine over `collection`:
+  keyed row selection (select-all + indeterminate; survives sort/filter/page +
+  refetch), column visibility, page-size, windowed pager. State only, no markup
+  ("helpers not components"); `grid.items()` feeds `list()`/`table()`.
 - `table/index.js` — declarative data table over collection+list: column config
   (accessor/formatter/sortByFormatted/render/classes), sortable headers, keyed
   row reuse. Uses a per-key reactive HOLDER so cells reflect immutable row

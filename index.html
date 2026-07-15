@@ -194,6 +194,7 @@
 				"@nemanjan00/qrp/forms": "./forms/index.js",
 				"@nemanjan00/qrp/table": "./table/index.js",
 				"@nemanjan00/qrp/collection": "./collection/index.js",
+				"@nemanjan00/qrp/datagrid": "./datagrid/index.js",
 				"@nemanjan00/qrp/http": "./http/index.js",
 				"@nemanjan00/qrp/events": "./events/index.js",
 				"@nemanjan00/qrp/toasts": "./toasts/index.js",
@@ -907,6 +908,7 @@ effect(() => applyTheme(
 			["📋", "forms", "declarative forms + open input-type registry"],
 			["🗂️", "table", "sortable, keyed, paginated data table"],
 			["🔀", "collection", "reactive sort / filter / paginate over a dataset"],
+			["▦", "datagrid", "headless grid state: selection, column visibility, paging"],
 			["🌐", "http", "fetch client: auth headers, reactive loader, error bus"],
 			["📡", "events", "global event bus on native EventTarget"],
 			["🔔", "toasts", "notifications off the bus; content is any renderable"],
@@ -925,7 +927,7 @@ effect(() => applyTheme(
 					el("p", {}, m[2]))))));
 
 		// footer stats
-		document.getElementById("foot-stats").textContent = "~3.9 KB min+gzip core · 243 tests · built with qrp";
+		document.getElementById("foot-stats").textContent = "~4.5 KB min+gzip core · 259 tests · built with qrp";
 	</script>
 </body>
 </html>
