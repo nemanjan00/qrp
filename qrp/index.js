@@ -1239,6 +1239,37 @@ export const navigate = (url, { replace = false } = {}) => {
 };
 
 /**
+ * Update the URL's query string without changing the path — for persisting table
+ * filters/sort/page to the URL. Rides the router's same-pattern keep-alive, so
+ * there's no remount and `currentRoute.query` updates reactively. A nullish/""
+ * value removes a key; an array repeats it. Defaults to `replace` so tweaking a
+ * filter doesn't spam history, and to `merge` so you patch one key at a time.
+ *
+ *   setQuery({ status: "active", page: null });   // set status, clear page
+ */
+export const setQuery = (params, { replace = true, merge = true } = {}) => {
+	patchHistory();
+
+	const url = new URL(location.href);
+	const search = merge ? url.searchParams : new URLSearchParams();
+
+	Object.entries(params).forEach(([key, value]) => {
+		if(value === null || value === undefined || value === "") {
+			search.delete(key);
+		} else if(Array.isArray(value)) {
+			search.delete(key);
+			value.forEach(item => search.append(key, item));
+		} else {
+			search.set(key, value);
+		}
+	});
+
+	const query = search.toString();
+
+	navigate(url.pathname + (query ? "?" + query : "") + url.hash, { replace });
+};
+
+/**
  * HTML5 History router. Routes are path patterns → components:
  *
  *   const app = router({

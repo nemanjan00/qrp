@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { compilePath, matchPath, router, navigate, el, currentRoute, effect } from "../qrp/index.js";
+import { compilePath, matchPath, router, navigate, setQuery, el, currentRoute, effect } from "../qrp/index.js";
 
 test("compilePath matches a literal route", () => {
 	const c = compilePath("/settings");
@@ -186,5 +186,27 @@ test("router option remount:true forces a full remount on every navigation", () 
 	assert.equal(mounts, 1);
 	navigate("/p/2");
 	assert.equal(mounts, 2, "forced remount");
+	app.dispose();
+});
+
+test("setQuery updates the query string in place (no remount) + currentRoute.query", () => {
+	history.replaceState(null, "", "/things");
+	const outlet = document.createElement("div");
+	document.body.appendChild(outlet);
+
+	let mounts = 0;
+	const app = router({ "/things": (v) => { mounts++; v.appendChild(el("h1", {}, "things")); } }, outlet);
+	assert.equal(mounts, 1);
+
+	setQuery({ status: "active", page: "2" });
+	assert.equal(location.search, "?status=active&page=2");
+	assert.deepEqual(currentRoute.query, { status: "active", page: "2" });
+	assert.equal(mounts, 1, "no remount (same path)");
+
+	// merge + delete
+	setQuery({ page: null });
+	assert.equal(location.search, "?status=active");
+	assert.equal(currentRoute.query.page, undefined);
+
 	app.dispose();
 });

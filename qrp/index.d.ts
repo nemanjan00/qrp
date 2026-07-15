@@ -303,6 +303,17 @@ export interface NavigateOptions {
 /** Programmatic navigation (pushes/replaces the URL; the router reacts). */
 export function navigate(url: string, options?: NavigateOptions): void;
 
+/**
+ * Update the URL query string without changing the path (persist filters/sort to
+ * the URL). Rides the router's same-pattern keep-alive — no remount,
+ * `currentRoute.query` updates reactively. Nullish/"" removes a key; array
+ * repeats it. Defaults: `replace: true`, `merge: true`.
+ */
+export function setQuery(
+	params: Record<string, string | string[] | null | undefined>,
+	options?: { replace?: boolean; merge?: boolean }
+): void;
+
 /** Context passed to a matched route component. */
 export interface RouteContext {
 	params: Record<string, string>;
