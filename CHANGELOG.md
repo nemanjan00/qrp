@@ -8,6 +8,17 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.4.5
+
+- **`table` dynamic columns** — `fields` may be a thunk `() => Column[]` for a
+  reactive column set (visibility toggle, role-gated columns). The header and
+  each row's cells re-render on change; row elements are reused. Static `fields`
+  arrays keep the build-once fast path (no regression).
+- **`table` expandable rows** — `expandable: (item) => Renderable` renders a
+  detail panel below a row (via `when()`, one `<tbody>` per row group). A row
+  click toggles it (clicks on interactive cells are excluded); also
+  `tableEl.toggleRow(key)` and the reactive `tableEl.expanded` map.
+
 ## 0.4.4
 
 Round-four fixes from the production port's open list:
