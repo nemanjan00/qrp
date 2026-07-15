@@ -487,6 +487,24 @@ const setAttr = (node, key, value) => {
 
 const TEXT_NODE = 3;
 
+/**
+ * The renderable protocol. Any object with a `[renderable](parent)` method
+ * participates in child position exactly like `when`/`list` do — qrp's own
+ * conditional/keyed-list primitives are just the first implementations, with no
+ * privileged access. Userland can define peers (a switchOn, a virtualList, a
+ * suspense-alike) at full parity.
+ *
+ * The method receives the parent (a real element or a fragment) and MUST: append
+ * its content (typically an anchor comment + nodes), wire any reactivity, and
+ * register `onDispose(() => …)` that removes its OWN nodes + anchor — so a
+ * renderable nested in another marker cleans up its post-mount DOM on teardown
+ * (see setupWhen/setupList for the reference implementation).
+ *
+ * Registered via Symbol.for so userland can implement it without importing:
+ *   { [Symbol.for("qrp.renderable")]: (parent) => { …; return; } }
+ */
+export const renderable = Symbol.for("qrp.renderable");
+
 const toNodes = (value) => {
 	if(value == null || value === false) {
 		return [];
@@ -496,11 +514,11 @@ const toNodes = (value) => {
 		return value.flatMap(toNodes);
 	}
 
-	// A when()/list() marker RETURNED rather than passed straight as an el()
-	// child (nested in a branch, a list render, a mount, a reactive hole).
-	// Materialize it into a fragment — the anchor's parentNode re-resolves to the
-	// real parent once these nodes are inserted, so later swaps still work.
-	if(value && (value.__qrpWhen || value.__qrpList)) {
+	// A renderable RETURNED rather than passed straight as an el() child (nested
+	// in a branch, a list render, a mount, a reactive hole). Materialize it into a
+	// fragment — the anchor's parentNode re-resolves to the real parent once these
+	// nodes are inserted, so later swaps still work.
+	if(value && value[renderable]) {
 		const frag = document.createDocumentFragment();
 
 		appendChild(frag, value);
@@ -530,16 +548,11 @@ const toNodes = (value) => {
 export const clear = (node) => node.replaceChildren();
 
 const appendChild = (parent, child) => {
-	// A keyed list() marker: reconcile with element reuse (see setupList).
-	if(child && child.__qrpList) {
-		setupList(parent, child);
-
-		return;
-	}
-
-	// A when() marker: swap a subtree on a condition, with scope disposal.
-	if(child && child.__qrpWhen) {
-		setupWhen(parent, child);
+	// A renderable — a when()/list() marker or any userland object implementing
+	// the protocol. No brand special-casing: the normalizer treats first-party
+	// and userland renderables identically (they insert + own their nodes).
+	if(child && child[renderable]) {
+		child[renderable](parent);
 
 		return;
 	}
@@ -693,7 +706,13 @@ const setupWhen = (parent, marker) => {
  * @returns {object} when marker (pass as an el child)
  */
 export const when = (cond, thenFn, elseFn) => {
-	return { __qrpWhen: true, cond, thenFn, elseFn };
+	const marker = { cond, thenFn, elseFn };
+
+	// when is just an implementation of the renderable protocol — no privileged
+	// access to the normalizer; a userland switchOn is its exact peer.
+	marker[renderable] = (parent) => setupWhen(parent, marker);
+
+	return marker;
 };
 
 // Indices of a longest strictly-increasing subsequence of `arr`, as a Set.
@@ -920,8 +939,7 @@ const setupList = (parent, marker) => {
 export const list = (source, keyFn, render) => {
 	const elemToItem = new WeakMap();
 
-	return {
-		__qrpList: true,
+	const marker = {
 		source,
 		keyFn,
 		render,
@@ -937,6 +955,11 @@ export const list = (source, keyFn, render) => {
 			return node ? elemToItem.get(node) : undefined;
 		}
 	};
+
+	// list is a renderable like when — a peer of any userland virtualList.
+	marker[renderable] = (parent) => setupList(parent, marker);
+
+	return marker;
 };
 
 /**

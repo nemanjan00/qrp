@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state, el, when, list, mount } from "../qrp/index.js";
+import { state, el, when, list, mount, effect, scope, onDispose } from "../qrp/index.js";
 
 test("when renders the then branch and swaps to else on flip", () => {
 	const s = state({ on: true });
@@ -190,4 +190,44 @@ test("a list nested in a when is fully removed when the parent switches, and reb
 	assert.equal(view.querySelectorAll(".q").length, 0, "list + rows fully removed");
 	s.open = true;
 	assert.equal(view.querySelectorAll(".q li").length, 2, "rebuilds cleanly on return");
+});
+
+test("userland renderable protocol: a custom switchOn composes at first-party parity", () => {
+	const renderable = Symbol.for("qrp.renderable");
+
+	// a peer of when(), defined entirely in userland — no private imports
+	const switchOn = (keyFn, cases) => ({
+		[renderable]: (parent) => {
+			const anchor = document.createComment("switchOn");
+			parent.appendChild(anchor);
+			let branch = null;
+			let nodes = [];
+			let last;
+			onDispose(() => { if(branch) { branch.dispose(); } nodes.forEach((n) => n.remove()); anchor.remove(); });
+			effect(() => {
+				const k = keyFn();
+				if(k === last) { return; }
+				last = k;
+				if(branch) { branch.dispose(); branch = null; }
+				nodes.forEach((n) => n.remove());
+				nodes = [];
+				const make = cases[k];
+				if(!make) { return; }
+				let built;
+				branch = scope(() => { built = [make()]; });
+				built.forEach((n) => anchor.parentNode.insertBefore(n, anchor));
+				nodes = built;
+			});
+		}
+	});
+
+	const s = state({ tab: "a" });
+	// userland renderable in child position AND nested inside a first-party when
+	const view = el("div", {}, when(() => true, () =>
+		switchOn(() => s.tab, { a: () => el("p", { class: "c" }, "A"), b: () => el("p", { class: "c" }, "B") })));
+
+	assert.equal(view.querySelector(".c").textContent, "A");
+	s.tab = "b";
+	assert.equal(view.querySelector(".c").textContent, "B");
+	assert.equal(view.querySelectorAll(".c").length, 1, "no stranded node — nested userland renderable tears down cleanly");
 });

@@ -174,6 +174,18 @@ optional sugar.
 - **No classes.** Objects and `__proto__`/`Object.create`, including for custom
   elements (registered without `class extends`).
 - **Declarative over procedural**, especially forms.
+- **Small core, everything else a peer.** The real core is Proxy tracking +
+  ownership (`state`/`effect`/`scope`/`onDispose`). Everything above it consumes
+  those primitives with NO privileged access: `table` = `collection` + `list`,
+  `html` is an alternate front-end to the same renderer, and `when`/`list` are
+  just the first implementations of the **renderable protocol**
+  (`Symbol.for("qrp.renderable")`: an object with `[renderable](parent)` renders
+  in child position). The normalizer (`appendChild`/`toNodes`) does NOT
+  special-case `when`/`list` — it dispatches on the symbol, so a userland
+  `switchOn`/`virtualList`/suspense composes at first-party parity. When adding a
+  "core-adjacent" feature, prefer a renderable/peer module over touching the
+  core. A renderable's `[renderable]` must remove its own nodes + anchor on
+  `onDispose` (nested-teardown contract).
 
 ## Commands
 

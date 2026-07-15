@@ -7,8 +7,23 @@
 
 // --- shared types ----------------------------------------------------------
 
+/**
+ * The renderable protocol symbol (registered via `Symbol.for("qrp.renderable")`).
+ * An object implementing `[renderable](parent)` participates in child position
+ * exactly like `when`/`list` — which are themselves just implementations, with
+ * no privileged access. Build userland peers (switchOn, virtualList, …) at parity.
+ */
+export const renderable: unique symbol;
+
+/** An object that renders itself in child position (the protocol `when`/`list`
+ *  implement). The method appends its nodes and registers cleanup via onDispose. */
+export interface QrpRenderable {
+	[renderable]: (parent: HTMLElement | DocumentFragment) => void;
+}
+
 /** Anything qrp can render as an el()/html child. Functions are reactive;
- *  list()/when() markers are valid children too. */
+ *  list()/when() markers — and any object implementing the renderable protocol
+ *  — are valid children too. */
 export type Renderable =
 	| string
 	| number
@@ -16,8 +31,7 @@ export type Renderable =
 	| null
 	| undefined
 	| Node
-	| ListMarker<any>
-	| WhenMarker
+	| QrpRenderable
 	| Renderable[]
 	| (() => Renderable);
 
@@ -187,9 +201,8 @@ export function bind(node: Node, state: Record<string, any>, key: string): Node;
 
 // --- keyed lists -----------------------------------------------------------
 
-/** A keyed list() marker — pass as an el() child. */
-export interface ListMarker<T> {
-	readonly __qrpList: true;
+/** A keyed list() marker (a renderable) — pass as an el() child. */
+export interface ListMarker<T> extends QrpRenderable {
 	/** Map an element (or an event) back to the item that produced it. */
 	itemFor(target: Element | Event | EventTarget | null): T | undefined;
 }
@@ -223,10 +236,8 @@ export function list<T>(
 
 // --- conditionals ----------------------------------------------------------
 
-/** A when() marker — pass as an el() child. */
-export interface WhenMarker {
-	readonly __qrpWhen: true;
-}
+/** A when() marker (a renderable) — pass as an el() child. */
+export interface WhenMarker extends QrpRenderable {}
 
 /**
  * Conditionally render one of two subtrees, disposing the old branch (effects +

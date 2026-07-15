@@ -33,6 +33,17 @@ Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
 keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
 custom elements (`define`), and HTML5 routing. `import … from "@nemanjan00/qrp"`.
 
+### `renderable`
+
+```ts
+renderable: unique symbol
+```
+
+The renderable protocol symbol (registered via `Symbol.for("qrp.renderable")`).
+An object implementing `[renderable](parent)` participates in child position
+exactly like `when`/`list` — which are themselves just implementations, with
+no privileged access. Build userland peers (switchOn, virtualList, …) at parity.
+
 ### `state`
 
 ```ts
@@ -340,6 +351,15 @@ HTML5 History router: path patterns → components.
 #### Supporting types
 
 ```ts
+interface QrpRenderable {
+	[renderable]: (parent: HTMLElement | DocumentFragment) => void;
+}
+```
+
+An object that renders itself in child position (the protocol `when`/`list`
+ implement). The method appends its nodes and registers cleanup via onDispose.
+
+```ts
 type Renderable =
 	| string
 	| number
@@ -347,14 +367,14 @@ type Renderable =
 	| null
 	| undefined
 	| Node
-	| ListMarker<any>
-	| WhenMarker
+	| QrpRenderable
 	| Renderable[]
 	| (() => Renderable);
 ```
 
 Anything qrp can render as an el()/html child. Functions are reactive;
- list()/when() markers are valid children too.
+ list()/when() markers — and any object implementing the renderable protocol
+ — are valid children too.
 
 ```ts
 type Bind = [Record<string, any>, string];
@@ -419,22 +439,19 @@ interface EffectErrorContext {
 Context passed to an onEffectError handler.
 
 ```ts
-interface ListMarker<T> {
-	readonly __qrpList: true;
+interface ListMarker<T> extends QrpRenderable {
 	/** Map an element (or an event) back to the item that produced it. */
 	itemFor(target: Element | Event | EventTarget | null): T | undefined;
 }
 ```
 
-A keyed list() marker — pass as an el() child.
+A keyed list() marker (a renderable) — pass as an el() child.
 
 ```ts
-interface WhenMarker {
-	readonly __qrpWhen: true;
-}
+interface WhenMarker extends QrpRenderable {}
 ```
 
-A when() marker — pass as an el() child.
+A when() marker (a renderable) — pass as an el() child.
 
 ```ts
 type Component<C = unknown> = (parent: HTMLElement, ctx: C) => void;
