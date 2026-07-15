@@ -75,6 +75,8 @@
 			<div class="nav-links">
 				<a href="./">Home</a>
 				<a href="./start.html">Guide</a>
+				<a href="./api.html">API</a>
+				<a href="./styling.html">Styling</a>
 				<a href="./#table">Demos</a>
 				<a href="https://github.com/nemanjan00/qrp" target="_blank">GitHub</a>
 			</div>
@@ -123,6 +125,15 @@
 		// ---- a compact Markdown → DOM renderer (the subset docs/API.md uses) ----
 		// Dogfoods qrp: no markdown library, just el() building real nodes.
 
+		// cross-doc .md links -> their rendered pages; other relative paths kept
+		const DOC_PAGES = { "API.md": "api.html", "GETTING-STARTED.md": "start.html", "STYLING.md": "styling.html", "SHARP-EDGES.md": "sharp.html" };
+		const resolveHref = (href) => {
+			if(/^(https?:|#)/.test(href)) { return href; }
+			const m = href.match(/^\.\/([A-Z0-9-]+\.md)(#.*)?$/);
+			if(m && DOC_PAGES[m[1]]) { return DOC_PAGES[m[1]] + (m[2] || ""); }
+			return href.replace(/^\.\.\/examples/, "examples").replace(/^\.\.\//, "./");
+		};
+
 		// inline: `code`, **bold**, *italic*, [text](url)
 		const inline = (text) => {
 			const out = [];
@@ -133,7 +144,7 @@
 				if(m[1] !== undefined) { out.push(el("code", {}, m[1])); }
 				else if(m[2] !== undefined) { out.push(el("strong", {}, ...inline(m[2]))); }
 				else if(m[3] !== undefined) { out.push(el("em", {}, ...inline(m[3]))); }
-				else { out.push(el("a", { href: m[5] }, ...inline(m[4]))); }
+				else { out.push(el("a", { href: resolveHref(m[5]) }, ...inline(m[4]))); }
 				last = m.index + m[0].length;
 			}
 			if(last < text.length) { out.push(text.slice(last)); }

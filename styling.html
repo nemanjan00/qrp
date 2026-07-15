@@ -3,8 +3,8 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>qrp — getting started</title>
-	<meta name="description" content="Getting started with qrp — a ten-minute, zero-to-dashboard tour of the five core ideas. Rendered from docs/GETTING-STARTED.md, live, with qrp.">
+	<title>qrp — styling</title>
+	<meta name="description" content="Styling qrp: bring your own CSS, the optional qrp.css token baseline (light/dark), or a CSS framework. Rendered from docs/STYLING.md.">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
 	<style>
 		:root {
@@ -85,10 +85,10 @@
 
 	<div class="layout">
 		<aside>
-			<input class="search" id="search" type="search" aria-label="Filter the guide" placeholder="Filter…" autocomplete="off">
-			<nav id="toc" aria-label="Guide sections"></nav>
+			<input class="search" id="search" type="search" aria-label="Filter styling" placeholder="Filter…" autocomplete="off">
+			<nav id="toc" aria-label="Styling sections"></nav>
 		</aside>
-		<main id="doc"><div class="loading">Loading the guide…</div></main>
+		<main id="doc"><div class="loading">Loading styling…</div></main>
 	</div>
 
 	<script type="importmap">
@@ -122,7 +122,7 @@
 	<script type="module">
 		import { state, el, list } from "@nemanjan00/qrp";
 
-		// This page fetches docs/GETTING-STARTED.md (single source) and renders it
+		// This page fetches docs/STYLING.md (single source) and renders it
 		// with a compact Markdown → DOM renderer — dogfooding qrp, no md library.
 
 		// doc-relative links -> the site's pages (the .md is authored for GitHub)
@@ -231,7 +231,7 @@
 		};
 
 		// ---- fetch the markdown (single source) and render ----
-		fetch("./docs/GETTING-STARTED.md").then((r) => {
+		fetch("./docs/STYLING.md").then((r) => {
 			if(!r.ok) { throw new Error("HTTP " + r.status); }
 			return r.text();
 		}).then((md) => {
@@ -252,8 +252,8 @@
 		}).catch((err) => {
 			document.getElementById("doc").replaceChildren(
 				el("p", {}, "Could not load the guide (", el("code", {}, String(err.message || err)), ")."),
-				el("p", { class: "note" }, "Serve this over HTTP (e.g. python -m http.server) so ./docs/GETTING-STARTED.md is fetchable, or read it directly: ",
-					el("a", { href: "./docs/GETTING-STARTED.md" }, "docs/GETTING-STARTED.md"), "."));
+				el("p", { class: "note" }, "Serve this over HTTP (e.g. python -m http.server) so ./docs/STYLING.md is fetchable, or read it directly: ",
+					el("a", { href: "./docs/STYLING.md" }, "docs/STYLING.md"), "."));
 		});
 	</script>
 </body>
