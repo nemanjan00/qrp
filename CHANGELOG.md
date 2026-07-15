@@ -8,6 +8,28 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.4.4
+
+Round-four fixes from the production port's open list:
+
+- **Markers render when returned** — a `when()`/`list()` marker returned from
+  another branch, a `list()` render, a `mount()` component, or a reactive hole
+  now renders instead of stringifying to `[object Object]`. (Only a bare non-qrp
+  `parent.appendChild(marker)` is unsupported.)
+- ⚠️ **`mount()` appends the component's RETURN value** — the documented
+  `mount(parent, () => el(...))` style silently did nothing before; now it works
+  (guarded so the append-to-view style doesn't double).
+- **`onEffectError` context** — the handler's 2nd arg is now a documented
+  `{ phase, name }` (`"create"` vs `"update"`, plus `effect(fn, { name })`)
+  instead of the opaque internal effect.
+- **`setQuery(params, { replace, merge })`** — persist filters/sort to the URL
+  query without a remount (rides the same-pattern keep-alive; `currentRoute.query`
+  updates reactively).
+- **`tablePager(view)` + `tableSummary(view)`** — stock prev/pages/next control
+  and "Showing X–Y of Z" summary over a `table().view` (or any collection).
+- **`table` custom headers** — `field.header(column) => Renderable` for a
+  select-all box / filter icon in a `th` (its clicks don't trigger the sort).
+
 ## 0.4.3
 
 - ⚠️ **BREAKING (`validate`):** a **present-but-empty `""` is now validated**
