@@ -449,6 +449,52 @@ delegate(list, "button.del", (e, el) =>
   remove(el.dataset.id));`),
 				protoDemo())));
 
+		// ============================================================ COMPOSITION (factories)
+		const compositionDemo = () => {
+			// three tiny factories — each just returns DOM — composed into one card
+			const Field = (label, control) => el("label", { style: "display:block;margin:.55rem 0" },
+				el("span", { class: "dim", style: "display:block;font-size:.78rem;margin-bottom:.25rem" }, label),
+				control);
+			const Toggle = (s, key) => el("button", { type: "button", class: () => `tab ${s[key] ? "active" : ""}`,
+				onclick: () => s[key] = !s[key] }, () => s[key] ? "On" : "Off");
+			const Card = (title, ...body) => el("div", { class: "card", style: "margin:0" },
+				el("h3", { style: "margin:0 0 .3rem" }, title), ...body);
+
+			const acct = state({ name: "Ada Lovelace", plan: "pro", alerts: true });
+			const saved = state({ at: "" });
+
+			return livePanel(
+				Card("Account",
+					Field("Name", el("input", { style: "width:100%", bind: [acct, "name"] })),
+					Field("Plan", el("select", { style: "width:100%", bind: [acct, "plan"] },
+						el("option", { value: "free" }, "Free"), el("option", { value: "pro" }, "Pro"), el("option", { value: "team" }, "Team"))),
+					Field("Email alerts", Toggle(acct, "alerts")),
+					el("button", { class: "btn btn-primary", style: "margin-top:.5rem", onclick: () => saved.at = new Date().toLocaleTimeString() }, "Save"),
+					el("div", { class: "dim", style: "font-size:.76rem;margin-top:.5rem" }, () => saved.at ? `saved at ${saved.at}` : "unsaved")),
+				el("div", { class: "dim", style: "font-size:.76rem" }, "live state → ", el("code", {}, () => JSON.stringify(acct))));
+		};
+		app.appendChild(section("composition", "Composition", "Components are just functions.",
+			"No Component class, no registration — a component is a function that returns DOM, and you compose small factories into bigger ones. This is a Card() wrapping Field()s (each wrapping an input) plus a Toggle() — three factories, one real settings card. Props are arguments; a thunk or bind stays live. Edit below; the state readout updates in place.",
+			el("div", { class: "demo" },
+				codeWindow("compose.js", `
+// a component = a function that returns DOM
+const Field = (label, control) =>
+  el("label", {}, el("span", {}, label), control);
+
+const Toggle = (s, k) => el("button",
+  { onclick: () => s[k] = !s[k] },
+  () => s[k] ? "On" : "Off");
+
+const Card = (title, ...body) =>
+  el("div", { class: "card" },
+    el("h3", {}, title), ...body);
+
+// compose them into a real card with a form
+Card("Account",
+  Field("Name",  el("input", { bind: [acct, "name"] })),
+  Field("Alerts", Toggle(acct, "alerts")));`),
+				compositionDemo())));
+
 		// ============================================================ FORMS
 		registerInput("callsign", (settings, key, field) => {
 			const input = inputs.text(settings, key, field);
