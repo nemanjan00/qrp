@@ -2,7 +2,7 @@
 
 A **live, reactive device dashboard** — served by an **$8 microcontroller off its
 own WiFi**, with no internet, no CDN, and no filesystem. The whole app (HTML + CSS
-+ qrp's core + behaviors + the logic) is **one ~6 KB gzipped blob** baked into
++ qrp's core + behaviors + the logic) is **one ~7 KB gzipped blob** baked into
 PROGMEM.
 
 **[▶ Live demo](https://qrp.nemanja.top/examples/esp32/dashboard.html)** —
@@ -30,11 +30,11 @@ It's all in [`app.js`](app.js), importing only qrp's core + three behaviors.
 
 | what the browser loads | size |
 |---|---|
-| app JS (qrp core + behaviors + logic, minified) | ~10.9 KB |
-| full HTML page (with inline CSS) | ~15.4 KB |
-| **gzipped — the total flashed to the device** | **~6 KB** |
+| app JS (qrp core + behaviors + logic, minified) | ~12.7 KB |
+| full HTML page (with inline CSS) | ~17.4 KB |
+| **gzipped — the total flashed to the device** | **~7 KB** |
 
-`react-dom` alone is ~45 KB gzipped — **7× this entire live dashboard**, before a
+`react-dom` alone is ~45 KB gzipped — **~6× this entire live dashboard**, before a
 line of your own UI. On a chip with a few hundred KB of free flash, that gap is
 the difference between "fits with room for your firmware" and "doesn't fit."
 

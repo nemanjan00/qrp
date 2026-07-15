@@ -4,10 +4,10 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>qrp — turn data into a dashboard</title>
-	<meta name="description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step. Reactivity is a Proxy, the DOM is real, the published core is ~3.9 KB min+gzip (~17 KB for the whole library).">
+	<meta name="description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step. Reactivity is a Proxy, the DOM is real, the published core is ~4.5 KB min+gzip (~20.5 KB for the whole library).">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
 	<meta property="og:title" content="qrp — turn data into a dashboard">
-	<meta property="og:description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step, ~3.9 KB min+gzip core (~17 KB whole library).">
+	<meta property="og:description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step, ~4.5 KB min+gzip core (~20.5 KB whole library).">
 	<link rel="stylesheet" href="./qrp.css">
 	<style>
 		:root {
@@ -292,11 +292,11 @@
 				el("div", { class: "tagline" }, "Turn data into a dashboard. Nothing else."),
 				el("p", { class: "lede" },
 					"A data-first, declarative frontend framework. Reactivity is a ",
-					el("code", {}, "Proxy"), ", the DOM is real. The published core is ~3.9 KB min+gzip — the number comparable to Solid or React; ~17 KB for the whole library. (Ships minified, still zero build on your end.)"),
+					el("code", {}, "Proxy"), ", the DOM is real. The published core is ~4.5 KB min+gzip — the number comparable to Solid or React; ~20.5 KB for the whole library. (Ships minified, still zero build on your end.)"),
 				el("div", { class: "badges" },
 					el("span", { class: "badge" }, el("b", {}, "0"), " dependencies"),
 					el("span", { class: "badge" }, el("b", {}, "0"), " build step"),
-					el("span", { class: "badge" }, el("b", {}, "~3.9 KB"), " min+gzip core"),
+					el("span", { class: "badge" }, el("b", {}, "~4.5 KB"), " min+gzip core"),
 					el("span", { class: "badge" }, el("b", {}, "243"), " tests"),
 					el("span", { class: "badge" }, el("b", {}, "vanilla-DOM"), " parity on hot paths")),
 				el("div", { class: "cta" },
@@ -321,10 +321,10 @@
 				style: "width:100%;height:460px;border:1px solid var(--border);border-radius:8px;background:#0a0d12"
 			}),
 			el("div", { class: "row", style: "justify-content:space-between;align-items:center" },
-				el("span", { style: "color:var(--accent2);font-weight:700;font-size:.85rem" }, "~6 KB gzipped · the whole live dashboard"),
+				el("span", { style: "color:var(--accent2);font-weight:700;font-size:.85rem" }, "~7 KB gzipped · the whole live dashboard"),
 				el("a", { class: "btn", href: "examples/esp32/dashboard.html", target: "_blank" }, "Open the demo ↗")));
 		app.appendChild(section("esp32", "The extreme case", "A live dashboard on a microcontroller.",
-			"The whole library is ~17 KB min+gzip, so a useful qrp app needs no server and no CDN — it fits in flash on an ESP32. Not a static form: telemetry streams into reactive bindings, an LED toggles live, the config form rewrites itself with when(), and a WiFi-scan modal comes from portal + trapFocus + dismissable. The chip serves it all from PROGMEM over its own WiFi — no filesystem, no internet, no build on the device.",
+			"The whole library is ~20.5 KB min+gzip, so a useful qrp app needs no server and no CDN — it fits in flash on an ESP32. Not a static form: telemetry streams into reactive bindings, an LED toggles live, the config form rewrites itself with when(), and a WiFi-scan modal comes from portal + trapFocus + dismissable. The chip serves it all from PROGMEM over its own WiFi — no filesystem, no internet, no build on the device.",
 			el("div", { class: "demo" },
 				codeWindow("main.cpp", `
 // the entire web app, served from flash:
@@ -333,7 +333,7 @@ void handleRoot() {
     "Content-Encoding", "gzip");
   server.send_P(200, "text/html",
     dashboard_html_gz,
-    dashboard_html_gz_len);   // ~6 KB
+    dashboard_html_gz_len);   // ~7 KB
 }`),
 				espDemo())));
 
@@ -927,7 +927,7 @@ effect(() => applyTheme(
 					el("p", {}, m[2]))))));
 
 		// footer stats
-		document.getElementById("foot-stats").textContent = "~4.5 KB min+gzip core · 259 tests · built with qrp";
+		document.getElementById("foot-stats").textContent = "~4.5 KB min+gzip core · 260 tests · built with qrp";
 	</script>
 </body>
 </html>

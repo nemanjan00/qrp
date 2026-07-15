@@ -145,7 +145,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - **Minified build**: `bin/build.js` (`npm run build`, also `prepack`) bundles +
   code-splits each subpath into `dist/` with esbuild (shared core chunk). The npm
   package ships `dist/` (minified) + the hand-written `.d.ts` — **not** the raw
-  source `.js`. Core is **~3.7 KB min+gzip**, whole library ~15 KB. `dist/` is
+  source `.js`. Core is **~4.5 KB min+gzip**, whole library ~20.5 KB. `dist/` is
   gitignored (rebuilt on pack/publish). The consumer still runs zero build.
 - NOTE (future / "another day"): `.d.ts` could be *generated* from JSDoc to make
   the code the single source — verified `tsc --declaration --allowJs` emits
