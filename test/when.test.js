@@ -164,3 +164,30 @@ test("a list render returning a when marker works", () => {
 	const v = el("ul", {}, list(() => s.rows, (r) => r.id, (r) => when(() => r.on, () => el("li", {}, "yes"))));
 	assert.equal(v.querySelectorAll("li").length, 1);
 });
+
+test("nested markers don't strand DOM when the parent switches (nested-when teardown leak)", () => {
+	const s = state({ showA: true, rev: 1 });
+	const view = el("div", {}, when(() => s.showA,
+		() => when(() => s.rev, (r) => el("p", { class: "c" }, "A" + r)),
+		() => el("p", { class: "c" }, "B")));
+
+	assert.deepEqual([...view.querySelectorAll(".c")].map((p) => p.textContent), ["A1"]);
+	s.rev = 2;   // nested when re-renders AFTER mount (node the parent never tracked)
+	assert.deepEqual([...view.querySelectorAll(".c")].map((p) => p.textContent), ["A2"]);
+	s.showA = false;   // parent switches — must remove the nested when's current node
+	assert.deepEqual([...view.querySelectorAll(".c")].map((p) => p.textContent), ["B"], "A2 not stranded");
+});
+
+test("a list nested in a when is fully removed when the parent switches, and rebuilds on return", () => {
+	const s = state({ open: true, rows: [{ id: 1 }] });
+	const view = el("div", {}, when(() => s.open,
+		() => el("ul", { class: "q" }, list(() => s.rows, (r) => r.id, (r) => el("li", {}, String(r.id)))),
+		() => el("p", {}, "closed")));
+
+	s.rows = [{ id: 1 }, { id: 2 }];              // grow after mount
+	assert.equal(view.querySelectorAll(".q li").length, 2);
+	s.open = false;
+	assert.equal(view.querySelectorAll(".q").length, 0, "list + rows fully removed");
+	s.open = true;
+	assert.equal(view.querySelectorAll(".q li").length, 2, "rebuilds cleanly on return");
+});

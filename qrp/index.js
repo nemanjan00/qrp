@@ -606,11 +606,18 @@ const setupWhen = (parent, marker) => {
 	let lastKey;
 	let first = true;
 
-	// Dispose the live branch when the enclosing owner (mount/scope) tears down.
+	// Dispose the live branch when the enclosing owner tears down — AND remove
+	// this marker's own current DOM (nodes + anchor). A parent only tracks the
+	// nodes present when it mounted its branch; a nested marker that re-rendered
+	// since then has inserted nodes the parent doesn't know about, so the child
+	// must remove them itself on disposal or they strand (nested-when leak).
 	onDispose(() => {
 		if(branchScope) {
 			branchScope.dispose();
 		}
+
+		nodes.forEach((node) => node.remove());
+		anchor.remove();
 	});
 
 	effect(() => {
@@ -779,8 +786,17 @@ const setupList = (parent, marker) => {
 	// key -> { element, scope }; scope owns the row's effects for disposal.
 	let cache = new Map();
 
-	// Dispose every row scope when the enclosing owner (mount/scope) tears down.
-	onDispose(() => cache.forEach((entry) => entry.scope.dispose()));
+	// Dispose every row scope when the enclosing owner tears down — AND remove
+	// this list's own rows + anchor, so a list nested in a parent marker doesn't
+	// strand rows the parent never tracked (same fix as setupWhen).
+	onDispose(() => {
+		cache.forEach((entry) => {
+			entry.scope.dispose();
+			entry.element.remove();
+		});
+
+		anchor.remove();
+	});
 
 	effect(() => {
 		// Track that the array changed (identity/length), then iterate the RAW
