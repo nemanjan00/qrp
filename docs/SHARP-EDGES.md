@@ -43,9 +43,11 @@ node each call) or `node.cloneNode(true)` — never a shared live node.
 
 **`when()`/`list()` markers render anywhere qrp accepts a Renderable** — an
 `el()`/`html` child, returned bare from another branch, a `list()` render, a
-`mount()` component. The one place they *don't* work is a **non-qrp** insertion
-(a raw `parent.appendChild(marker)` / `.append(marker)`), where they'd stringify
-to `[object Object]` — use `el()`/`mount()` to insert them, not the bare DOM API.
+`mount()` component. The one place they *don't* work is a **non-qrp** insertion (a raw
+`parent.append(marker)` / `.appendChild`) — use `el()`/`mount()` (or a reactive
+child) instead. If you do it by accident, it no longer fails silently: the marker
+stringifies to a `[qrp when() — render via el()/mount(), …]` breadcrumb and logs a
+`console.warn` at the call site.
 
 **`when()` is value-keyed.** It re-renders when the condition's *value* changes
 (by `Object.is`), so `when(() => state.tab, tab => TABS[tab]())` switches tabs.

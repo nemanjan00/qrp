@@ -705,8 +705,20 @@ const setupWhen = (parent, marker) => {
  * @param {Function} [elseFn] (value) => renderable, shown when falsy
  * @returns {object} when marker (pass as an el child)
  */
+// A marker only stringifies if it was passed to a BARE DOM append
+// (`parent.append(marker)`) — qrp's own paths route it via the renderable
+// symbol before any String coercion. So a toString() here can't fire in normal
+// use; when it does, it means the one unsupported position. Warn loudly and
+// return a breadcrumb instead of a silent "[object Object]" — the whole bug
+// class self-diagnoses at the call site.
+const markerHint = (kind) => function() {
+	console.warn(`qrp: a ${kind}() marker was coerced to a string — you passed it to a bare DOM append(). Render it via el()/html/mount() (or a reactive child), not parent.append().`);
+
+	return `[qrp ${kind}() — render via el()/mount(), not a bare DOM append]`;
+};
+
 export const when = (cond, thenFn, elseFn) => {
-	const marker = { cond, thenFn, elseFn };
+	const marker = { cond, thenFn, elseFn, toString: markerHint("when") };
 
 	// when is just an implementation of the renderable protocol — no privileged
 	// access to the normalizer; a userland switchOn is its exact peer.
@@ -944,6 +956,7 @@ export const list = (source, keyFn, render) => {
 		keyFn,
 		render,
 		_elemToItem: elemToItem,
+		toString: markerHint("list"),
 
 		itemFor: (target) => {
 			let node = target && target.nodeType ? target : (target && target.target);
