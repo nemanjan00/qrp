@@ -8,6 +8,15 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.4.6
+
+- **Fix (P0): nested-marker teardown leak.** A `when()`/`list()` nested inside a
+  parent marker's branch stranded its DOM when the parent switched (symptom:
+  both tabs' content stacking). A marker now removes its **own** current nodes +
+  anchor on disposal, instead of relying on the parent — which only tracked the
+  nodes present at mount, missing anything a nested marker re-rendered since.
+  Wrapper `<div>`s are no longer needed around nested markers.
+
 ## 0.4.5
 
 - **`table` dynamic columns** — `fields` may be a thunk `() => Column[]` for a
