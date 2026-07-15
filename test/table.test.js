@@ -264,3 +264,54 @@ test("custom header content renders and its clicks don't trigger sort", () => {
 	assert.equal(boxClicks, 1);
 	assert.equal(t.view.sort.dir, sortBefore, "header click did not sort");
 });
+
+test("dynamic fields (fields as thunk): toggling a column adds/removes header + cells, reuses row elements", () => {
+	const cols = state({ email: true });
+	const store = state({ rows: [{ id: 1, name: "Ada", email: "a@x" }, { id: 2, name: "Grace", email: "g@x" }] });
+	const t = table({
+		rows: () => store.rows, key: (r) => r.id,
+		fields: () => [{ key: "name", label: "Name" }, ...(cols.email ? [{ key: "email", label: "Email" }] : [])]
+	});
+
+	const firstRowBefore = t.querySelector("tbody tr");
+	assert.deepEqual([...t.querySelectorAll("thead th")].map((th) => th.textContent), ["Name", "Email"]);
+	assert.equal(t.querySelectorAll("tbody tr:first-child td").length, 2);
+
+	cols.email = false;
+	assert.deepEqual([...t.querySelectorAll("thead th")].map((th) => th.textContent), ["Name"]);
+	assert.equal(t.querySelectorAll("tbody tr:first-child td").length, 1);
+	assert.equal(t.querySelector("tbody tr"), firstRowBefore, "row element reused across column change");
+});
+
+test("expandable rows: toggleRow + row click reveal/hide a detail panel", () => {
+	const store = state({ rows: [{ id: 1, name: "Ada" }, { id: 2, name: "Grace" }] });
+	const t = table({
+		rows: () => store.rows, key: (r) => r.id,
+		fields: [{ key: "name", label: "Name" }],
+		expandable: (item) => el("div", { class: "detail" }, `about ${item.name}`)
+	});
+
+	assert.equal(t.querySelectorAll("tbody").length, 2, "one tbody per row group");
+	assert.equal(t.querySelectorAll(".qrp-expand").length, 0);
+
+	t.toggleRow(1);
+	assert.equal(t.querySelectorAll(".qrp-expand").length, 1);
+	assert.equal(t.querySelector(".detail").textContent, "about Ada");
+
+	// clicking the row toggles it closed
+	t.querySelector("tbody tr").click();
+	assert.equal(t.querySelectorAll(".qrp-expand").length, 0);
+});
+
+test("expandable: clicking an interactive cell does NOT toggle the row", () => {
+	const store = state({ rows: [{ id: 1, name: "Ada" }] });
+	let acted = 0;
+	const t = table({
+		rows: () => store.rows, key: (r) => r.id,
+		fields: [{ key: "act", render: () => el("button", { onclick: () => acted++ }, "Act") }],
+		expandable: (item) => el("div", {}, item.name)
+	});
+	t.querySelector("tbody button").click();
+	assert.equal(acted, 1);
+	assert.equal(t.querySelectorAll(".qrp-expand").length, 0, "button click did not expand");
+});

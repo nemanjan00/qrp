@@ -146,6 +146,17 @@
 	font-size: 0.9rem;
 }
 
+/* --- expandable rows (table expandable) ------------------------------- */
+
+.qrp-rowgroup {
+	border: 0;
+}
+
+.qrp-expand > td {
+	background: var(--qrp-surface);
+	padding: 0.75rem 0.9rem;
+}
+
 /* --- card -------------------------------------------------------------- */
 
 .qrp-card {

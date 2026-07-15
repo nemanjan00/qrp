@@ -2,8 +2,10 @@
  * @module table
  * A declarative data table over `collection` + `list`: sortable headers, keyed
  * row reuse, per-column config. A column is `{ key, label?, accessor?, formatter?,
- * render?, sortable?, sortByFormatted?, thClass?, tdClass? }`. The returned table
- * has `.view` (the underlying collection) for pagination UI.
+ * render?, header?, sortable?, sortByFormatted?, thClass?, tdClass? }`. `fields`
+ * may be a thunk for reactive columns; `expandable` adds detail rows. The
+ * returned table has `.view` (the collection, for `tablePager`/`tableSummary`)
+ * plus `.expanded`/`.toggleRow`.
  * @example
  * const t = table({
  *   rows: () => store.rows, key: (r) => r.id, filter, page,
@@ -40,7 +42,12 @@ export interface Column<T> {
 
 export interface TableOptions<T> {
 	rows: (() => readonly T[]) | readonly T[];
-	fields: Column<T>[];
+	/** Columns — an array, or a thunk `() => Column[]` for a reactive set
+	 *  (column visibility toggle, role-gated columns; rows re-render, elements reused). */
+	fields: Column<T>[] | (() => Column<T>[]);
+	/** Enable expandable rows: item => the detail panel shown below the row.
+	 *  A row click toggles it (interactive cells excluded); also `.toggleRow(key)`. */
+	expandable?: (item: T) => Renderable;
 	/** item => stable key (the :key equivalent; default item.id). */
 	key?: (item: T) => unknown;
 	sort?: SortState;
@@ -54,8 +61,14 @@ export interface TableOptions<T> {
 	sortDesc?: boolean;
 }
 
-/** The table element, with `.view` exposing the underlying collection. */
-export type TableElement<T> = HTMLTableElement & { view: Collection<T> };
+/** The table element: `.view` (the collection), plus expansion controls. */
+export type TableElement<T> = HTMLTableElement & {
+	view: Collection<T>;
+	/** Reactive per-key open flags for expandable rows (`expanded[key]`). */
+	expanded: Record<string, boolean>;
+	/** Toggle a row's detail panel by its key. */
+	toggleRow: (key: unknown) => void;
+};
 
 /** Build a declarative, sortable, keyed, paginated data table. */
 export function table<T>(options: TableOptions<T>): TableElement<T>;

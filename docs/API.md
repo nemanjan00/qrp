@@ -752,8 +752,10 @@ import { … } from "@nemanjan00/qrp/table"
 
 A declarative data table over `collection` + `list`: sortable headers, keyed
 row reuse, per-column config. A column is `{ key, label?, accessor?, formatter?,
-render?, sortable?, sortByFormatted?, thClass?, tdClass? }`. The returned table
-has `.view` (the underlying collection) for pagination UI.
+render?, header?, sortable?, sortByFormatted?, thClass?, tdClass? }`. `fields`
+may be a thunk for reactive columns; `expandable` adds detail rows. The
+returned table has `.view` (the collection, for `tablePager`/`tableSummary`)
+plus `.expanded`/`.toggleRow`.
 
 ### `table`
 
@@ -806,15 +808,25 @@ interface Column<T> {
 A column descriptor for table().
 
 ```ts
-type TableElement<T> = HTMLTableElement & { view: Collection<T> };
+type TableElement<T> = HTMLTableElement & {
+	view: Collection<T>;
+	/** Reactive per-key open flags for expandable rows (`expanded[key]`). */
+	expanded: Record<string, boolean>;
+	/** Toggle a row's detail panel by its key. */
+	toggleRow: (key: unknown) => void;
 ```
 
-The table element, with `.view` exposing the underlying collection.
+The table element: `.view` (the collection), plus expansion controls.
 
 ```ts
 interface TableOptions<T> {
 	rows: (() => readonly T[]) | readonly T[];
-	fields: Column<T>[];
+	/** Columns — an array, or a thunk `() => Column[]` for a reactive set
+	 *  (column visibility toggle, role-gated columns; rows re-render, elements reused). */
+	fields: Column<T>[] | (() => Column<T>[]);
+	/** Enable expandable rows: item => the detail panel shown below the row.
+	 *  A row click toggles it (interactive cells excluded); also `.toggleRow(key)`. */
+	expandable?: (item: T) => Renderable;
 	/** item => stable key (the :key equivalent; default item.id). */
 	key?: (item: T) => unknown;
 	sort?: SortState;

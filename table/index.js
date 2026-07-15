@@ -36,7 +36,7 @@
  *   thClass/tdClass  class strings for header/cell (e.g. responsive-hide)
  */
 
-import { el, list, state } from "../qrp/index.js";
+import { el, list, state, when } from "../qrp/index.js";
 import { collection } from "../collection/index.js";
 
 const resolveValue = (fieldSpec, item) => {
@@ -71,13 +71,17 @@ const sortValue = (fieldSpec, item) => {
  * @returns {HTMLTableElement} the table element (with .view = collection)
  */
 export const table = (options) => {
-	const fields = options.fields || [];
+	// `fields` may be a THUNK (() => Column[]) for reactive column sets — a
+	// visibility toggle, role-gated columns. currentFields() reads the live set;
+	// dynamicFields gates the reactive-region path so static tables keep the
+	// build-once fast path (zero regression).
+	const dynamicFields = typeof options.fields === "function";
+	const currentFields = dynamicFields ? options.fields : () => (options.fields || []);
+	const lookupField = (key) => currentFields().find((fieldSpec) => fieldSpec.key === key);
+
 	const source = typeof options.rows === "function" ? options.rows : () => options.rows;
 	const keyFn = options.key || ((item) => item.id);
 	const sort = options.sort || state({ key: options.sortField || null, dir: options.sortDesc ? -1 : 1 });
-
-	const fieldByKey = {};
-	fields.forEach((fieldSpec) => { fieldByKey[fieldSpec.key] = fieldSpec; });
 
 	const view = collection(source, {
 		sort,
@@ -85,7 +89,7 @@ export const table = (options) => {
 		filter: options.filter,
 		filterFn: options.filterFn,
 		compare: (a, b, sortState) => {
-			const fieldSpec = fieldByKey[sortState.key];
+			const fieldSpec = lookupField(sortState.key);
 
 			if(!fieldSpec) {
 				return 0;
@@ -184,6 +188,14 @@ export const table = (options) => {
 		});
 	};
 
+	// Expandable rows: a per-key open flag + a detail panel rendered below the
+	// row via when(). Enabled by options.expandable(item) => Renderable.
+	const expandable = options.expandable;
+	const open = state({});
+	const toggleRow = (key) => { open[key] = !open[key]; };
+
+	const cellsFor = (holder, fieldList) => fieldList.map((fieldSpec) => bodyCell(fieldSpec, holder));
+
 	const row = (holder) => {
 		const props = {};
 
@@ -191,16 +203,51 @@ export const table = (options) => {
 			props.class = () => options.rowClass(holder.item);
 		}
 
-		return el("tr", props, fields.map((fieldSpec) => bodyCell(fieldSpec, holder)));
+		if(expandable) {
+			props.style = "cursor:pointer";
+			// toggle on row click, but not when an interactive cell was clicked
+			props.onclick = (event) => {
+				if(event.target.closest("button, a, input, select, label, [data-no-expand]")) {
+					return;
+				}
+
+				toggleRow(holder.key);
+			};
+		}
+
+		// Static fields → build cells once (fast path). Dynamic fields → a reactive
+		// region so a column toggle re-renders the cells (row element preserved).
+		return dynamicFields
+			? el("tr", props, () => cellsFor(holder, currentFields()))
+			: el("tr", props, ...cellsFor(holder, options.fields || []));
 	};
 
-	const node = el("table", { class: "qrp-table " + (options.class || "") },
-		el("thead", {}, el("tr", {}, fields.map(headerCell))),
-		el("tbody", {}, list(holderSource, (holder) => holder.key, row))
+	// A row group: the row plus its (conditional) detail row. Only used when
+	// expandable — one <tbody> per key so the detail <tr> stays with its row.
+	const rowGroup = (holder) => el("tbody", { class: "qrp-rowgroup" },
+		row(holder),
+		when(() => !!open[holder.key], () =>
+			el("tr", { class: "qrp-expand" },
+				el("td", { colspan: () => currentFields().length }, expandable(holder.item))))
 	);
 
-	// Expose the collection controller for pagination / totals UI.
+	const headerRow = dynamicFields
+		? el("tr", {}, () => currentFields().map(headerCell))
+		: el("tr", {}, ...(options.fields || []).map(headerCell));
+
+	const node = el("table", { class: "qrp-table " + (options.class || "") },
+		el("thead", {}, headerRow),
+		// non-expandable → one <tbody> of <tr> (unchanged). expandable → a list of
+		// <tbody> row-groups (multiple tbodies is valid HTML).
+		expandable
+			? list(holderSource, (holder) => holder.key, rowGroup)
+			: el("tbody", {}, list(holderSource, (holder) => holder.key, row))
+	);
+
+	// Expose the collection controller (pagination/totals UI) + expansion control.
 	node.view = view;
+	node.expanded = open;
+	node.toggleRow = toggleRow;
 
 	return node;
 };
