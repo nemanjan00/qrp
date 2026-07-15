@@ -8,7 +8,7 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
-## 0.4.10
+## 0.5.0
 
 - **New module: `datagrid`** (`@nemanjan00/qrp/datagrid`, ~0.8 KB gzip). A
   headless data-grid state machine over `collection()` — row selection
@@ -29,6 +29,9 @@ _(nothing yet)_
 - **Marker mis-append now logs at `console.error`** (was `warn`) — so a bare
   `parent.append(when(…))` in headless/CI surfaces (most harnesses fail on
   console.error); the in-DOM breadcrumb is unchanged.
+
+## 0.4.10
+
 - **`createHttp` no longer leaks the loader subscription into a caller's effect.**
   The in-flight counter's `loading.pending += 1` *reads* `pending`; issuing a
   request synchronously inside an `effect()` (the normal "refetch when filters
