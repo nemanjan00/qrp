@@ -11,7 +11,8 @@ about ten minutes and assumes only that you know JavaScript and the DOM. There i
 - [5. Conditional UI with `when`](#5-conditional-ui-with-when)
 - [6. Keyed lists with `list`](#6-keyed-lists-with-list)
 - [7. A small dashboard, end to end](#7-a-small-dashboard-end-to-end)
-- [8. Where to go next](#8-where-to-go-next)
+- [8. Reusable components (the factory pattern)](#8-reusable-components-the-factory-pattern)
+- [9. Where to go next](#9-where-to-go-next)
 
 ---
 
@@ -285,7 +286,83 @@ updates one button through its own binding. No re-render, no reconcile pass.
 
 ---
 
-## 8. Where to go next
+## 8. Reusable components (the factory pattern)
+
+qrp has no `Component` class and no registration step — **a component is just a
+function that returns DOM.** To make one reusable, write a factory that takes its
+inputs and returns an `el()` tree. That's the whole pattern.
+
+```js
+// a component = a function returning a node
+const Card = ({ title, body }) =>
+  el("div", { class: "card" },
+    el("h3", {}, title),
+    el("p", {}, body));
+
+// use it — and reuse it — like any function
+el("div", { class: "grid" },
+  Card({ title: "Reach",   body: "12,481" }),
+  Card({ title: "Follows", body: "312" }));
+```
+
+**Props are just arguments.** Pass plain values for static content, or a
+**thunk / reactive state** for content that should update:
+
+```js
+const Stat = ({ label, value }) =>          // value can be a value OR a () => …
+  el("div", { class: "stat" },
+    el("strong", {}, value),                // el renders a function child reactively
+    el("span", { class: "dim" }, label));
+
+const m = state({ reach: 0 });
+Stat({ label: "Reach", value: () => m.reach.toLocaleString() });  // live
+m.reach = 12481;                             // the strong updates in place
+```
+
+**Composition is just calling factories from factories** — no special API:
+
+```js
+const Field = ({ label, input }) =>
+  el("label", { class: "field" }, el("span", {}, label), input);
+
+const SearchBox = ({ filter }) =>
+  Field({ label: "Search", input:
+    el("input", { oninput: (e) => filter.q = e.target.value }) });
+```
+
+**One gotcha, and it's why factories matter:** a DOM node lives in exactly one
+place, so you can't reuse the *same* node twice — you call the factory again to
+get a fresh one. That's also why `list()` and repeated slots take a **thunk**:
+
+```js
+const Divider = () => el("hr");
+el("div", {}, Divider(), Divider());        // ✓ two calls → two nodes
+// el("div", {}, theSameNode, theSameNode);  // ✗ the second move steals the first
+```
+
+**Lifecycle & cleanup come for free.** Effects a factory creates (via a reactive
+prop, `derive`, or `effect`) are owned by the enclosing `mount`/`scope` and
+disposed with it — no `unmounted` hook to remember. If a component sets up
+something external (a timer, a subscription), register cleanup with `onDispose`:
+
+```js
+const Clock = () => {
+  const t = state({ now: Date.now() });
+  const id = setInterval(() => t.now = Date.now(), 1000);
+  onDispose(() => clearInterval(id));        // runs when the owner unmounts
+  return el("time", {}, () => new Date(t.now).toLocaleTimeString());
+};
+```
+
+Want a component with its *own* lifecycle boundary (opened from an event handler,
+or reused as a real HTML tag)? Reach for [`scoped()`](./API.md#qrp--core) (owns a
+detached subtree's effects → `{ value, dispose }`) or
+[`define()`](./API.md#qrp--core) (registers a real Custom Element). But for the
+common case, a plain factory function is all you need — that's the point.
+
+---
+
+## 9. Where to go next
 
 You now know the core. The rest of qrp is optional modules you import only when a
 dashboard needs them:
