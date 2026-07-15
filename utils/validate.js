@@ -61,15 +61,19 @@ const coerce = (rule, value) => {
 };
 
 const checkField = (path, rule, value, errors) => {
-	const missing = value === undefined || value === null || value === "";
+	// ABSENT (not sent) vs PRESENT-BUT-EMPTY ("") are different: an absent
+	// optional field is skipped, but a "" that IS sent gets validated — so a
+	// pattern/check can reject empty on an optional patch field. required fails
+	// on either.
+	const absent = value === undefined || value === null;
 
-	if(rule.required && missing) {
+	if(rule.required && (absent || value === "")) {
 		errors.push({ path, message: rule.message || `${path} is required` });
 
 		return;
 	}
 
-	if(missing) {
+	if(absent) {
 		return;
 	}
 
@@ -113,7 +117,7 @@ const checkField = (path, rule, value, errors) => {
 };
 
 // Build a coerced copy of `data` per `schema`, collecting errors on the way.
-const walk = (schema, data, errors, prefix) => {
+const walk = (schema, data, errors, prefix, strict) => {
 	const out = data && typeof data === "object" && !Array.isArray(data) ? { ...data } : {};
 
 	Object.keys(schema).forEach((key) => {
@@ -122,7 +126,7 @@ const walk = (schema, data, errors, prefix) => {
 		let value = (data || {})[key];
 
 		if(rule.fields && value && typeof value === "object") {
-			value = walk(rule.fields, value, errors, path + ".");
+			value = walk(rule.fields, value, errors, path + ".", strict);
 		} else {
 			value = coerce(rule, value);
 		}
@@ -134,6 +138,16 @@ const walk = (schema, data, errors, prefix) => {
 		checkField(path, rule, value, errors);
 	});
 
+	// strict: any data key the schema doesn't declare is an error (recursively).
+	// Off by default so patches with pass-through keys keep working.
+	if(strict && data && typeof data === "object") {
+		Object.keys(data).forEach((key) => {
+			if(!Object.prototype.hasOwnProperty.call(schema, key)) {
+				errors.push({ path: prefix + key, message: `${prefix + key} is not an allowed key` });
+			}
+		});
+	}
+
 	return out;
 };
 
@@ -141,12 +155,15 @@ const walk = (schema, data, errors, prefix) => {
  * Validate + coerce `data` against `schema`.
  * @param {object} schema field → rule map
  * @param {object} data the object to check
+ * @param {object} [options]
+ * @param {boolean} [options.strict] reject keys not declared in the schema
+ *   (recursively). Default false — unknown keys pass through into `value`.
  * @returns {{ errors: { path: string, message: string }[], value: object }}
  *   `errors` empty = valid; `value` is the coerced copy (send it as the patch).
  */
-export const validate = (schema, data) => {
+export const validate = (schema, data, options = {}) => {
 	const errors = [];
-	const value = walk(schema, data, errors, "");
+	const value = walk(schema, data, errors, "", options.strict === true);
 
 	return { errors, value };
 };

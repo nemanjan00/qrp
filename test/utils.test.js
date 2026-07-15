@@ -307,3 +307,34 @@ test("validate handles required, custom check, and nested fields (+ coerces nest
 	assert.equal(map["prefs.theme"], "prefs.theme must be one of light, dark");
 	assert.strictEqual(value.prefs.size, 14, "nested value coerced too");
 });
+
+test("validate strict rejects unknown keys (recursively); default lets them pass", () => {
+	const schema = { name: { type: "string" }, prefs: { fields: { theme: {} } } };
+
+	// default: unknown keys pass into value, no error
+	const loose = validate(schema, { name: "Ada", extra: 1, prefs: { theme: "dark", junk: 2 } });
+	assert.deepEqual(loose.errors, []);
+	assert.equal(loose.value.extra, 1);
+
+	// strict: unknown keys at any depth are errors
+	const strict = validate(schema, { name: "Ada", extra: 1, prefs: { theme: "dark", junk: 2 } }, { strict: true });
+	const paths = strict.errors.map((e) => e.path).sort();
+	assert.deepEqual(paths, ["extra", "prefs.junk"]);
+});
+
+test("validate distinguishes absent from empty-string for optional fields", () => {
+	// optional field with a 'must not be empty' check
+	const schema = { note: { check: (v) => v.trim() !== "" || "must not be empty" } };
+
+	// absent → skipped (optional)
+	assert.deepEqual(validate(schema, {}).errors, []);
+	// present but empty → validated, check fires
+	assert.equal(validate(schema, { note: "" }).errors[0].message, "must not be empty");
+	// present and non-empty → ok
+	assert.deepEqual(validate(schema, { note: "hi" }).errors, []);
+
+	// required still fails on both absent and ""
+	const req = { email: { required: true, pattern: /@/ } };
+	assert.equal(validate(req, {}).errors[0].message, "email is required");
+	assert.equal(validate(req, { email: "" }).errors[0].message, "email is required");
+});

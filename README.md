@@ -11,11 +11,11 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-none-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
 [![core size](https://img.shields.io/badge/core-~3.9_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
-[![tests](https://img.shields.io/badge/tests-226_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
+[![tests](https://img.shields.io/badge/tests-228_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
 
-**[🚀 Getting started](docs/GETTING-STARTED.md)** · **[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[💡 Why it exists](#-why-it-exists)**
+**[🚀 Getting started](docs/GETTING-STARTED.md)** · **[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[📝 Changelog](CHANGELOG.md)** · **[💡 Why it exists](#-why-it-exists)**
 
 </div>
 
@@ -550,7 +550,7 @@ Full reference — every export, signature, and a usage snippet per module — i
 
 ```sh
 npm install     # dev-only: happy-dom (tests), eslint, typescript, husky
-npm test        # node --test — 226 tests across every module
+npm test        # node --test — 228 tests across every module
 npm run lint    # eslint (eslint:recommended + house style)
 npm run typecheck  # tsc --noEmit over the .d.ts + a usage suite (strict)
 ```

@@ -16,9 +16,15 @@ export interface Rule {
 export type Schema = Record<string, Rule>;
 export interface ValidationError { path: string; message: string; }
 export interface ValidationResult { errors: ValidationError[]; value: any; }
+export interface ValidateOptions {
+	/** Reject keys not declared in the schema (recursively). Default false. */
+	strict?: boolean;
+}
 /**
  * Validate + coerce data against a schema. `errors` is [] when valid; `value` is
  * a coerced copy (form strings become their declared type — "5"→5, "true"→true)
- * ready to send as the patch.
+ * ready to send as the patch. A present-but-empty `""` is validated (so a
+ * pattern/check can reject empty on an optional field); an absent (undefined/null)
+ * optional field is skipped. Pass `{ strict: true }` to reject unknown keys.
  */
-export function validate(schema: Schema, data: any): ValidationResult;
+export function validate(schema: Schema, data: any, options?: ValidateOptions): ValidationResult;
