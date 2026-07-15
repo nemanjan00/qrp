@@ -5,7 +5,7 @@ own WiFi**, with no internet, no CDN, and no filesystem. The whole app (HTML + C
 + qrp's core + behaviors + the logic) is **one ~6 KB gzipped blob** baked into
 PROGMEM.
 
-**[▶ Live demo](https://qrp-xdl4.onrender.com/examples/esp32/dashboard.html)** —
+**[▶ Live demo](https://qrp.nemanja.top/examples/esp32/dashboard.html)** —
 the *exact* page the chip serves. Offline it runs in demo mode (simulated
 telemetry) so you can see it move.
 

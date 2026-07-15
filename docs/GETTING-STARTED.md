@@ -310,7 +310,7 @@ dashboard needs them:
 
 - **[Full API reference](./API.md)** — every export, signature, and example.
 - **[Sharp edges](./SHARP-EDGES.md)** — the handful of behaviors worth knowing once.
-- **[Live demo](https://qrp-xdl4.onrender.com/)** — every feature running.
+- **[Live demo](https://qrp.nemanja.top/)** — every feature running.
 - **[Runnable examples](../examples/)** — `table.html`, `todomvc.html`, and an
   [ESP32 dashboard](../examples/esp32/) that fits in a microcontroller's flash.
 

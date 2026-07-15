@@ -65,7 +65,7 @@
 		"./package.json": "./package.json"
 	},
 	"author": "Nemanja Nedeljkovic <nemanjan00@gmail.com>",
-	"homepage": "https://qrp-xdl4.onrender.com/",
+	"homepage": "https://qrp.nemanja.top/",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/nemanjan00/qrp.git"

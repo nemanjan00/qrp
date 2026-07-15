@@ -15,7 +15,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
 
-**[🚀 Getting started](docs/GETTING-STARTED.md)** · **[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp-xdl4.onrender.com/)** · **[📖 API reference](docs/API.md)** · **[📝 Changelog](CHANGELOG.md)** · **[💡 Why it exists](#-why-it-exists)**
+**[🚀 Getting started](docs/GETTING-STARTED.md)** · **[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp.nemanja.top/)** · **[📖 API reference](docs/API.md)** · **[📝 Changelog](CHANGELOG.md)** · **[💡 Why it exists](#-why-it-exists)**
 
 </div>
 
@@ -54,7 +54,7 @@ server or a CDN — it fits **in flash on an ESP32**. Not a static form, either:
 a config form that rewrites itself with `when()`, and a WiFi-scan modal built from
 `portal` + `trapFocus` + `dismissable`.
 
-**[▶ Live demo](https://qrp-xdl4.onrender.com/examples/esp32/dashboard.html)** ·
+**[▶ Live demo](https://qrp.nemanja.top/examples/esp32/dashboard.html)** ·
 **[full example →](examples/esp32/)** (PlatformIO project + build)
 
 | what the browser loads | size |
