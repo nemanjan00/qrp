@@ -30,7 +30,7 @@
  * any other fetch init (credentials, mode, cache, …).
  */
 
-import { state } from "../qrp/index.js";
+import { state, untracked } from "../qrp/index.js";
 import { bus } from "../events/index.js";
 
 // --- configuration defaults -------------------------------------------------
@@ -51,6 +51,8 @@ const JSON_CONTENT_TYPE = "application/json";
  *   x-authorization-client header
  * @param {object} [options.headers] headers merged into every request
  * @param {object} [options.bus] emitter for loader/error/auth events
+ * @param {function} [options.fetch] transport, defaults to global fetch — pass a
+ *   custom one to mock the backend in tests or wrap it (retry, dedupe, MSW-free)
  * @returns {object} http client
  */
 export const createHttp = (options = {}) => {
@@ -59,25 +61,36 @@ export const createHttp = (options = {}) => {
 	const client = options.client || (() => null);
 	const baseHeaders = options.headers || {};
 	const emitter = options.bus || bus;
+	// Default to the global fetch via a wrapper — a bare `const f = fetch; f()`
+	// throws "Illegal invocation" in browsers (fetch checks its receiver).
+	const doFetch = options.fetch || ((input, init) => fetch(input, init));
 
 	// Reactive in-flight counter — bind a loader to loading.pending.
 	const loading = state({ pending: 0 });
 
-	const start = () => {
+	// The `+= 1`/`-= 1` below READ `pending`. Without untracked, calling a
+	// request synchronously inside an eff() (the normal "refetch when filters
+	// change" pattern) would subscribe that caller's effect to `pending` — then
+	// every request anywhere re-runs the effect, which issues another request,
+	// forever (net::ERR_INSUFFICIENT_RESOURCES, tab crash). Mutating untracked
+	// keeps the counter reactive for legitimate outside readers (a loader bar)
+	// while never leaking a subscription into whoever issued the request. The
+	// WRITE still triggers dependent effects — untracked only suppresses reads.
+	const start = () => untracked(() => {
 		loading.pending += 1;
 
 		if(loading.pending === 1) {
 			emitter.emit("loader.start");
 		}
-	};
+	});
 
-	const stop = () => {
+	const stop = () => untracked(() => {
 		loading.pending -= 1;
 
 		if(loading.pending === 0) {
 			emitter.emit("loader.stop");
 		}
-	};
+	});
 
 	const buildUrl = (path, params) => {
 		let url = path;
@@ -270,7 +283,7 @@ export const createHttp = (options = {}) => {
 			return response.text().then(parseBody);
 		};
 
-		return fetch(url, init).then((response) => {
+		return doFetch(url, init).then((response) => {
 			if(response.ok) {
 				return readOk(response);
 			}

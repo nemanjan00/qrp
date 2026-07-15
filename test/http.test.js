@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { effect } from "../qrp/index.js";
+import { effect, state } from "../qrp/index.js";
 import { emitter } from "../events/index.js";
 import { createHttp } from "../http/index.js";
 
@@ -327,4 +327,47 @@ test("default responseType still parses JSON (unchanged)", async () => {
 	const http = createHttp({ baseUrl: "" });
 	const out = await http.get("/x");
 	assert.deepEqual(out, { a: 1 });
+});
+
+// --- regression: request inside an effect must not leak the loader dep -------
+
+test("a request issued inside an effect does not subscribe it to loading.pending", () => {
+	stubFetch(true, { ok: true });
+	const http = createHttp({ baseUrl: "/api", bus: emitter() });
+
+	const s = state({ tick: 0 });
+	let runs = 0;
+
+	// The classic "refetch when filters change" pattern: issue a request
+	// synchronously inside an effect. Before the untracked fix, start()'s read of
+	// `pending` subscribed this effect to it — so any later request re-ran the
+	// effect, which issued another request, forever.
+	effect(() => { void s.tick; runs += 1; http.get("/results"); });
+	assert.equal(runs, 1, "effect ran once on create");
+
+	// A wholly unrelated request bumps loading.pending. If that dep had leaked,
+	// this write would re-run the effect (and cascade). It must not.
+	return http.get("/unrelated").then(() => {
+		assert.equal(runs, 1, "unrelated request did not re-run the effect via pending");
+	});
+});
+
+// --- fetch injection seam ---------------------------------------------------
+
+test("options.fetch overrides the global transport", () => {
+	globalThis.fetch = () => Promise.reject(new Error("global fetch must not be used"));
+
+	const calls = [];
+	const mine = (url, init) => {
+		calls.push({ url, init });
+		return Promise.resolve({ ok: true, status: 200, statusText: "", text: () => Promise.resolve("{\"ok\":true}") });
+	};
+
+	const http = createHttp({ baseUrl: "/api", bus: emitter(), fetch: mine });
+
+	return http.get("/z").then((data) => {
+		assert.equal(calls.length, 1, "custom transport was used");
+		assert.equal(calls[0].url, "/api/z");
+		assert.deepEqual(data, { ok: true });
+	});
 });

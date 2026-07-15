@@ -23,6 +23,11 @@ export interface HttpOptions {
 	headers?: Record<string, string>;
 	/** Emitter for loader/error/auth events (default the global bus). */
 	bus?: Emitter;
+	/**
+	 * Transport, defaults to the global `fetch`. Pass a custom one to mock the
+	 * backend in tests or wrap it (retry, dedupe, circuit-breaker).
+	 */
+	fetch?: typeof fetch;
 }
 
 export interface RequestConfig {

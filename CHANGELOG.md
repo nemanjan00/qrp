@@ -10,6 +10,17 @@ _(nothing yet)_
 
 ## 0.4.10
 
+- **`createHttp` no longer leaks the loader subscription into a caller's effect.**
+  The in-flight counter's `loading.pending += 1` *reads* `pending`; issuing a
+  request synchronously inside an `effect()` (the normal "refetch when filters
+  change" pattern) subscribed that effect to `pending`, so every request re-ran
+  it → another request → infinite recursion (`net::ERR_INSUFFICIENT_RESOURCES`,
+  tab crash). The counter is now mutated `untracked`, so it stays reactive for
+  legitimate loader-bar readers but never attaches to whoever issued the request.
+  (The 0.4.10 runaway guard below is the safety net; this removes the cause.)
+- **`createHttp({ fetch })` — pluggable transport.** Optional `fetch` option
+  (defaults to the global) so you can mock the backend in tests or wrap it
+  (retry, dedupe, circuit-breaker) without monkeypatching `globalThis.fetch`.
 - **Runaway-effect guard.** An effect that (transitively) writes state it reads
   used to loop forever — synchronously until the stack overflowed, or, with an
   async loader, as an unbounded `fetch` loop ending in
