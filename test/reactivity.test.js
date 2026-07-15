@@ -244,8 +244,8 @@ test("a runaway effect is torn down and reported with phase 'loop'", () => {
 
 	assert.throws(
 		() => effect(() => { s.a = s.b + 1; }, { loopLimit: 10, name: "b->a" }),
-		/likely an infinite loop/,
-		"the runaway throws once the ceiling is crossed",
+		/infinite loop/,
+		"the re-entrant runaway throws once the depth ceiling is crossed",
 	);
 
 	assert.ok(phases.includes("loop"), "the runaway is reported with phase 'loop'");
@@ -263,5 +263,22 @@ test("normal re-runs under the ceiling never trip the loop guard", () => {
 
 	assert.equal(runs, 51, "ran once on create + once per write");
 	assert.equal(loops, 0, "50 legitimate re-runs stay well under the default ceiling");
+	off();
+});
+
+test("a hot effect updated thousands of times in a tick does NOT trip the guard", () => {
+	// The signature the guard must NOT flag: a legitimately hot cell (bulk write,
+	// animation, benchmark) updated far past the ceiling SEQUENTIALLY — each run
+	// completes and pops before the next write, so re-entrancy depth stays 1.
+	let loops = 0;
+	const off = onEffectError((_e, c) => { if(c.phase === "loop") { loops += 1; } });
+	const s = state({ v: 0 });
+
+	let runs = 0;
+	effect(() => { void s.v; runs += 1; });   // reads v; does NOT write it
+	Array.from({ length: 5000 }, (_, i) => i + 1).forEach(i => { s.v = i; });
+
+	assert.equal(runs, 5001, "fired once per write, none suppressed");
+	assert.equal(loops, 0, "5000 sequential updates (depth 1) never trip the depth guard");
 	off();
 });

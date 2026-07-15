@@ -95,12 +95,14 @@ export function raw<T>(obj: T): T;
  * trigger skips the currently-running effect) — it does not self-loop. An
  * effect that **throws** is torn down (unsubscribed) and the error propagates
  * to the caller (the write site, or `effect()` on first run); the rest of the
- * system is unaffected. An effect that (transitively) writes state it reads —
- * two effects writing *each other's* keys, or a loader that sets state the
- * effect depends on — re-fires forever; a runaway guard catches this: past
- * `loopLimit` re-runs within ~1s the effect is torn down and reported via
- * {@link onEffectError} with `phase: "loop"` (default ceiling 1000; set
- * `loopLimit: Infinity` to disable for a legitimately high-frequency effect).
+ * system is unaffected. An effect that synchronously (transitively) writes state
+ * it reads — two effects writing *each other's* keys, or a body that sets a key
+ * it reads — re-enters itself forever; a runaway guard catches this by tracking
+ * re-entrancy depth: past `loopLimit` levels deep the effect is torn down and
+ * reported via {@link onEffectError} with `phase: "loop"` (default ceiling 1000;
+ * `loopLimit: Infinity` disables). Depth — not a rate — is the test, so a
+ * legitimately hot effect updated thousands of times in a tick (it runs
+ * sequentially, depth 1) never trips.
  * @example
  * const runner = effect(() => render(state.value));
  * runner.dispose();   // stop it

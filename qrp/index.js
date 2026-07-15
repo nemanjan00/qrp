@@ -24,21 +24,23 @@
 let activeEffect = null;
 const effectStack = [];
 
-// Runaway-effect guard. An effect that (transitively) writes state it reads
-// re-fires forever: the classic footgun is a loader called from an effect that
-// sets state the same effect depends on — synchronously it recurses until the
-// stack overflows; asynchronously (a fetch that resolves later) it spins an
-// unbounded fetch loop that ends in net::ERR_INSUFFICIENT_RESOURCES and a tab
-// crash. Neither is caught by the `runner === activeEffect` self-guard in
-// trigger (async re-fires with activeEffect null; an A→B→A cascade never has A
-// as activeEffect when it re-runs). We instead count each runner's executions
-// in a sliding wall-clock window; past the ceiling the effect is a runaway, so
-// we tear it DOWN (breaking the cycle so the page survives) and report it via
-// onEffectError with phase "loop" — turning a tab crash into a catchable,
-// named error. The default ceiling is far above any legitimate effect (even a
-// per-frame animation binding is ~60/s); raise or disable it per effect with
-// `effect(fn, { loopLimit })` (Infinity/0 = off).
-const LOOP_WINDOW_MS = 1000;
+// Runaway-effect guard. An effect that synchronously (transitively) writes state
+// it reads re-enters itself forever — two effects writing each other's keys, or
+// an effect whose body sets a key it reads — and recurses until the stack
+// overflows. The `runner === activeEffect` self-guard in trigger only stops a
+// DIRECT self-retrigger; an A→B→A cascade re-enters A while B is active, so it
+// slips through. We detect the true signature — RE-ENTRANCY: a runner triggered
+// while it is already on the effect stack — by tracking its live depth. Past the
+// ceiling the effect is a runaway, so we tear it DOWN (breaking the cycle so the
+// page survives) and report it via onEffectError with phase "loop" — a catchable,
+// named error instead of a tab crash. Depth (not a wall-clock rate) is what
+// makes this precise: a legitimately HOT effect updated thousands of times in a
+// tick (bulk writes, animation, a benchmark) runs SEQUENTIALLY — each run
+// completes and pops before the next — so its depth stays 1 and it never trips.
+// Tune/disable per effect with `effect(fn, { loopLimit })` (Infinity/0 = off).
+// (An async self-loop — a fetch resolving later and re-writing its own dep — is
+// not re-entrant and so not caught here; structure loaders outside the effect.
+// createHttp's loader is already leak-free, so it can't cause this.)
 const DEFAULT_LOOP_LIMIT = 1000;
 
 // target -> Map(key -> Set(effect runners))
@@ -313,30 +315,22 @@ export const effect = (fn, options = {}) => {
 	const loopLimit = options.loopLimit ?? DEFAULT_LOOP_LIMIT;
 
 	const runner = () => {
-		// Runaway guard: count executions in a sliding window; past the ceiling
-		// this effect is looping (see LOOP_WINDOW_MS note). Tear it down BEFORE
-		// running fn again — that both breaks the cycle (a disposed runner is
-		// skipped by trigger, so no further re-fire) and stops it kicking off
-		// another loader iteration — then report and throw.
-		const now = Date.now();
-
-		if(now - runner.windowStart > LOOP_WINDOW_MS) {
-			runner.windowStart = now;
-			runner.runs = 0;
-		}
-
-		runner.runs += 1;
-
-		if(loopLimit && runner.runs > loopLimit) {
+		// Runaway guard (see DEFAULT_LOOP_LIMIT note): runner.depth is how many
+		// times this runner is already on the stack. Depth > 1 means it was
+		// re-entered mid-run — the signature of a synchronous self-perpetuating
+		// loop. Past the ceiling, tear it down BEFORE running again (a disposed
+		// runner is skipped by trigger, breaking the cycle) and report + throw.
+		// Sequential hot updates never re-enter, so their depth stays 1.
+		if(loopLimit && runner.depth >= loopLimit) {
 			disposeEffect(runner);
 
 			const error = new Error(
-				`qrp: effect${options.name ? ` "${options.name}"` : ""} re-ran ` +
-				`over ${loopLimit} times within ${LOOP_WINDOW_MS}ms — likely an ` +
-				"infinite loop (an effect writing state it transitively reads, e.g. " +
-				"a loader that sets state the effect depends on). The effect has been " +
-				"stopped. Name it with effect(fn, { name }) to identify it, or raise " +
-				"the ceiling with effect(fn, { loopLimit }) if this is legitimate.",
+				`qrp: effect${options.name ? ` "${options.name}"` : ""} re-entered ` +
+				`itself over ${loopLimit} times deep — an infinite loop (an effect ` +
+				"synchronously writing state it transitively reads, e.g. two effects " +
+				"that write each other's keys). The effect has been stopped. Name it " +
+				"with effect(fn, { name }) to identify it, or raise the ceiling with " +
+				"effect(fn, { loopLimit }) if this recursion is legitimate.",
 			);
 
 			reportEffectError(error, { phase: "loop", name: options.name });
@@ -346,6 +340,7 @@ export const effect = (fn, options = {}) => {
 
 		cleanupEffect(runner);
 
+		runner.depth += 1;
 		effectStack.push(runner);
 		activeEffect = runner;
 
@@ -371,6 +366,7 @@ export const effect = (fn, options = {}) => {
 		} finally {
 			effectStack.pop();
 			activeEffect = effectStack[effectStack.length - 1] || null;
+			runner.depth -= 1;
 		}
 	};
 
@@ -378,8 +374,7 @@ export const effect = (fn, options = {}) => {
 	runner.children = [];
 	runner.disposers = [];
 	runner.disposed = false;
-	runner.windowStart = 0;
-	runner.runs = 0;
+	runner.depth = 0;
 	runner.dispose = () => disposeEffect(runner);
 
 	if(activeEffect) {

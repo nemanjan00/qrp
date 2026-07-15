@@ -35,26 +35,34 @@ propagates. Register [`onEffectError`](./API.md#qrp--core) to observe them
 centrally (Sentry, etc.) — otherwise a throwing binding is only visible at the
 write site.
 
-**An effect that writes state it (transitively) reads loops forever.** The
-classic version is a loader called from an effect that sets state the *same*
-effect depends on:
+**An effect that synchronously writes state it (transitively) reads re-enters
+itself forever.** The classic version is two effects that write *each other's*
+keys, or a body that sets a key it reads:
 
 ```js
-// ✗ re-fires forever: reads metrics, writes metrics
-effect(() => { if(!state.metrics) { loadMetrics().then(m => state.metrics = m); } });
+// ✗ A writes b (which A doesn't read) is fine; but a cycle isn't:
+effect(() => { state.b = state.a + 1; });   // reads a, writes b
+effect(() => { state.a = state.b + 1; });   // reads b, writes a → A↔B forever
 ```
 
-Synchronously this recurses until the stack overflows; with an async loader
-(`fetch`) it spins an unbounded request loop that ends in
-`net::ERR_INSUFFICIENT_RESOURCES` and a tab crash. Two effects that write *each
-other's* keys are the same bug. qrp has a **runaway guard**: past ~1000 re-runs
-in a second an effect is torn down and reported through
-[`onEffectError`](./API.md#qrp--core) with `phase: "loop"` — a catchable, named
-error instead of a dead tab. Name effects (`effect(fn, { name })`) so the report
-points at the culprit; raise the ceiling with `effect(fn, { loopLimit })` for a
-legitimately high-frequency effect. The fix is almost always to **read less**:
-load outside the effect, guard the write (`if(next !== state.x)`), or read the
-trigger with [`untracked`](./API.md#qrp--core).
+This recurses until the stack overflows. qrp has a **runaway guard**: it tracks
+each effect's **re-entrancy depth** (how many times it's already on the stack)
+and, past `loopLimit` levels deep (default 1000), tears the effect down and
+reports it through [`onEffectError`](./API.md#qrp--core) with `phase: "loop"` — a
+catchable, named error instead of a dead tab. Name effects (`effect(fn, {
+name })`) so the report points at the culprit; raise the ceiling with
+`effect(fn, { loopLimit })` (or `Infinity`) for legitimate deep recursion. The
+fix is almost always to **read less**: guard the write (`if(next !== state.x)`)
+or read the trigger with [`untracked`](./API.md#qrp--core).
+
+Depth — not a rate — is the test, so a legitimately *hot* effect (thousands of
+sequential updates to one cell: bulk writes, animation) never trips: each run
+completes before the next, so its depth stays 1. The one case this *doesn't*
+catch is an **async** self-loop — a loader that resolves later and re-writes its
+own dependency (`effect(() => { if(!state.x) load().then(v => state.x = v); })`) —
+because separate microtasks don't re-enter the stack. Load *outside* the effect,
+or guard the write. (qrp's own `createHttp` loader is leak-free, so it can't
+cause this.)
 
 **Thunk-vs-value is the papercut to internalize first.** A function child/prop is
 *reactive*; a bare value is a one-time snapshot. The two look almost identical and
