@@ -101,6 +101,51 @@
 	background: var(--qrp-surface);
 }
 
+/* --- pager / summary (tablePager, tableSummary) ----------------------- */
+
+.qrp-pager {
+	display: flex;
+	gap: 0.25rem;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.qrp-pager-btn {
+	min-width: 2rem;
+	padding: 0.35rem 0.6rem;
+	border: 1px solid var(--qrp-border);
+	border-radius: 6px;
+	background: var(--qrp-bg);
+	color: var(--qrp-fg);
+	font: inherit;
+	cursor: pointer;
+}
+
+.qrp-pager-btn:hover:not(:disabled) {
+	border-color: var(--qrp-accent);
+}
+
+.qrp-pager-btn.active {
+	background: var(--qrp-accent);
+	color: var(--qrp-accent-fg);
+	border-color: var(--qrp-accent);
+}
+
+.qrp-pager-btn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.qrp-pager-gap {
+	padding: 0 0.25rem;
+	color: var(--qrp-muted);
+}
+
+.qrp-summary {
+	color: var(--qrp-muted);
+	font-size: 0.9rem;
+}
+
 /* --- card -------------------------------------------------------------- */
 
 .qrp-card {

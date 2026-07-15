@@ -198,3 +198,104 @@ export const table = (options) => {
 
 	return node;
 };
+
+// Windowed page list: first, last, current±window, "…" for gaps.
+const pageWindow = (current, count, window) => {
+	const keep = new Set([0, count - 1]);
+
+	for(let i = current - window; i <= current + window; i++) {
+		if(i >= 0 && i < count) {
+			keep.add(i);
+		}
+	}
+
+	const sorted = [...keep].sort((a, b) => a - b);
+	const out = [];
+	let prev = -1;
+
+	sorted.forEach(page => {
+		if(page - prev > 1) {
+			out.push("…");
+		}
+
+		out.push(page);
+		prev = page;
+	});
+
+	return out;
+};
+
+/**
+ * A stock pagination control for a table()'s `.view` (or any collection):
+ * prev / windowed page numbers / next, clamped, reactive. Renders nothing when
+ * there's one page or fewer.
+ *
+ * @param {object} view a collection controller (table().view)
+ * @param {object} [options]
+ * @param {number} [options.window] page numbers to show either side of current (default 1)
+ * @returns {HTMLElement}
+ */
+export const tablePager = (view, options = {}) => {
+	const window = options.window === undefined ? 1 : options.window;
+
+	const go = (index) => {
+		view.page.index = Math.max(0, Math.min(index, view.pageCount() - 1));
+	};
+
+	const button = (label, target, { active, disabled } = {}) => el("button", {
+		type: "button",
+		class: "qrp-pager-btn" + (active ? " active" : ""),
+		disabled: !!disabled,
+		"aria-current": active ? "page" : null,
+		onclick: () => go(target)
+	}, label);
+
+	return el("nav", { class: "qrp-pager", "aria-label": "Pagination" }, () => {
+		const count = view.pageCount();
+		const current = view.page.index;
+
+		if(count <= 1) {
+			return [];
+		}
+
+		return [
+			button("‹", current - 1, { disabled: current === 0 }),
+			...pageWindow(current, count, window).map(page =>
+				page === "…"
+					? el("span", { class: "qrp-pager-gap" }, "…")
+					: button(String(page + 1), page, { active: page === current })),
+			button("›", current + 1, { disabled: current === count - 1 })
+		];
+	});
+};
+
+/**
+ * A reactive "Showing X–Y of Z" summary for a table()'s `.view`. Pass `label` to
+ * customize the text.
+ *
+ * @param {object} view a collection controller (table().view)
+ * @param {object} [options]
+ * @param {(from:number,to:number,total:number)=>string} [options.label]
+ * @returns {HTMLElement}
+ */
+export const tableSummary = (view, options = {}) => {
+	const label = options.label || ((from, to, total) => `Showing ${from}–${to} of ${total}`);
+
+	return el("span", { class: "qrp-summary" }, () => {
+		const total = view.total();
+		const size = view.page.size;
+
+		if(total === 0) {
+			return "No results";
+		}
+
+		if(!size) {
+			return `${total} total`;
+		}
+
+		const from = view.page.index * size + 1;
+		const to = Math.min(from + size - 1, total);
+
+		return label(from, to, total);
+	});
+};

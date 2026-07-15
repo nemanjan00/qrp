@@ -763,6 +763,22 @@ table<T>(options: TableOptions<T>): TableElement<T>
 
 Build a declarative, sortable, keyed, paginated data table.
 
+### `tablePager`
+
+```ts
+tablePager(view: Collection<any>, options?: { window?: number }): HTMLElement
+```
+
+A stock prev / windowed-pages / next control for a table().view (or any collection).
+
+### `tableSummary`
+
+```ts
+tableSummary(view: Collection<any>, options?: { label?: (from: number, to: number, total: number) => string; }): HTMLElement
+```
+
+A reactive "Showing X–Y of Z" summary for a table().view (or any collection).
+
 #### Supporting types
 
 ```ts

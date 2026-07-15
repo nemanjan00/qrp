@@ -56,3 +56,11 @@ export type TableElement<T> = HTMLTableElement & { view: Collection<T> };
 
 /** Build a declarative, sortable, keyed, paginated data table. */
 export function table<T>(options: TableOptions<T>): TableElement<T>;
+
+/** A stock prev / windowed-pages / next control for a table().view (or any collection). */
+export function tablePager(view: Collection<any>, options?: { window?: number }): HTMLElement;
+
+/** A reactive "Showing X–Y of Z" summary for a table().view (or any collection). */
+export function tableSummary(view: Collection<any>, options?: {
+	label?: (from: number, to: number, total: number) => string;
+}): HTMLElement;

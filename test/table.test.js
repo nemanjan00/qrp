@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { state, el } from "../qrp/index.js";
-import { table } from "../table/index.js";
+import { table, tablePager, tableSummary } from "../table/index.js";
 
 const rows = () => [
 	{ id: 1, account: { name: "carol" }, followers: 1200 },
@@ -207,4 +207,41 @@ test("render (custom) cells re-run when the row's data is replaced (§2.3c)", ()
 	// refetch: same key, mutated field — the action cell must reflect it
 	store.rows = [{ id: 1, blocked: true }];
 	assert.equal(t.querySelector("tbody button").textContent, "Unblock");
+});
+
+test("tablePager renders prev/pages/next, navigates, clamps, hides at ≤1 page", () => {
+	const store = state({ rows: Array.from({ length: 25 }, (_u, i) => ({ id: i + 1 })) });
+	const page = state({ index: 0, size: 10 });
+	const t = table({ rows: () => store.rows, key: (r) => r.id, page, fields: [{ key: "id" }] });
+	const pager = el("div", {}, tablePager(t.view));   // 25/10 = 3 pages
+
+	const btns = () => [...pager.querySelectorAll("button")];
+	// prev disabled on page 0
+	assert.equal(btns()[0].disabled, true);
+	// click page "2"
+	btns().find((b) => b.textContent === "2").click();
+	assert.equal(page.index, 1);
+	// next to last
+	btns().find((b) => b.textContent === "›").click();
+	assert.equal(page.index, 2);
+	// next clamped (disabled on last)
+	assert.equal(btns().find((b) => b.textContent === "›").disabled, true);
+
+	// one page → pager renders nothing
+	const t2 = table({ rows: () => [{ id: 1 }], key: (r) => r.id, page: state({ index: 0, size: 10 }), fields: [{ key: "id" }] });
+	const pager2 = el("div", {}, tablePager(t2.view));
+	assert.equal(pager2.querySelectorAll("button").length, 0);
+});
+
+test("tableSummary shows Showing X–Y of Z, reactively", () => {
+	const store = state({ rows: Array.from({ length: 25 }, (_u, i) => ({ id: i + 1 })) });
+	const page = state({ index: 0, size: 10 });
+	const t = table({ rows: () => store.rows, key: (r) => r.id, page, fields: [{ key: "id" }] });
+	const summary = el("div", {}, tableSummary(t.view));
+
+	assert.equal(summary.textContent, "Showing 1–10 of 25");
+	page.index = 2;
+	assert.equal(summary.textContent, "Showing 21–25 of 25");
+	store.rows = [];
+	assert.equal(summary.textContent, "No results");
 });
