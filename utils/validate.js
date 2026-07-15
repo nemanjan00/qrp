@@ -7,8 +7,11 @@
  * of field → rule; `validate` returns `{ errors, value }` — `errors` is
  * `[{ path, message }]` (empty = ok) and `value` is a COERCED copy (form strings
  * become their declared type: "5"→5, "true"→true) so you can send `value`
- * straight as the patch. Checks run on the coerced value. Nested objects via
- * `fields` recurse.
+ * straight as the patch. `value` carries ALL keys of `data`: declared ones
+ * coerced, keys the schema doesn't mention passed through untouched — so
+ * `submit(validate(schema, form).value)` is never a partial payload (pass
+ * `{ strict: true }` to reject undeclared keys instead). Checks run on the
+ * coerced value. Nested objects via `fields` recurse.
  *
  *   const schema = {
  *     name:  { type: "string", required: true, min: 2 },

@@ -23,7 +23,9 @@ export interface ValidateOptions {
 /**
  * Validate + coerce data against a schema. `errors` is [] when valid; `value` is
  * a coerced copy (form strings become their declared type — "5"→5, "true"→true)
- * ready to send as the patch. A present-but-empty `""` is validated (so a
+ * ready to send as the patch. `value` carries ALL keys of `data` — declared ones
+ * coerced, undeclared ones passed through untouched — so it is never a partial
+ * payload. A present-but-empty `""` is validated (so a
  * pattern/check can reject empty on an optional field); an absent (undefined/null)
  * optional field is skipped. Pass `{ strict: true }` to reject unknown keys.
  */

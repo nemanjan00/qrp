@@ -322,6 +322,23 @@ test("validate strict rejects unknown keys (recursively); default lets them pass
 	assert.deepEqual(paths, ["extra", "prefs.junk"]);
 });
 
+test("validate().value carries undeclared keys through so a patch is never partial", () => {
+	// A field that needs no validation rule (uses_connection_note) must still
+	// survive into value — otherwise submit(validate(x).value) silently ships a
+	// partial payload. Declared keys are coerced; undeclared keys pass untouched.
+	const schema = { name: { type: "string", required: true }, count: { type: "number" } };
+	const { errors, value } = validate(schema, {
+		name: "Campaign",
+		count: "250",              // declared → coerced to number
+		uses_connection_note: true // undeclared → must pass through
+	});
+
+	assert.deepEqual(errors, []);
+	assert.equal(value.count, 250, "declared key coerced");
+	assert.equal(value.uses_connection_note, true, "undeclared key preserved");
+	assert.deepEqual(value, { name: "Campaign", count: 250, uses_connection_note: true });
+});
+
 test("validate distinguishes absent from empty-string for optional fields", () => {
 	// optional field with a 'must not be empty' check
 	const schema = { note: { check: (v) => v.trim() !== "" || "must not be empty" } };
