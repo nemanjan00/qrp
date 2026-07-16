@@ -8,7 +8,16 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
-## 0.5.2
+## 0.5.3
+
+- **Docs reframed: qrp is build-*optional*, not build-*forbidden*.** The old
+  "zero build step / no bundler" messaging led readers — humans and coding agents
+  reading the shipped docs — to think a bundler was unsupported. It never was
+  (it's a model ESM package: `exports` subpaths, tree-shaking, `.d.ts`). Reworded
+  the README, package `description`, getting-started, and site to present the
+  build as a free choice: drop it in a `<script type="module">` with no tooling,
+  **or** `npm install` and let Vite/webpack/Rollup/esbuild resolve + tree-shake —
+  same library either way. No code change.
 
 - **The package now ships the docs.** `docs/*.md` (API reference, getting
   started, sharp edges, styling) and `CHANGELOG.md` are in the npm tarball, so the

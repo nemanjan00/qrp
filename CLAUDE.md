@@ -1,9 +1,14 @@
 # qrp — project guide for Claude
 
 qrp is a **data-first, declarative, low-overhead framework for dashboards** —
-zero dependency, zero build step, for the browser. The whole premise is that you
-load it with `<script type="module">` and ship no compiler, no bundler, no
-`node_modules` at runtime.
+zero runtime dependencies, no *required* build step, for the browser. It can
+load straight from a `<script type="module">` with no tooling at all — **and** it's
+a first-class ESM package you consume through a bundler (Vite/webpack/Rollup),
+which gets you subpath imports + tree-shaking + types. Build-**optional** is the
+point: qrp never requires a build and never forbids one. (It's MIT — consumers use
+it however they like; docs/messaging must NOT imply a bundler is off-limits. Past
+wording over-sold "zero build" to the point that readers — humans and AI — thought
+a bundler was unsupported; keep it framed as a free choice.)
 
 ## What qrp is (and isn't)
 

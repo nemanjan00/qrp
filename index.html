@@ -4,10 +4,10 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>qrp — turn data into a dashboard</title>
-	<meta name="description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step. Reactivity is a Proxy, the DOM is real, the published core is ~4.5 KB min+gzip (~20.5 KB for the whole library).">
+	<meta name="description" content="A data-first, declarative frontend framework. Zero runtime dependencies, no build step required — use it with any bundler (Vite/webpack/Rollup) or none at all. Reactivity is a Proxy, the DOM is real; core ~4.5 KB min+gzip (~20.5 KB whole library).">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
 	<meta property="og:title" content="qrp — turn data into a dashboard">
-	<meta property="og:description" content="A data-first, declarative frontend framework. Zero dependencies, zero build step, ~4.5 KB min+gzip core (~20.5 KB whole library).">
+	<meta property="og:description" content="A data-first, declarative frontend framework. Zero runtime deps, build-optional (any bundler or none), ~4.5 KB min+gzip core (~20.5 KB whole library).">
 	<link rel="stylesheet" href="./qrp.css">
 	<style>
 		:root {
@@ -181,7 +181,7 @@
 
 	<footer>
 		<p><b style="color:var(--accent)">qrp</b> — a data-first, declarative frontend framework.</p>
-		<p>Zero dependencies · zero build step · <span id="foot-stats"></span></p>
+		<p>Zero runtime deps · build-optional · <span id="foot-stats"></span></p>
 		<p class="dim" style="margin-top:1.5rem">Named after QRP — the ham-radio practice of getting the job done with the least possible power. · This whole page is built with qrp.</p>
 	</footer>
 
@@ -292,10 +292,10 @@
 				el("div", { class: "tagline" }, "Turn data into a dashboard. Nothing else."),
 				el("p", { class: "lede" },
 					"A data-first, declarative frontend framework. Reactivity is a ",
-					el("code", {}, "Proxy"), ", the DOM is real. The published core is ~4.5 KB min+gzip — the number comparable to Solid or React; ~20.5 KB for the whole library. (Ships minified, still zero build on your end.)"),
+					el("code", {}, "Proxy"), ", the DOM is real. The published core is ~4.5 KB min+gzip — the number comparable to Solid or React; ~20.5 KB for the whole library. (Use it with any bundler, or none — your call.)"),
 				el("div", { class: "badges" },
 					el("span", { class: "badge" }, el("b", {}, "0"), " dependencies"),
-					el("span", { class: "badge" }, el("b", {}, "0"), " build step"),
+					el("span", { class: "badge" }, el("b", {}, "0"), " required build step"),
 					el("span", { class: "badge" }, el("b", {}, "~4.5 KB"), " min+gzip core"),
 					el("span", { class: "badge" }, el("b", {}, "243"), " tests"),
 					el("span", { class: "badge" }, el("b", {}, "vanilla-DOM"), " parity on hot paths")),

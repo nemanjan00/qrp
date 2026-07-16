@@ -4,12 +4,12 @@
 
 ### Turn data into a dashboard. Nothing else.
 
-A data-first, declarative frontend framework for the browser — reactivity is a `Proxy`, the DOM is real, and there's no build step.
+A data-first, declarative frontend framework for the browser — reactivity is a `Proxy`, the DOM is real, and no build step is required — bring a bundler or skip it, your call.
 
 [![npm](https://img.shields.io/npm/v/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=ffb23e&logo=npm)](https://www.npmjs.com/package/@nemanjan00/qrp)
 [![CI](https://img.shields.io/github/actions/workflow/status/nemanjan00/qrp/ci.yml?branch=master&style=flat-square&labelColor=0a0d12&label=CI)](https://github.com/nemanjan00/qrp/actions/workflows/ci.yml)
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
-[![build step](https://img.shields.io/badge/build_step-none-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
+[![build step](https://img.shields.io/badge/build_step-optional-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
 [![core size](https://img.shields.io/badge/core-~4.5_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
 [![tests](https://img.shields.io/badge/tests-260_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
@@ -21,8 +21,10 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 
 ---
 
-Zero dependencies, zero build step — one `<script type="module">` and you're
-running. No compiler, no bundler, no `node_modules` at runtime. Reactivity is a
+Zero runtime dependencies and **no required build step**. Drop it into a
+`<script type="module">` and run with zero tooling — **or** `npm install` it and
+let your bundler (Vite, webpack, Rollup, esbuild) resolve subpaths and tree-shake.
+Same library either way; the build is your choice, not qrp's. Reactivity is a
 `Proxy`, the DOM is real, and the published core is **~4.5 KB min+gzip** — the
 number that lines up next to Solid (~7 KB) or React (~45 KB). The whole library,
 every module, is **~20.5 KB min+gzip**.
@@ -93,7 +95,7 @@ The bare `@nemanjan00/qrp/*` specifiers in the snippets below resolve through th
 package's `exports` map, so **with any bundler they just work** — and unused
 subpaths tree-shake away.
 
-**Zero-build in the browser** — two ways, both still no bundler:
+**Prefer no tooling? Run it straight in the browser** — two ways, no bundler:
 
 ```html
 <!-- 1) a CDN that serves npm as ESM (clean subpaths honour exports) -->
@@ -152,7 +154,7 @@ the way infrastructure should be.
 
 ## 🚀 5-minute example
 
-A live, sortable, filterable table with a modal — the whole thing, no build step:
+A live, sortable, filterable table with a modal — the whole thing, no build step required:
 
 ```js
 import { state, el } from "@nemanjan00/qrp";
@@ -206,7 +208,8 @@ function open(user) {
 ```
 
 Sorting, filtering, pagination, keyed row reuse, a focus-trapped modal, and
-toasts — with no framework runtime to boot and no bundler in sight.
+toasts — with no framework runtime to boot. Ship it through your bundler or drop
+it in a `<script>`; the code above is the same either way.
 
 ## ✨ Features
 

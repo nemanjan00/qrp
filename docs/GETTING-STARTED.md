@@ -2,7 +2,7 @@
 
 This is a hands-on tour from an empty file to a small working dashboard. It takes
 about ten minutes and assumes only that you know JavaScript and the DOM. There is
-**no build step** — you write an HTML file and open it.
+**no build step required** — you write an HTML file and open it. (For a real project you'd normally use npm + a bundler; qrp works identically either way — see Install below.)
 
 - [1. Hello, reactive world](#1-hello-reactive-world)
 - [2. State and effects](#2-state-and-effects)

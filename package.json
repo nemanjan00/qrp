@@ -1,7 +1,7 @@
 {
 	"name": "@nemanjan00/qrp",
-	"version": "0.5.2",
-	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero RUNTIME dependencies, zero build step — the devDependencies below are only for tests, lint, and git hooks.",
+	"version": "0.5.3",
+	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero runtime dependencies, no build step required (works with any bundler — Vite/webpack/Rollup/esbuild — or none). The devDependencies below are only for tests, lint, and git hooks.",
 	"type": "module",
 	"license": "MIT",
 	"sideEffects": [
