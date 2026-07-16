@@ -15,7 +15,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
 
-**[🚀 Getting started](https://github.com/nemanjan00/qrp/blob/master/docs/GETTING-STARTED.md)** · **[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp.nemanja.top/)** · **[📖 API reference](https://github.com/nemanjan00/qrp/blob/master/docs/API.md)** · **[📝 Changelog](https://github.com/nemanjan00/qrp/blob/master/CHANGELOG.md)** · **[💡 Why it exists](#-why-it-exists)**
+**[🚀 Getting started](docs/GETTING-STARTED.md)** · **[📦 npm](https://www.npmjs.com/package/@nemanjan00/qrp)** · **[▶ Live demo](https://qrp.nemanja.top/)** · **[📖 API reference](docs/API.md)** · **[📝 Changelog](CHANGELOG.md)** · **[💡 Why it exists](#-why-it-exists)**
 
 </div>
 
@@ -81,7 +81,7 @@ void handleRoot() {
 
 ## 📥 Install
 
-> New here? The **[Getting Started guide](https://github.com/nemanjan00/qrp/blob/master/docs/GETTING-STARTED.md)** is a
+> New here? The **[Getting Started guide](docs/GETTING-STARTED.md)** is a
 > ten-minute, zero-to-dashboard walkthrough of the five core ideas. This section
 > is the reference; that's the tutorial.
 
@@ -545,7 +545,7 @@ in strict mode.
 ## 📖 API reference
 
 Full reference — every export, signature, and a usage snippet per module — in
-[`docs/API.md`](https://github.com/nemanjan00/qrp/blob/master/docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](https://github.com/nemanjan00/qrp/blob/master/docs/SHARP-EDGES.md). Styling & theming: [`docs/STYLING.md`](https://github.com/nemanjan00/qrp/blob/master/docs/STYLING.md).
+[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md). Styling & theming: [`docs/STYLING.md`](docs/STYLING.md).
 
 ## 🧪 Tests & tooling
 

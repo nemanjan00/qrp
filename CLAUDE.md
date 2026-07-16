@@ -145,8 +145,10 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - **Minified build**: `bin/build.js` (`npm run build`, also `prepack`) bundles +
   code-splits each subpath into `dist/` with esbuild (shared core chunk). The npm
   package ships `dist/` (minified) + the hand-written `.d.ts` — **not** the raw
-  source `.js`. Core is **~4.5 KB min+gzip**, whole library ~20.5 KB. `dist/` is
-  gitignored (rebuilt on pack/publish). The consumer still runs zero build.
+  source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so the reference travels with
+  the package: a coding agent reads the API straight out of `node_modules`). Core
+  is **~4.5 KB min+gzip**, whole library ~20.5 KB. `dist/` is gitignored (rebuilt
+  on pack/publish). The consumer still runs zero build.
 - NOTE (future / "another day"): `.d.ts` could be *generated* from JSDoc to make
   the code the single source — verified `tsc --declaration --allowJs` emits
   `.d.ts` from JSDoc, but `any`-heavy without `@template` generics. Enriching
@@ -234,10 +236,13 @@ bump before it's published. Order:
 4. `git tag vX.Y.Z` at that commit. (The user runs `npm publish` and
    `git push --tags` — the sandbox never publishes or pushes.)
 
-Docs/examples-only changes (`docs/`, `*.html`, `examples/`, README prose) do
-**not** need a bump — they aren't in the npm `files` allowlist. README *does*
-ship, so keep its size/benchmark/version numbers current, but a README-only edit
-still rides the next real release.
+`docs/` (the `.md` reference) and `CHANGELOG.md` **do** ship in the tarball —
+they're the reference a coding agent reads straight out of `node_modules`, so
+keep them accurate. But a docs-only edit still doesn't force its own bump; it
+rides the next real release (it just means the published `.md` lags until then).
+The site pages (`*.html`, `docs-site.*`) and `examples/` are **not** shipped, so
+changes to those never need a bump. README ships too — keep its
+size/benchmark/version numbers current.
 
 ## Keeping this file in sync
 

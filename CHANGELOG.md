@@ -8,7 +8,15 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
-## 0.5.1
+## 0.5.2
+
+- **The package now ships the docs.** `docs/*.md` (API reference, getting
+  started, sharp edges, styling) and `CHANGELOG.md` are in the npm tarball, so the
+  full reference travels with the install — a coding agent (or a human) reads the
+  API straight out of `node_modules`, offline, no repo visit. Also fixes the
+  README links that previously pointed at files an npm reader didn't have (they're
+  relative again, resolving to the shipped `docs/`). Adds ~30 KB to the packed
+  tarball. Runtime code is unchanged.
 
 - **Runaway-effect guard reworked from wall-clock rate to re-entrancy depth.**
   0.5.0's guard (inherited from 0.4.10) counted an effect's runs in a ~1s window,
