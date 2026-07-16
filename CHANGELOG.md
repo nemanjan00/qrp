@@ -18,6 +18,11 @@ _(nothing yet)_
   build as a free choice: drop it in a `<script type="module">` with no tooling,
   **or** `npm install` and let Vite/webpack/Rollup/esbuild resolve + tree-shake —
   same library either way. No code change.
+- **Documented headless testability as a first-class plus.** Because qrp writes
+  the real DOM (no VDOM/hydration/test-renderer), you unit-test a component in a
+  plain `node --test` script under `happy-dom` — mount, write state, assert the
+  DOM. README now shows the pattern (a table going 0→3 rows on a state write); it
+  was always possible (it's how qrp tests itself), just never called out.
 
 - **The package now ships the docs.** `docs/*.md` (API reference, getting
   started, sharp edges, styling) and `CHANGELOG.md` are in the npm tarball, so the

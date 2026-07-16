@@ -545,6 +545,40 @@ el("ul", {}, list(() => users.rows, (u) => u.id, (u) => el("li", {}, () => u.nam
 `npm run typecheck` runs `tsc --noEmit` over the declarations and a usage suite
 in strict mode.
 
+## 🧫 Testable in plain Node
+
+Because qrp writes to the **real DOM** — no virtual DOM, no hydration, no
+framework-specific test renderer — a headless DOM like `happy-dom` (or jsdom) is
+all you need to unit-test a component in a plain `node --test` script. Mount it,
+write to state, assert the DOM changed. No browser, no `@testing-library`
+adapter, no jsdom-vs-framework glue.
+
+```js
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+GlobalRegistrator.register();   // a DOM in Node — `npm i -D @happy-dom/global-registrator`
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { state, el, list, mount } from "@nemanjan00/qrp";
+
+test("rows render and react to a state write", () => {
+  const store = state({ rows: [] });
+  const { dispose } = mount(document.body, (view) =>
+    view.appendChild(el("table", {}, el("tbody", {}, list(
+      () => store.rows, (r) => r.id, (r) => el("tr", {}, el("td", {}, () => r.name)))))));
+
+  assert.equal(document.querySelectorAll("tbody tr").length, 0);
+  store.rows = [{ id: 1, name: "Ada" }, { id: 2, name: "Bea" }, { id: 3, name: "Cy" }];
+  assert.equal(document.querySelectorAll("tbody tr").length, 3);   // reacted, synchronously
+
+  dispose();
+});
+```
+
+Writes are synchronous, so there's nothing to `await` — the assertion runs right
+after the state write. This is how qrp tests *itself* (260 tests, `node --test` +
+happy-dom); your app tests the same way.
+
 ## 📖 API reference
 
 Full reference — every export, signature, and a usage snippet per module — in
