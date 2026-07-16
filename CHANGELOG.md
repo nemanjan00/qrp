@@ -36,6 +36,10 @@ _(nothing yet)_
   writes the real DOM (no VDOM/hydration/test-renderer), you unit-test a component
   in a plain `node --test` script under `happy-dom` — mount, write state, assert
   the DOM. README shows the pattern (a table going 0→3 rows on a state write).
+- **Docs: "read SHARP-EDGES before implementing" callout** at the top of the
+  README and the API reference — the gotchas doc travels in the package now, so
+  point readers (and coding agents) at it before they hit thunk-vs-value or a
+  duplicate key.
 
 ## 0.5.2
 

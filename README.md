@@ -46,6 +46,12 @@ mount(document.body, () =>
 That's the entire setup. No `createRoot`, no providers, no hydration. You mutate
 data, the DOM follows.
 
+> **⚠️ Before implementing anything, read [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md).**
+> qrp uses the platform directly, so a few behaviors follow from how the DOM and
+> `Proxy` actually work — thunk-vs-value reactivity, `list()` key uniqueness, the
+> runaway-effect guard. None are bugs; each bites exactly once. Five minutes there
+> saves an afternoon of "why doesn't this update / where did my rows go".
+
 ---
 
 ## 🛰️ Small enough to run on a microcontroller

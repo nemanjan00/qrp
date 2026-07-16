@@ -180,6 +180,11 @@ out += "> truth (rich types, verified by `npm run typecheck` against a usage sui
 out += "> and `api.html` renders this file live.\n\n";
 out += "Every module is an independent ESM file — import only what you use. Types ship\n";
 out += "next to each module, so editors resolve them with no build step.\n\n";
+out += "> **⚠️ Read [`SHARP-EDGES.md`](./SHARP-EDGES.md) before implementing anything.**\n";
+out += "> qrp uses the platform directly, so a handful of behaviors follow from how the\n";
+out += "> DOM and `Proxy` actually work (thunk-vs-value, `list()` keys, the runaway\n";
+out += "> guard, …). None are bugs; all bite exactly once. Five minutes there saves an\n";
+out += "> afternoon of \"why doesn't this update / where did my rows go\".\n\n";
 
 // TOC
 MODULES.forEach((mod) => { out += `- [${mod.title}](#${slug(mod.title)})\n`; });

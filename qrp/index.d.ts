@@ -228,9 +228,10 @@ export interface ListMarker<T> extends QrpRenderable {
  * contract (a function returning an array); `collection.items` just happens to
  * be callable rather than a property.
  *
- * `keyFn` must return a **unique** key per item. Duplicate keys are dropped with
- * a `console.warn` (two items can't share one element). If `render` throws, the
- * error propagates out of the reconcile (like any effect that throws).
+ * `keyFn` must return a **unique** key per item. Duplicate keys drop the row (two
+ * items can't share one element) and `console.error` by default — tune with
+ * `options.onDuplicateKey`. If `render` throws, the error propagates out of the
+ * reconcile (like any effect that throws).
  * @example
  * el("tbody", {}, list(
  *   () => store.rows,          // thunk → current array
@@ -238,6 +239,13 @@ export interface ListMarker<T> extends QrpRenderable {
  *   (row) => el("tr", {}, () => row.name)   // built once per key; self-updates
  * ));
  */
+export function list<T>(
+	source: () => readonly T[],
+	keyFn: (item: T, index: number) => unknown,
+	render: (item: T, index: number) => Renderable,
+	options?: ListOptions
+): ListMarker<T>;
+
 export interface ListOptions {
 	/**
 	 * What to do when two items share a key (the row is dropped either way — a DOM
@@ -246,12 +254,6 @@ export interface ListOptions {
 	 */
 	onDuplicateKey?: "error" | "warn" | "throw";
 }
-export function list<T>(
-	source: () => readonly T[],
-	keyFn: (item: T, index: number) => unknown,
-	render: (item: T, index: number) => Renderable,
-	options?: ListOptions
-): ListMarker<T>;
 
 // --- conditionals ----------------------------------------------------------
 

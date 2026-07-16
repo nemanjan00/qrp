@@ -8,6 +8,12 @@
 Every module is an independent ESM file — import only what you use. Types ship
 next to each module, so editors resolve them with no build step.
 
+> **⚠️ Read [`SHARP-EDGES.md`](./SHARP-EDGES.md) before implementing anything.**
+> qrp uses the platform directly, so a handful of behaviors follow from how the
+> DOM and `Proxy` actually work (thunk-vs-value, `list()` keys, the runaway
+> guard, …). None are bugs; all bite exactly once. Five minutes there saves an
+> afternoon of "why doesn't this update / where did my rows go".
+
 - [qrp — core](#qrp-core)
 - [html — HTML templates](#html-html-templates)
 - [forms](#forms)
@@ -230,7 +236,7 @@ Two-way binding between a form control and a state key.
 ### `list`
 
 ```ts
-list<T>(source: () => readonly T[], keyFn: (item: T, index: number) => unknown, render: (item: T, index: number) => Renderable): ListMarker<T>
+list<T>(source: () => readonly T[], keyFn: (item: T, index: number) => unknown, render: (item: T, index: number) => Renderable, options?: ListOptions): ListMarker<T>
 ```
 
 A keyed list with element reuse: one element per item identity, reused and
@@ -243,9 +249,10 @@ array that's `() => store.rows`; when the data comes from a `collection`,
 contract (a function returning an array); `collection.items` just happens to
 be callable rather than a property.
 
-`keyFn` must return a **unique** key per item. Duplicate keys are dropped with
-a `console.warn` (two items can't share one element). If `render` throws, the
-error propagates out of the reconcile (like any effect that throws).
+`keyFn` must return a **unique** key per item. Duplicate keys drop the row (two
+items can't share one element) and `console.error` by default — tune with
+`options.onDuplicateKey`. If `render` throws, the error propagates out of the
+reconcile (like any effect that throws).
 
 ```js
 el("tbody", {}, list(
@@ -479,6 +486,17 @@ interface RouteContext {
 ```
 
 Context passed to a matched route component.
+
+```ts
+interface ListOptions {
+	/**
+	 * What to do when two items share a key (the row is dropped either way — a DOM
+	 * node lives in one place): "error" (default, console.error — CI-visible),
+	 * "warn" (quieter), or "throw" (fatal, for dev/CI).
+	 */
+	onDuplicateKey?: "error" | "warn" | "throw";
+}
+```
 
 ```ts
 interface DefineOptions {
