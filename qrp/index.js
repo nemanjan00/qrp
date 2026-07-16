@@ -893,10 +893,19 @@ const setupList = (parent, marker) => {
 			const key = marker.keyFn(item, index);
 
 			// A DOM node lives in one place, so two items with the same key
-			// would collapse to one row and silently drop data. Warn loudly —
-			// this is almost always a bad keyFn or duplicate IDs in a refetch.
+			// collapse to one row and silently drop data — almost always a bad
+			// keyFn or duplicate IDs in a refetch. The visible symptom is just
+			// "missing rows", so shout: console.error by default (CI/test harnesses
+			// fail on it), or throw with `{ onDuplicateKey: "throw" }` to make it
+			// fatal in dev, or quiet to a warn with `"warn"`.
 			if(next.has(key)) {
-				console.warn(`qrp list(): duplicate key ${JSON.stringify(key)} — row dropped. Keys must be unique.`);
+				const message = `qrp list(): duplicate key ${JSON.stringify(key)} — row dropped. Keys must be unique.`;
+
+				if(marker.onDuplicateKey === "throw") {
+					throw new Error(message);
+				}
+
+				(marker.onDuplicateKey === "warn" ? console.warn : console.error)(message);
 
 				return;
 			}
@@ -995,15 +1004,21 @@ const setupList = (parent, marker) => {
  * @param {Function} source () => Array (reactive)
  * @param {Function} keyFn item => stable unique key
  * @param {Function} render (item, index) => Element
+ * @param {object} [options]
+ * @param {"error"|"warn"|"throw"} [options.onDuplicateKey] what to do when two
+ *   items share a key (the row is always dropped — a node lives in one place):
+ *   "error" (default, console.error), "warn" (quieter), or "throw" (fatal, for
+ *   dev/CI). Duplicate keys silently eat rows, so the default is loud.
  * @returns {object} list marker (pass as an el child)
  */
-export const list = (source, keyFn, render) => {
+export const list = (source, keyFn, render, options = {}) => {
 	const elemToItem = new WeakMap();
 
 	const marker = {
 		source,
 		keyFn,
 		render,
+		onDuplicateKey: options.onDuplicateKey || "error",
 		_elemToItem: elemToItem,
 		toString: markerHint("list"),
 

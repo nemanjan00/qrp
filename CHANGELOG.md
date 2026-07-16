@@ -8,21 +8,36 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
-## 0.5.3
+## 0.6.0
 
-- **Docs reframed: qrp is build-*optional*, not build-*forbidden*.** The old
-  "zero build step / no bundler" messaging led readers — humans and coding agents
-  reading the shipped docs — to think a bundler was unsupported. It never was
-  (it's a model ESM package: `exports` subpaths, tree-shaking, `.d.ts`). Reworded
-  the README, package `description`, getting-started, and site to present the
-  build as a free choice: drop it in a `<script type="module">` with no tooling,
-  **or** `npm install` and let Vite/webpack/Rollup/esbuild resolve + tree-shake —
-  same library either way. No code change.
-- **Documented headless testability as a first-class plus.** Because qrp writes
-  the real DOM (no VDOM/hydration/test-renderer), you unit-test a component in a
-  plain `node --test` script under `happy-dom` — mount, write state, assert the
-  DOM. README now shows the pattern (a table going 0→3 rows on a state write); it
-  was always possible (it's how qrp tests itself), just never called out.
+- **`dist/` is a flat per-module minified mirror — no code-splitting, no
+  chunks.** Was: esbuild `splitting` produced a shared core chunk plus opaque
+  `chunk-*.js` files, so self-hosting meant serving hashed chunks. Now each module
+  is minified in place to `dist/<name>.js` (same names, no hashes); cross-module
+  imports stay relative (`table.js` → `./qrp.js`), so the core is still shared
+  (imported once, not inlined) and bundlers still tree-shake — but vendoring is
+  just "copy `dist/`". Whole library ~18.7 KB min+gzip (core ~4.6 KB).
+- **`list(src, key, render, { onDuplicateKey })`.** Duplicate keys still drop the
+  row (a node lives in one place), but the report is now `console.error` by
+  **default** (was `console.warn`) — CI/test harnesses fail on it, so the silent
+  "missing rows" symptom gets caught. Opt into `"throw"` (fatal, dev/CI) or down
+  to `"warn"`.
+- **Docs: qrp is build-*optional*, not build-*forbidden*.** The old "zero build /
+  no bundler" wording led readers — humans and coding agents reading the shipped
+  docs — to think a bundler was unsupported. Reworded README, package
+  `description`, getting-started, and site to frame the build as a free choice:
+  `<script type="module">` with no tooling, **or** any bundler (Vite/webpack/
+  Rollup/esbuild) — same library.
+- **Docs: vendoring is the recommended no-build path; CDN is demo-only.** A flaky
+  CDN import blanks the whole page with no graceful degradation, so the Install
+  section now leads with vendored `dist/` + an import map (rock-solid, offline)
+  and frames a CDN as fine-for-a-prototype only.
+- **Docs: headless testability called out as a first-class plus.** Because qrp
+  writes the real DOM (no VDOM/hydration/test-renderer), you unit-test a component
+  in a plain `node --test` script under `happy-dom` — mount, write state, assert
+  the DOM. README shows the pattern (a table going 0→3 rows on a state write).
+
+## 0.5.2
 
 - **The package now ships the docs.** `docs/*.md` (API reference, getting
   started, sharp edges, styling) and `CHANGELOG.md` are in the npm tarball, so the
@@ -31,6 +46,8 @@ _(nothing yet)_
   README links that previously pointed at files an npm reader didn't have (they're
   relative again, resolving to the shipped `docs/`). Adds ~30 KB to the packed
   tarball. Runtime code is unchanged.
+
+## 0.5.1
 
 - **Runaway-effect guard reworked from wall-clock rate to re-entrancy depth.**
   0.5.0's guard (inherited from 0.4.10) counted an effect's runs in a ~1s window,

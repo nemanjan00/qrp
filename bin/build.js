@@ -1,16 +1,20 @@
-// Build the minified, code-split distribution shipped on npm.
+// Build the minified distribution shipped on npm.
 //
-// The zero-build promise is for the *consumer* (no bundler on their end) — it
-// doesn't stop us from shipping a pre-minified library. esbuild bundles each
-// public subpath into dist/ with `splitting` on, so the shared reactivity core
-// lands in ONE chunk that every entry imports (importing five modules pulls one
-// core, not five). Types stay hand-written next to the source; only the JS is
-// built here.
+// The build is optional for the *consumer* (no bundler required on their end) —
+// that doesn't stop us shipping a pre-minified library. We MINIFY EACH MODULE IN
+// PLACE: dist/ is a clean, flat mirror of the source — same filenames, no hashes,
+// no `chunk-*.js`. Each module keeps its own file and its cross-module imports as
+// plain relative ESM (`import … from "./qrp.js"`), so the core is still shared
+// (imported once, not inlined into every module) and bundlers still tree-shake —
+// while self-hosting is dead simple: copy dist/, the names are the module names.
+// (No code-splitting: the opaque shared chunks it produced made vendoring on a
+// plain static server confusing.) Types stay hand-written next to the source.
 //
 // Run: npm run build   (also runs automatically on `npm pack` / `npm publish`)
 
 import esbuild from "esbuild";
 import fs from "node:fs";
+import path from "node:path";
 import zlib from "node:zlib";
 import process from "node:process";
 
@@ -81,19 +85,58 @@ const verifyExportsResolve = () => {
 	}
 };
 
+const ROOT = process.cwd();
+
+// Map a project-relative SOURCE path to its dist output path (relative to dist/):
+// a module's index.js flattens to <mod>.js; a leaf (behaviors/x.js, utils/x.js)
+// keeps its subpath. dist/ mirrors src, minified.
+const srcToDistRel = (rel) => rel.endsWith("/index.js") ? rel.slice(0, -"/index.js".length) + ".js" : rel;
+
+// Keep every cross-module import as an EXTERNAL relative path, rewritten to point
+// at the sibling's dist location — so nothing is inlined (core stays shared) and
+// dist is a flat mirror. Without this, `bundle: true` would inline dependencies
+// into every entry (duplicating core) and `bundle: false` would leave imports
+// pointing at ../<mod>/index.js (the source tree, absent from dist/).
+const flatExternals = {
+	name: "qrp-flat-externals",
+	setup(build) {
+		build.onResolve({ filter: /^\.\.?\// }, (args) => {
+			// entry points are also resolved here — leave them to esbuild (they
+			// can't be external), only rewrite in-module import statements.
+			if(args.kind === "entry-point") { return undefined; }
+
+			const targetSrc = path.relative(ROOT, path.resolve(path.dirname(args.importer), args.path));
+			const importerSrc = path.relative(ROOT, args.importer);
+			const targetDist = path.resolve(ROOT, OUTDIR, srcToDistRel(targetSrc));
+			const importerDist = path.resolve(ROOT, OUTDIR, srcToDistRel(importerSrc));
+
+			let spec = path.relative(path.dirname(importerDist), targetDist);
+
+			if(!spec.startsWith(".")) { spec = "./" + spec; }
+
+			return { path: spec, external: true };
+		});
+	}
+};
+
 fs.rmSync(OUTDIR, { recursive: true, force: true });
 
 esbuild.build({
 	entryPoints: ENTRIES,
-	bundle: true,
-	splitting: true,
+	bundle: true,          // needed for onResolve to fire; all cross-imports are external
+	splitting: false,      // no shared chunks — each module is its own flat file
 	format: "esm",
 	outdir: OUTDIR,
 	minify: true,
 	target: "es2022",
 	legalComments: "none",
-	chunkNames: "chunk-[hash]"
+	plugins: [flatExternals]
 }).then(() => {
+	// GUARD: every public exports subpath must resolve to a file we just built,
+	// or npm ships a package whose imports 404 (exactly how 0.4.0's deep utils/*
+	// subpaths broke). Fail the build (→ prepack → publish) if not.
+	verifyExportsResolve();
+
 	// report min+gzip per built file — the numbers we publish must be measured
 	const files = fs.readdirSync(OUTDIR, { recursive: true })
 		.filter((f) => f.endsWith(".js"))
@@ -106,25 +149,10 @@ esbuild.build({
 		const tag = f === "qrp.js" ? "  <- core" : "";
 		console.log(`  ${f.padEnd(28)} ${kb(buf.length).padStart(9)}  |  ${kb(g).padStart(9)} gz${tag}`);
 	});
-	// honest core figure: what `import "@nemanjan00/qrp"` actually pulls. With
-	// splitting the core lives in a shared chunk, so measure a standalone bundle
-	// (no splitting) of the core entry rather than the thin re-export stub.
-	// GUARD: every public exports subpath must resolve to a file we just built,
-	// or npm ships a package whose imports 404 (exactly how 0.4.0's deep
-	// utils/* subpaths broke). Fail the build (→ prepack → publish) if not.
-	verifyExportsResolve();
-
-	// honest core figure: what `import "@nemanjan00/qrp"` actually pulls. With
-	// splitting the core lives in a shared chunk, so measure a standalone bundle
-	// (no splitting) of the core entry rather than the thin re-export stub.
-	return esbuild.build({
-		entryPoints: ["qrp/index.js"],
-		bundle: true, format: "esm", minify: true, target: "es2022",
-		legalComments: "none", write: false
-	}).then((res) => {
-		const core = gzip(res.outputFiles[0].contents);
-		console.log(`\nbuilt ${files.length} files to ${OUTDIR}/ — core ${kb(core)} min+gzip (standalone), ~${kb(total)} min+gzip for the whole library.`);
-	});
+	// Core is now a standalone file (it has no imports), so dist/qrp.js IS the
+	// honest `import "@nemanjan00/qrp"` cost — no separate measuring build needed.
+	const core = gzip(fs.readFileSync(`${OUTDIR}/qrp.js`));
+	console.log(`\nbuilt ${files.length} files to ${OUTDIR}/ — core ${kb(core)} min+gzip, ~${kb(total)} min+gzip for the whole library.`);
 }).catch((err) => {
 	console.error(err);
 	process.exit(1);

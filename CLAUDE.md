@@ -148,12 +148,16 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   docs`) — the `.d.ts` are the single source; don't hand-edit `API.md`. Curated
   module prose lives in `@module` doc-comments at the top of each `.d.ts`.
 - **Minified build**: `bin/build.js` (`npm run build`, also `prepack`) bundles +
-  code-splits each subpath into `dist/` with esbuild (shared core chunk). The npm
-  package ships `dist/` (minified) + the hand-written `.d.ts` — **not** the raw
-  source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so the reference travels with
-  the package: a coding agent reads the API straight out of `node_modules`). Core
-  is **~4.5 KB min+gzip**, whole library ~20.5 KB. `dist/` is gitignored (rebuilt
-  on pack/publish). The consumer still runs zero build.
+  minifies each module in place into `dist/` — a flat mirror (one file per
+  module, same names, no hashes, no chunks); cross-module imports stay relative
+  (`table.js` → `./qrp.js`) so core is shared, not duplicated, and vendoring is
+  copy-the-dir. The npm package ships `dist/` (minified) + the hand-written
+  `.d.ts` — **not** the raw source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so
+  the reference travels with the package: a coding agent reads the API straight
+  out of `node_modules`). Core is **~4.6 KB min+gzip**, whole library ~18.7 KB.
+  `dist/` is gitignored (rebuilt on pack/publish). The consumer still runs zero
+  build. (No code-splitting: the opaque `chunk-*.js` files it produced made
+  self-hosting on a plain static server confusing — the user rejected chunking.)
 - NOTE (future / "another day"): `.d.ts` could be *generated* from JSDoc to make
   the code the single source — verified `tsc --declaration --allowJs` emits
   `.d.ts` from JSDoc, but `any`-heavy without `@template` generics. Enriching

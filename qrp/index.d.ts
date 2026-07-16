@@ -238,10 +238,19 @@ export interface ListMarker<T> extends QrpRenderable {
  *   (row) => el("tr", {}, () => row.name)   // built once per key; self-updates
  * ));
  */
+export interface ListOptions {
+	/**
+	 * What to do when two items share a key (the row is dropped either way — a DOM
+	 * node lives in one place): "error" (default, console.error — CI-visible),
+	 * "warn" (quieter), or "throw" (fatal, for dev/CI).
+	 */
+	onDuplicateKey?: "error" | "warn" | "throw";
+}
 export function list<T>(
 	source: () => readonly T[],
 	keyFn: (item: T, index: number) => unknown,
-	render: (item: T, index: number) => Renderable
+	render: (item: T, index: number) => Renderable,
+	options?: ListOptions
 ): ListMarker<T>;
 
 // --- conditionals ----------------------------------------------------------

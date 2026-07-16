@@ -130,21 +130,49 @@ test("removed rows dispose their effects (no leak)", () => {
 	assert.ok(runs >= before); // new row rendered once; old effect gone
 });
 
-test("duplicate list keys drop the dupe with a warning (no crash)", () => {
-	const warnings = [];
-	const realWarn = console.warn;
-	console.warn = (msg) => warnings.push(msg);
+test("duplicate list keys drop the dupe and console.error by default (no crash)", () => {
+	const errors = [];
+	const realError = console.error;
+	console.error = (msg) => errors.push(msg);
 
 	try {
 		const store = state({ items: [{ id: 1 }, { id: 1 }, { id: 2 }] });
 		const ul = el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, String(i.id))));
 
-		// 2 unique keys → 2 rows, and a warning fired
+		// 2 unique keys → 2 rows, and it shouts at ERROR (CI-visible) by default
 		assert.equal(ul.querySelectorAll("li").length, 2);
-		assert.ok(warnings.some((w) => /duplicate key/.test(w)));
+		assert.ok(errors.some((w) => /duplicate key/.test(w)));
+	} finally {
+		console.error = realError;
+	}
+});
+
+test("onDuplicateKey: 'warn' quiets the dup-key report to console.warn", () => {
+	const warnings = [], errors = [];
+	const realWarn = console.warn, realError = console.error;
+	console.warn = (msg) => warnings.push(msg);
+	console.error = (msg) => errors.push(msg);
+
+	try {
+		const store = state({ items: [{ id: 1 }, { id: 1 }] });
+		el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, String(i.id)), { onDuplicateKey: "warn" }));
+
+		assert.ok(warnings.some((w) => /duplicate key/.test(w)), "warned");
+		assert.equal(errors.length, 0, "did not also error");
 	} finally {
 		console.warn = realWarn;
+		console.error = realError;
 	}
+});
+
+test("onDuplicateKey: 'throw' makes a duplicate key fatal", () => {
+	const store = state({ items: [{ id: 1 }, { id: 1 }] });
+
+	// the throw propagates out of the reconcile effect on first render
+	assert.throws(
+		() => el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, String(i.id)), { onDuplicateKey: "throw" })),
+		/duplicate key/,
+	);
 });
 
 test("list over primitive items does not throw", () => {

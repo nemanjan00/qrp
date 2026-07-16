@@ -10,7 +10,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![CI](https://img.shields.io/github/actions/workflow/status/nemanjan00/qrp/ci.yml?branch=master&style=flat-square&labelColor=0a0d12&label=CI)](https://github.com/nemanjan00/qrp/actions/workflows/ci.yml)
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-optional-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
-[![core size](https://img.shields.io/badge/core-~4.5_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
+[![core size](https://img.shields.io/badge/core-~4.6_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
 [![tests](https://img.shields.io/badge/tests-260_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
@@ -25,12 +25,12 @@ Zero runtime dependencies and **no required build step**. Drop it into a
 `<script type="module">` and run with zero tooling — **or** `npm install` it and
 let your bundler (Vite, webpack, Rollup, esbuild) resolve subpaths and tree-shake.
 Same library either way; the build is your choice, not qrp's. Reactivity is a
-`Proxy`, the DOM is real, and the published core is **~4.5 KB min+gzip** — the
+`Proxy`, the DOM is real, and the published core is **~4.6 KB min+gzip** — the
 number that lines up next to Solid (~7 KB) or React (~45 KB). The whole library,
-every module, is **~20.5 KB min+gzip**.
+every module, is **~18.7 KB min+gzip**.
 
-> The npm package ships a minified, code-split build (esbuild), so a browser
-> pulls the small file — still no build step on *your* end. The readable source,
+> The npm package ships a minified build (esbuild) — a flat per-module mirror in
+> `dist/`, so a browser pulls the small file — still no build step on *your* end. The readable source,
 > JSDoc and all, is ~16 KB gzipped if you load it raw; CDNs like esm.sh minify it
 > on the fly, so only the vendored-raw path serves the larger file.
 
@@ -50,7 +50,7 @@ data, the DOM follows.
 
 ## 🛰️ Small enough to run on a microcontroller
 
-Because the whole library is ~20.5 KB min+gzip, a useful qrp app doesn't need a
+Because the whole library is ~18.7 KB min+gzip, a useful qrp app doesn't need a
 server or a CDN — it fits **in flash on an ESP32**. Not a static form, either: a
 **live dashboard** — telemetry streaming into reactive bindings, an LED you drive,
 a config form that rewrites itself with `when()`, and a WiFi-scan modal built from
@@ -95,26 +95,42 @@ The bare `@nemanjan00/qrp/*` specifiers in the snippets below resolve through th
 package's `exports` map, so **with any bundler they just work** — and unused
 subpaths tree-shake away.
 
-**Prefer no tooling? Run it straight in the browser** — two ways, no bundler:
+**Prefer no tooling? Vendor it + an import map — the solid no-build path.** Copy
+the package's `dist/` folder to your server and map the name once. `dist/` is a
+flat, minified mirror — one file per module, plain names, no hashes — so serving
+it is just static files:
 
 ```html
-<!-- 1) a CDN that serves npm as ESM (clean subpaths honour exports) -->
+<script type="importmap">
+{ "imports": {
+  "@nemanjan00/qrp":          "/vendor/qrp/qrp.js",
+  "@nemanjan00/qrp/table":    "/vendor/qrp/table.js",
+  "@nemanjan00/qrp/behaviors/portal": "/vendor/qrp/behaviors/portal.js"
+} }
+</script>
+<script type="module">
+  import { state, el, mount } from "@nemanjan00/qrp";
+  import { table } from "@nemanjan00/qrp/table";
+</script>
+```
+
+Copy the whole `dist/` directory — modules import their siblings by relative path
+(`table.js` → `./qrp.js`), so the core is shared, not duplicated. This site's own
+pages vendor it this way (see the import map in [`index.html`](index.html)); it's
+what I'd reach for in production.
+
+**Quick demo? A CDN works too** — no install at all:
+
+```html
 <script type="module">
   import { state, el, mount } from "https://esm.sh/@nemanjan00/qrp";
   import { table } from "https://esm.sh/@nemanjan00/qrp/table";
 </script>
-
-<!-- 2) vendor the files and map the name once with an import map -->
-<script type="importmap">
-{ "imports": {
-  "@nemanjan00/qrp":       "/vendor/qrp/qrp/index.js",
-  "@nemanjan00/qrp/table": "/vendor/qrp/table/index.js"
-} }
-</script>
 ```
 
-(This site's own pages use option 2 — see the `<script type="importmap">` block
-in [`index.html`](index.html).)
+Fine for a prototype or a REPL, but a CDN is a network dependency: one flaky
+fetch and the page comes up blank, with no graceful degradation. For anything
+real, vendor it (above) — it's the same code, served by you.
 
 ## 🧭 What is qrp?
 
