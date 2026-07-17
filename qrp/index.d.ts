@@ -2,7 +2,7 @@
  * @module qrp
  * Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
  * keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
- * custom elements (`define`), and HTML5 routing. `import … from "@nemanjan00/qrp"`.
+ * and HTML5 routing. `import … from "@nemanjan00/qrp"`.
  */
 
 // --- shared types ----------------------------------------------------------
@@ -295,24 +295,6 @@ export type Component<C = unknown> = (parent: HTMLElement, ctx: C) => void;
  * it's given, or RETURN a renderable (`() => el(...)`) — both work.
  */
 export function mount(parent: HTMLElement, component: (parent: HTMLElement) => unknown): Mounted;
-
-// --- custom elements -------------------------------------------------------
-
-export interface DefineOptions {
-	/** Attribute names to observe and expose as reactive `attrs` state. */
-	attrs?: string[];
-}
-
-/**
- * Register a Custom Element built with objects and __proto__ (no class).
- * `setup(host, attrs)` builds its content; observed attrs arrive as reactive
- * state. Effects created in setup are scoped to the element.
- */
-export function define(
-	name: string,
-	setup: (host: HTMLElement & { attrs: Record<string, string | null> }, attrs: Record<string, string | null>) => void,
-	options?: DefineOptions
-): CustomElementConstructor;
 
 // --- routing ---------------------------------------------------------------
 

@@ -354,11 +354,10 @@ const Clock = () => {
 };
 ```
 
-Want a component with its *own* lifecycle boundary (opened from an event handler,
-or reused as a real HTML tag)? Reach for [`scoped()`](./API.md#qrp--core) (owns a
-detached subtree's effects → `{ value, dispose }`) or
-[`define()`](./API.md#qrp--core) (registers a real Custom Element). But for the
-common case, a plain factory function is all you need — that's the point.
+Want a component with its *own* lifecycle boundary (e.g. opened from an event
+handler)? Reach for [`scoped()`](./API.md#qrp--core) — it owns a detached
+subtree's effects and hands back `{ value, dispose }`. But for the common case, a
+plain factory function is all you need — that's the point.
 
 ---
 

@@ -1,7 +1,7 @@
 // Type-level test: exercises the public .d.ts surface. `tsc --noEmit` on this
 // is the "test" for the declarations — it fails if a signature is wrong.
 
-import { state, effect, derive, el, list, when, mount, router, define, navigate, onEffectError, currentRoute } from "../qrp/index.js";
+import { state, effect, derive, el, list, when, mount, router, navigate, onEffectError, currentRoute } from "../qrp/index.js";
 import { html, ref } from "../html/index.js";
 import { table } from "../table/index.js";
 import { collection } from "../collection/index.js";
@@ -40,13 +40,12 @@ const item: User | undefined = li.itemFor(row);
 const w = when(() => s.n > 0, () => el("b", {}, "y"), () => el("i", {}, "n"));
 el("ul", {}, li, w, row);
 
-// mount / router / define
+// mount / router
 const app = mount(document.body, (view) => { view.appendChild(row); });
 app.dispose();
 const r = router({ "/": (o, ctx) => { void o; void ctx.params.id; }, "/u/:id": (o) => { void o; } }, document.body);
 r.dispose();
 navigate("/u/1", { replace: true });
-define("x-el", (host, attrs) => { void attrs.name; }, { attrs: ["name"] });
 
 // html
 const node: Node | DocumentFragment = html`<div>${() => s.n}</div>`;

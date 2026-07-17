@@ -216,7 +216,7 @@
 		}
 	</script>
 	<script type="module">
-		import { state, effect, el, mount, list, when, define, derive } from "@nemanjan00/qrp";
+		import { state, effect, el, mount, list, when, derive } from "@nemanjan00/qrp";
 		import { html } from "@nemanjan00/qrp/html";
 		import { table } from "@nemanjan00/qrp/table";
 		import { form, registerInput, inputs } from "@nemanjan00/qrp/forms";
@@ -245,7 +245,7 @@
 		const highlight = (code) => {
 			const esc = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 			return esc.replace(
-				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|define|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen|wrapMethod|delegate|onceOnly|debounce|throttle|limit|validate|scoped|currentRoute|loadScript|memoize)\b/g,
+				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen|wrapMethod|delegate|onceOnly|debounce|throttle|limit|validate|scoped|currentRoute|loadScript|memoize)\b/g,
 				(m, c, s, k, fn) =>
 					c ? `<span class="c">${c}</span>`
 					: s ? `<span class="s">${s}</span>`
@@ -484,29 +484,6 @@ el("strong", {}, () => full.value);`),
 		app.appendChild(section("markup", "Markup", "Two ways to write it. Both real DOM.",
 			"Prefer function calls, or prefer HTML — el() and html`` are both first-class. Switch the tab; the live button is the same either way.",
 			markupDemo()));
-
-		// ============================================================ CUSTOM ELEMENTS
-		define("qrp-clock", (host) => {
-			const now = state({ t: new Date().toLocaleTimeString() });
-			const timer = setInterval(() => now.t = new Date().toLocaleTimeString(), 1000);
-			host.addEventListener("qrp:disconnect", () => clearInterval(timer));
-			host.appendChild(el("strong", { style: "color:var(--accent);font-size:1.6rem;font-variant-numeric:tabular-nums" }, () => now.t));
-		});
-		app.appendChild(section("elements", "Custom elements", "Real custom elements. No classes.",
-			"define() registers a genuine Custom Element — built with objects and __proto__, no class extends. Observed attributes arrive as reactive state.",
-			el("div", { class: "demo" },
-				codeWindow("clock.js", `
-define("qrp-clock", (host) => {
-  const now = state({ t: time() });
-  setInterval(() => now.t = time(), 1000);
-  host.appendChild(
-    el("strong", {}, () => now.t));
-});
-
-// <qrp-clock></qrp-clock>`),
-				livePanel(
-					el("div", { class: "dim", style: "font-size:.8rem" }, "a live <qrp-clock> element:"),
-					el("qrp-clock")))));
 
 		// ============================================================ PROTOTYPES
 		// wrapMethod is the userscript trick made a primitive: augment a method on
@@ -903,7 +880,7 @@ effect(() => applyTheme(
 
 		// ============================================================ MODULES
 		const modules = [
-			["⚡", "qrp", "state, effect, derive, el, html, list, when, mount, router, define"],
+			["⚡", "qrp", "state, effect, derive, el, html, list, when, mount, router, scope"],
 			["📝", "html``", "author DOM as HTML — inline ${}, storable #{} templates, ref()"],
 			["📋", "forms", "declarative forms + open input-type registry"],
 			["🗂️", "table", "sortable, keyed, paginated data table"],

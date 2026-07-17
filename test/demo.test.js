@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state, el, define, router } from "../qrp/index.js";
+import { state, el, router } from "../qrp/index.js";
 import { form, inputs, textual, parseKV } from "../forms/index.js";
 
 // Exercises the exact patterns the demo page wires up, end to end.
@@ -62,22 +62,4 @@ test("counter route param drives initial state", () => {
 	assert.equal(outlet.querySelector("h2").textContent, "Count: 4");
 
 	app.dispose();
-});
-
-test("custom element cleans up on disconnect via qrp:disconnect", () => {
-	let cleaned = false;
-
-	define("qrp-resourceful", (host) => {
-		host.addEventListener("qrp:disconnect", () => { cleaned = true; });
-		host.appendChild(el("span", {}, "alive"));
-	});
-
-	const node = document.createElement("qrp-resourceful");
-	document.body.appendChild(node);
-
-	assert.equal(node.querySelector("span").textContent, "alive");
-
-	node.remove();
-
-	assert.equal(cleaned, true);
 });

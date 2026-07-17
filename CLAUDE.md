@@ -71,7 +71,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   `effect(fn, { loopLimit })`), DOM (`el`, `reactive`, `bind`,
   `clear`), keyed lists (`list` — element reuse + `itemFor` delegation),
   conditional subtrees (`when` — swaps branch + disposes old scope), components
-  (`mount`/`scope`/`onDispose`), custom elements (`define`), routing
+  (`mount`/`scope`/`onDispose`), routing
   (`router`/`navigate`/`compilePath`, reactive `currentRoute`). `state()` skips
   proxying frozen objects (freeze static data to opt out of reactivity).
 - `html/index.js` — author DOM as HTML strings, three forms: `` html`` `` /
@@ -188,13 +188,12 @@ optional sugar.
 ## Design principles (the reason this project exists)
 
 - **Use the platform.** Wrap native `URL`, `URLSearchParams`, `EventTarget`,
-  History API, custom elements, IntersectionObserver, matchMedia — don't
-  reinvent them.
+  History API, IntersectionObserver, matchMedia — don't reinvent them.
 - **Proxy for reactivity.** `state()` is a `Proxy`; reads track per key, writes
   trigger only dependent effects. `reactive(node)` proxies a DOM node so
   property assignment becomes a live binding.
-- **No classes.** Objects and `__proto__`/`Object.create`, including for custom
-  elements (registered without `class extends`).
+- **No classes.** Objects and `__proto__`/`Object.create` throughout — never the
+  `class` keyword.
 - **Declarative over procedural**, especially forms.
 - **Small core, everything else a peer.** The real core is Proxy tracking +
   ownership (`state`/`effect`/`scope`/`onDispose`). Everything above it consumes

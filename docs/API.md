@@ -38,7 +38,7 @@ import { … } from "@nemanjan00/qrp"
 
 Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
 keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
-custom elements (`define`), and HTML5 routing. `import … from "@nemanjan00/qrp"`.
+and HTML5 routing. `import … from "@nemanjan00/qrp"`.
 
 ### `renderable`
 
@@ -295,16 +295,6 @@ Mount a component into a parent; returns a disposable that tears down its
 effects and clears the parent. The component may either append to the `parent`
 it's given, or RETURN a renderable (`() => el(...)`) — both work.
 
-### `define`
-
-```ts
-define(name: string, setup: (host: HTMLElement & { attrs: Record<string, string | null> }, attrs: Record<string, string | null>) => void, options?: DefineOptions): CustomElementConstructor
-```
-
-Register a Custom Element built with objects and __proto__ (no class).
-`setup(host, attrs)` builds its content; observed attrs arrive as reactive
-state. Effects created in setup are scoped to the element.
-
 ### `compilePath`
 
 ```ts
@@ -495,13 +485,6 @@ interface ListOptions {
 	 * "warn" (quieter), or "throw" (fatal, for dev/CI).
 	 */
 	onDuplicateKey?: "error" | "warn" | "throw";
-}
-```
-
-```ts
-interface DefineOptions {
-	/** Attribute names to observe and expose as reactive `attrs` state. */
-	attrs?: string[];
 }
 ```
 

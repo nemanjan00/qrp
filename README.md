@@ -170,9 +170,9 @@ data lives one `fetch` away, so you don't need a normalized client store. What y
 actually need is: *show the data, let me sort and edit it, send it back.*
 
 qrp keeps the good ideas the platform already ships — the DOM, `URL`,
-`EventTarget`, the History API, custom elements, `Proxy` — and adds only the thin
-reactive layer that ties them together. The result is small, fast, and boring in
-the way infrastructure should be.
+`EventTarget`, the History API, `Proxy` — and adds only the thin reactive layer
+that ties them together. The result is small, fast, and boring in the way
+infrastructure should be.
 
 ## 🚀 5-minute example
 
@@ -357,9 +357,8 @@ onEffectError((err) => Sentry.captureException(err));           // central crash
 ```
 
 Plus: a global event bus, cross-tab persistence, HTML5 routing with `:param`
-patterns (keep-alive on same-pattern navigation), real custom elements (no
-`class extends`), and headless behaviors for modals, dropdowns, tooltips, and
-disclosures.
+patterns (keep-alive on same-pattern navigation), and headless behaviors for
+modals, dropdowns, tooltips, and disclosures.
 
 ## 📦 Modules
 
@@ -368,7 +367,7 @@ unused exports tree-shake away.
 
 | Module | What it gives you |
 |--------|-------------------|
-| `@nemanjan00/qrp` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `onEffectError`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `define`, `router`, `navigate`, `currentRoute`, `compilePath` |
+| `@nemanjan00/qrp` | Core: `state`, `effect`, `derive`, `untracked`, `raw`, `onEffectError`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `router`, `navigate`, `currentRoute`, `compilePath` |
 | `@nemanjan00/qrp/html` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML; text holes escaped (see escaping guarantee above) |
 | `@nemanjan00/qrp/forms` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
 | `@nemanjan00/qrp/table` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
@@ -493,8 +492,8 @@ Four commitments gate every design decision:
    markup and CSS; the helpers carry the platform and a11y hard parts.
 
 And underneath all of it: **use the platform.** `URL`, `URLSearchParams`,
-`EventTarget`, `IntersectionObserver`, custom elements, the History API — qrp
-wraps them reactively instead of reinventing them.
+`EventTarget`, `IntersectionObserver`, the History API — qrp wraps them reactively
+instead of reinventing them.
 
 ## 🔬 Advanced implementation details
 

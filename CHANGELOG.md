@@ -8,6 +8,16 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.7.0
+
+- ⚠️ **BREAKING: removed `define()` (custom-element registration).** Authoring
+  Custom Elements is tangential to "turn data into a dashboard" — it was more a
+  "look, no `class extends`" flex than something a dashboard needs — so it's gone,
+  per do-one-thing-well. Core drops to ~4.4 KB min+gzip. `mount()`/`scoped()`
+  cover in-app component lifecycles; if you specifically need to expose a qrp
+  widget as a real HTML tag in a *foreign* page, `define` was ~50 self-contained
+  lines (`state` + `scope` + `clear`) that can live in userland.
+
 ## 0.6.1
 
 - **"Read SHARP-EDGES before implementing" callout** at the top of the README and

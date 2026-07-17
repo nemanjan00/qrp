@@ -43,12 +43,6 @@
 
 	<main id="view"></main>
 
-	<hr>
-	<p class="live">
-		A real custom element (no classes were used):
-		<qrp-clock></qrp-clock>
-	</p>
-
 	<script type="importmap">
 		{
 			"imports": {
@@ -78,7 +72,7 @@
 		}
 	</script>
 	<script type="module">
-		import { state, effect, el, define, mount } from "@nemanjan00/qrp";
+		import { state, effect, el, mount } from "@nemanjan00/qrp";
 		import { form, textual, parseKV, registerInput, inputs } from "@nemanjan00/qrp/forms";
 		import { persisted } from "@nemanjan00/qrp/browser";
 		import { toasts, notify } from "@nemanjan00/qrp/toasts";
@@ -92,21 +86,6 @@
 			const input = inputs.text(settings, key, field);
 			input.addEventListener("input", () => { settings[key] = input.value.toUpperCase(); });
 			return input;
-		});
-
-		// --- a custom element built on the real HTMLElement proto ----------
-		define("qrp-clock", (host) => {
-			const now = state({ t: new Date().toLocaleTimeString() });
-
-			const timer = setInterval(() => {
-				now.t = new Date().toLocaleTimeString();
-			}, 1000);
-
-			// effect() here is owned by the element's scope, but the interval
-			// isn't — clean it on disconnect.
-			host.addEventListener("qrp:disconnect", () => clearInterval(timer));
-
-			host.appendChild(el("strong", {}, () => now.t));
 		});
 
 		// --- pages ---------------------------------------------------------
