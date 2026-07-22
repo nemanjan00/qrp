@@ -178,7 +178,33 @@
 		</div>
 	</nav>
 
-	<main id="app"></main>
+	<main id="app">
+		<!-- Hero is STATIC so it paints immediately (it's the LCP element) and
+		     survives even if the module is slow or fails; only the counter is qrp. -->
+		<section class="hero">
+			<div class="wordmark">qrp</div>
+			<div class="tagline">Turn data into a dashboard. Nothing else.</div>
+			<p class="lede">A data-first, declarative frontend framework. Reactivity is a <code>Proxy</code>, the DOM is real. The published core is ~4.7 KB min+gzip — the number comparable to Solid or React; ~22.3 KB for the whole library. (Use it with any bundler, or none — your call.)</p>
+			<div class="badges">
+				<span class="badge"><b>0</b> dependencies</span>
+				<span class="badge"><b>0</b> required build step</span>
+				<span class="badge"><b>~4.7 KB</b> min+gzip core</span>
+				<span class="badge"><b>292</b> tests</span>
+				<span class="badge"><b>vanilla-DOM</b> parity on hot paths</span>
+			</div>
+			<div class="cta">
+				<a class="btn btn-primary" href="./start.html">Get started →</a>
+				<a class="btn" href="#reactivity">See it run</a>
+				<a class="btn" href="https://github.com/nemanjan00/qrp" target="_blank">GitHub</a>
+			</div>
+			<div style="max-width:520px;margin:3rem auto 0">
+				<div class="live">
+					<div class="live-tag"><span class="pulse"></span>This button is a live qrp app</div>
+					<div class="row" id="hero-live" style="justify-content:center;gap:1.5rem;min-height:2.7rem"></div>
+				</div>
+			</div>
+		</section>
+	</main>
 
 	<footer>
 		<p><b style="color:var(--accent)">qrp</b> — a data-first, declarative frontend framework.</p>
@@ -293,33 +319,15 @@
 		const app = document.getElementById("app");
 
 		// ============================================================ HERO
-		const hero = () => {
-			const counter = state({ n: 0 });
-			return el("section", { class: "hero" },
-				el("div", { class: "wordmark" }, "qrp"),
-				el("div", { class: "tagline" }, "Turn data into a dashboard. Nothing else."),
-				el("p", { class: "lede" },
-					"A data-first, declarative frontend framework. Reactivity is a ",
-					el("code", {}, "Proxy"), ", the DOM is real. The published core is ~4.7 KB min+gzip — the number comparable to Solid or React; ~22.3 KB for the whole library. (Use it with any bundler, or none — your call.)"),
-				el("div", { class: "badges" },
-					el("span", { class: "badge" }, el("b", {}, "0"), " dependencies"),
-					el("span", { class: "badge" }, el("b", {}, "0"), " required build step"),
-					el("span", { class: "badge" }, el("b", {}, "~4.7 KB"), " min+gzip core"),
-					el("span", { class: "badge" }, el("b", {}, "243"), " tests"),
-					el("span", { class: "badge" }, el("b", {}, "vanilla-DOM"), " parity on hot paths")),
-				el("div", { class: "cta" },
-					el("a", { class: "btn btn-primary", href: "./start.html" }, "Get started →"),
-					el("a", { class: "btn", href: "#reactivity" }, "See it run"),
-					el("a", { class: "btn", href: "https://github.com/nemanjan00/qrp", target: "_blank" }, "GitHub")),
-				el("div", { style: "max-width:520px;margin:3rem auto 0" },
-					el("div", { class: "live" },
-						el("div", { class: "live-tag" }, el("span", { class: "pulse" }), "This button is a live qrp app"),
-						el("div", { class: "row", style: "justify-content:center;gap:1.5rem" },
-							el("button", { class: "btn btn-primary", onclick: () => counter.n++ }, "clicked ",
-								() => `${counter.n}×`),
-							el("button", { class: "btn", onclick: () => counter.n = 0 }, "reset")))));
-		};
-		app.appendChild(hero());
+		// Hero markup is static HTML (above) so it's the instant first paint; only
+		// the live counter is qrp — enhance the placeholder in place.
+		const heroCounter = state({ n: 0 });
+		const heroLive = document.getElementById("hero-live");
+		if(heroLive) {
+			heroLive.append(
+				el("button", { class: "btn btn-primary", onclick: () => heroCounter.n++ }, "clicked ", () => `${heroCounter.n}×`),
+				el("button", { class: "btn", onclick: () => heroCounter.n = 0 }, "reset"));
+		}
 
 		// ============================================================ ESP32 / MICROCONTROLLER
 		const espDemo = () => livePanel(
