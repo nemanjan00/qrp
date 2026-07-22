@@ -8,6 +8,21 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.8.0
+
+- **`el()` is SVG-namespace-aware.** SVG tags (`svg`, `path`, `circle`, `rect`,
+  `text`, gradients, filters, `foreignObject`, …) are now created with
+  `createElementNS`, so they actually render, and their attributes (`d`,
+  `viewBox`, `fill`, `cx`, and `class`) go through `setAttribute` (`className` is a
+  read-only `SVGAnimatedString`). Before this, `el("svg", …)` landed in the HTML
+  namespace and rendered nothing — you had to hand-build charts with the `html\`\``
+  module. Dual-namespace tags (`a`/`title`/`script`/`style`) stay HTML. Reactive
+  SVG attributes work like any other (`y1: () => s.y`).
+- **Docs:** the reactive-dictionary pattern (`list(() => Object.entries(x), …)`)
+  and the SVG note added to SHARP-EDGES; `el()`'s attribute rules — SVG, and
+  `false`/`null` **removing** an attribute (so `disabled: () => x` toggles it) —
+  spelled out in the API reference.
+
 ## 0.7.0
 
 - ⚠️ **BREAKING: removed `define()` (custom-element registration).** Authoring

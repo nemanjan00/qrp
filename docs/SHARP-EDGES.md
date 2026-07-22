@@ -99,9 +99,28 @@ The edge: if the value is an object whose *identity* changes on every read, that
 rebuilds every time — key on a primitive (`() => user?.id`) or mutate the object
 in place.
 
-**`list()` keys must be unique.** Duplicate keys are dropped with a
-`console.warn` (two items can't share one element). For a feed with repeats, use a
+**`list()` keys must be unique.** Duplicate keys drop the row (two items can't
+share one element) and `console.error` by default — pass
+`{ onDuplicateKey: "throw" }` to make it fatal. For a feed with repeats, use a
 composite key: `(r) => `${r.id}:${r.at}``.
+
+**`list()` takes an array + `keyFn`; for a reactive *dictionary*, feed it
+entries.** There's no object-keyed variant — map the object to pairs and key on
+the pair's key:
+
+```js
+list(() => Object.entries(byMetric), ([key]) => key, ([key, points]) => row(key, points));
+```
+
+That gives you keyed reuse over `{ [k]: v }` data (add/remove a key → add/remove
+one row) instead of a function-child that rebuilds the whole subtree on any change.
+
+**SVG works, and it's namespace-aware.** `el("svg", …)` / `el("path", …)` /
+`el("circle", …)` are created in the SVG namespace (so they actually render), and
+their attributes — `d`, `viewBox`, `fill`, `cx`, even `class` — go through
+`setAttribute`. The only gap: tags that exist in *both* namespaces (`a`, `title`,
+`script`, `style`) stay HTML, since that's the common case — author an SVG `<a>`
+or `<title>` with the [`html\`\``](./API.md#html--html-templates) module.
 
 **Attach route content through `el()`/`mount()`, never a bare
 `outlet.append(marker)`.** The router hands each route a real `outlet` element;

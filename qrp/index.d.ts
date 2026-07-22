@@ -181,7 +181,13 @@ export function scoped<T>(fn: () => T): { value: T; dispose: () => void };
  * - **`class` / `style`** → `class` takes a string or function; `style` takes a
  *   string or an object (`{ color: "red" }`), each static or reactive.
  * - Properties like **`value` / `checked`** are set as node *properties* (not
- *   attributes), so `checked: () => todo.done` works as expected.
+ *   attributes), so `checked: () => todo.done` works as expected. A prop whose
+ *   value is `false` or `null` **removes** the attribute (so `disabled: () => x`
+ *   toggles it), and `true` sets it empty.
+ * - **SVG is namespace-aware**: `el("svg", …)`, `el("path", …)`, etc. are created
+ *   in the SVG namespace and their attributes (`d`, `viewBox`, `fill`, `class`)
+ *   go through `setAttribute`. (`a`/`title`/`script`/`style` stay HTML — build an
+ *   SVG one with the `html\`\`` module if you need it.)
  *
  * Children are `Renderable`: strings/numbers (text), Nodes, arrays, reactive
  * functions (`() => …`), and `list()`/`when()` markers.

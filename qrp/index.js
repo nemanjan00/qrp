@@ -509,9 +509,38 @@ export const mount = (parent, component) => {
 // DOM
 // ---------------------------------------------------------------------------
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// Tags that must be created in the SVG namespace (createElementNS) or they land
+// in the HTML namespace and don't render. Ambiguous dual-namespace tags (a,
+// title, script, style) are intentionally omitted — their HTML use is far more
+// common; author an SVG <a>/<title> with the html`` module if you need one.
+const SVG_TAGS = new Set((
+	"svg g path circle ellipse line polyline polygon rect text tspan textPath " +
+	"defs use symbol marker linearGradient radialGradient stop clipPath mask " +
+	"pattern image foreignObject desc view switch " +
+	"filter feBlend feColorMatrix feComponentTransfer feComposite feConvolveMatrix " +
+	"feDiffuseLighting feDisplacementMap feDropShadow feFlood feGaussianBlur feImage " +
+	"feMerge feMergeNode feMorphology feOffset feSpecularLighting feTile feTurbulence " +
+	"animate animateMotion animateTransform mpath set"
+).split(" "));
+
+const createEl = (tag) => (
+	SVG_TAGS.has(tag) ? document.createElementNS(SVG_NS, tag) : document.createElement(tag)
+);
+
 const setAttr = (node, key, value) => {
+	// SVG attributes (class, d, cx, viewBox, fill, …) aren't settable as
+	// properties and `className` is a read-only SVGAnimatedString, so route
+	// everything through setAttribute for SVG-namespaced nodes.
+	const isSvg = node.namespaceURI === SVG_NS;
+
 	if(key === "class") {
-		node.className = value == null ? "" : value;
+		if(isSvg) {
+			if(value == null) { node.removeAttribute("class"); } else { node.setAttribute("class", value); }
+		} else {
+			node.className = value == null ? "" : value;
+		}
 		return;
 	}
 
@@ -520,7 +549,7 @@ const setAttr = (node, key, value) => {
 		return;
 	}
 
-	if(key in node) {
+	if(!isSvg && key in node) {
 		node[key] = value;
 		return;
 	}
@@ -1053,7 +1082,7 @@ export const list = (source, keyFn, render, options = {}) => {
  *   - anything else    → set once (property if it exists, else attribute)
  */
 export const el = (tag, props = {}, ...children) => {
-	const node = document.createElement(tag);
+	const node = createEl(tag);
 
 	// Children FIRST: a <select bind> needs its <option>s present before the
 	// binding applies the initial value, otherwise value has nothing to match.
