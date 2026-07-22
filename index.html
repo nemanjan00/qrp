@@ -167,6 +167,7 @@
 				<a href="#perf">Performance</a>
 				<a href="#reactivity">Reactivity</a>
 				<a href="#table">Table</a>
+				<a href="#spark">Charts</a>
 				<a href="#http">Data</a>
 				<a href="#modules">Modules</a>
 				<a href="./api.html">API</a>
@@ -196,6 +197,12 @@
 				"@nemanjan00/qrp/collection": "./collection/index.js",
 				"@nemanjan00/qrp/datagrid": "./datagrid/index.js",
 				"@nemanjan00/qrp/http": "./http/index.js",
+				"@nemanjan00/qrp/resource": "./resource/index.js",
+				"@nemanjan00/qrp/format": "./format/index.js",
+				"@nemanjan00/qrp/spark": "./spark/index.js",
+				"@nemanjan00/qrp/scale": "./scale/index.js",
+				"@nemanjan00/qrp/timeseries": "./timeseries/index.js",
+				"@nemanjan00/qrp/export": "./export/index.js",
 				"@nemanjan00/qrp/events": "./events/index.js",
 				"@nemanjan00/qrp/toasts": "./toasts/index.js",
 				"@nemanjan00/qrp/browser": "./browser/index.js",
@@ -228,7 +235,8 @@
 		import { disclosure } from "@nemanjan00/qrp/behaviors/disclosure";
 		import { busyWhile } from "@nemanjan00/qrp/behaviors/busy-while";
 		import { debounce } from "@nemanjan00/qrp/utils/debounce";
-		import { persisted, viewport, online, seen, media } from "@nemanjan00/qrp/browser";
+		import { spark } from "@nemanjan00/qrp/spark";
+		import { persisted, viewport, online, seen, media, poll } from "@nemanjan00/qrp/browser";
 		import { wrapMethod, delegate } from "@nemanjan00/qrp/proto";
 
 		// mount the global toast stack (demos fire real toasts)
@@ -609,6 +617,43 @@ const t = table({
 });`),
 				tableDemo())));
 
+		// ============================================================ SPARK (charts)
+		const sparkDemo = () => {
+			const series = state({ points: Array.from({ length: 32 }, (_, i) => ({ x: i, y: 50 + Math.sin(i / 3) * 22 })) });
+			let t = 32;
+
+			// poll: scope-aware, pauses when the tab is hidden
+			poll(() => {
+				const next = series.points.slice(1);
+				next.push({ x: t, y: 50 + Math.sin(t / 3) * 22 + (Math.random() * 16 - 8) });
+				t += 1;
+				series.points = next;
+			}, 1200);
+
+			const latest = () => series.points[series.points.length - 1].y;
+
+			return livePanel(
+				el("div", { class: "dim", style: "font-size:.8rem" }, "a live sparkline — updates every 1.2s, inherits currentColor:"),
+				el("div", { style: "color:var(--accent)" }, spark(() => series.points, { kind: "area", height: 96, strokeWidth: 2 })),
+				el("div", { style: "font-size:.85rem;color:var(--muted)" }, () => `latest: ${latest().toFixed(1)}`));
+		};
+		app.appendChild(section("spark", "Charts", "Data in, SVG out.",
+			"spark is a primitive, not a chart library: pass a series, get back a reactive <svg> (line / area / bar). It composes scale and is the payoff of qrp's SVG-aware el() — the mark inherits currentColor, so it themes for free. Pushed live here with poll().",
+			el("div", { class: "demo" },
+				codeWindow("spark.js", `
+import { spark } from "@nemanjan00/qrp/spark";
+import { poll } from "@nemanjan00/qrp/browser";
+
+// data in, reactive <svg> out
+el("div", { style: "color:var(--accent)" },
+  spark(() => series.points, {
+    kind: "area", height: 96
+  }));
+
+// live: shift a point in every 1.2s
+poll(() => series.points = next, 1200);`),
+				sparkDemo())));
+
 		// ============================================================ BEHAVIORS (modal + dropdown + accordion)
 		const openModal = () => {
 			const dialog = html`
@@ -887,9 +932,15 @@ effect(() => applyTheme(
 			["🔀", "collection", "reactive sort / filter / paginate over a dataset"],
 			["▦", "datagrid", "headless grid state: selection, column visibility, paging"],
 			["🌐", "http", "fetch client: auth headers, reactive loader, error bus"],
+			["🔁", "resource", "reactive async data: loading / data / error / reload; bus refresh"],
+			["📈", "spark", "data → reactive <svg>: line / area / bar sparklines"],
+			["🔢", "format", "Intl formatters: num, compact, pct, bytes, duration, relTime, date"],
+			["📐", "scale", "linear / ordinal / quantize + colourblind-safe palette"],
+			["⏱️", "timeseries", "rate / rolling / bucket / downsample (LTTB)"],
+			["⬇️", "export", "toCSV / download / copy — get table data out"],
 			["📡", "events", "global event bus on native EventTarget"],
 			["🔔", "toasts", "notifications off the bus; content is any renderable"],
-			["🪟", "browser", "URL, localStorage, media, viewport, online — as reactive state"],
+			["🪟", "browser", "URL, localStorage, media, viewport, online, poll — as reactive state"],
 			["🧩", "behaviors", "portal, dismissable, trapFocus, anchored, disclosure"],
 			["🧬", "proto", "wrapMethod, delegate, onceOnly — patch prototypes, no classes"],
 			["🛠️", "utils", "memoize, lru, cache, paginate, limit, debounce, validate, loadScript — pure helpers"],
@@ -904,7 +955,7 @@ effect(() => applyTheme(
 					el("p", {}, m[2]))))));
 
 		// footer stats
-		document.getElementById("foot-stats").textContent = "~4.7 KB min+gzip core · 263 tests · built with qrp";
+		document.getElementById("foot-stats").textContent = "~4.7 KB min+gzip core · 292 tests · built with qrp";
 	</script>
 </body>
 </html>
