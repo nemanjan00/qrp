@@ -126,6 +126,21 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - `qrp.css` — optional minimal baseline (design tokens + semantic classes);
   link it yourself, qrp never injects it. Styling guide: `docs/STYLING.md`.
 - `proto/index.js` — prototype-level enhancement helpers.
+- Optional helpers (all separate opt-in modules, zero-dep, pay-for-what-you-use):
+  - `format/index.js` — Intl-backed pure formatters (`num`/`compact`/`pct`/
+    `bytes`/`duration`/`relTime`/`date`); nullish → "".
+  - `resource/index.js` — reactive async data (`{ data, loading, error, reload }`),
+    transport-agnostic (fetcher thunk); optional `refreshOn` bus event(s) for a
+    global refresh; `asyncView(res, { loading, error, empty, data })` → `when`.
+  - `export/index.js` — `toCSV`/`download`/`copy`; pairs with table/collection.
+  - `spark/index.js` — charting PRIMITIVE (not a library): data → reactive `el()`
+    `<svg>` (line/area/bar). Enabled by SVG-aware `el`; composes `scale`.
+  - `scale/index.js` — micro scales (`linear`/`ordinal`/`quantize`/`ticks`) +
+    colourblind-safe `palette`.
+  - `timeseries/index.js` — pure `{x,y}` math (`deltas`/`rate`/`rolling`/`bucket`/
+    `downsample` LTTB); pairs with spark.
+  - (`browser/index.js` also exports `poll(fn, ms)` — scope-aware interval, pauses
+    while the tab is hidden.)
 
 ## Types & docs
 

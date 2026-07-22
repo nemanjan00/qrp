@@ -229,6 +229,43 @@ export const visible = () => {
 };
 
 /**
+ * Call `fn` every `ms`, scope-aware: the interval is cleared on the owner's
+ * dispose (no leaked timer), and — unless `whenHidden` — it pauses while the tab
+ * is hidden and resumes on return, so a background dashboard tab stops hammering
+ * the network. `immediate` runs `fn` once up front.
+ *
+ * @param {Function} fn
+ * @param {number} ms interval in milliseconds
+ * @param {object} [options]
+ * @param {boolean} [options.immediate] run fn() once immediately (default false)
+ * @param {boolean} [options.whenHidden] keep polling while the tab is hidden
+ * @returns {{ start: Function, stop: Function }}
+ */
+export const poll = (fn, ms, options = {}) => {
+	const { immediate = false, whenHidden = false } = options;
+	let timer = null;
+
+	const start = () => { if(timer == null) { timer = setInterval(fn, ms); } };
+	const stop = () => { if(timer != null) { clearInterval(timer); timer = null; } };
+
+	if(immediate) { fn(); }
+
+	start();
+
+	if(!whenHidden) {
+		listen(document, "visibilitychange", () => {
+			if(document.visibilityState === "visible") { start(); } else { stop(); }
+		});
+
+		if(document.visibilityState !== "visible") { stop(); }
+	}
+
+	onDispose(stop);
+
+	return { start, stop };
+};
+
+/**
  * Poll a getter and fire a callback when its (stringified) value changes.
  * The escape hatch for state the platform exposes with no event —
  * document.cookie being the classic one. Returns a stop() function.

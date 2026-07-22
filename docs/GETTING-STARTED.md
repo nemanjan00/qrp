@@ -28,7 +28,27 @@ npm i @nemanjan00/qrp
 import { state, el, mount } from "@nemanjan00/qrp";
 ```
 
-**B. No bundler, straight in the browser** — a CDN that serves npm as ES modules:
+**B. No bundler — vendor `dist/` + an import map** (the common self-hosted path;
+rock-solid, offline). Copy the package's `dist/` folder to your server; the files
+are flat, plain names (`qrp.js`, `table.js`), so map the name once — one entry per
+subpath you use — and the bare specifiers resolve everywhere:
+
+```html
+<script type="importmap">
+{ "imports": {
+  "@nemanjan00/qrp":        "/vendor/qrp/qrp.js",
+  "@nemanjan00/qrp/table":  "/vendor/qrp/table.js",
+  "@nemanjan00/qrp/format": "/vendor/qrp/format.js"
+} }
+</script>
+<script type="module">
+  import { state, el, mount } from "@nemanjan00/qrp";
+  import { table } from "@nemanjan00/qrp/table";
+</script>
+```
+
+**C. No install at all — a CDN** (quickest for a demo/REPL; a flaky CDN fetch
+blanks the page, so vendor it for anything real):
 
 ```html
 <script type="module">
@@ -37,7 +57,7 @@ import { state, el, mount } from "@nemanjan00/qrp";
 ```
 
 Every example below is a complete HTML file you can save and open. They use
-option B so there is nothing to install. Serve over HTTP once you reach routing
+option C so there is nothing to install. Serve over HTTP once you reach routing
 (`python -m http.server`); until then `file://` is fine.
 
 ---

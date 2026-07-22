@@ -21,6 +21,12 @@ next to each module, so editors resolve them with no build step.
 - [table](#table)
 - [datagrid](#datagrid)
 - [http](#http)
+- [resource](#resource)
+- [format](#format)
+- [export](#export)
+- [spark](#spark)
+- [scale](#scale)
+- [timeseries](#timeseries)
 - [events](#events)
 - [toasts](#toasts)
 - [browser](#browser)
@@ -1075,6 +1081,318 @@ interface HttpClient {
 ```
 
 
+## resource
+
+```js
+import { … } from "@nemanjan00/qrp/resource"
+```
+
+Reactive async data — `loading`/`data`/`error`/`reload`, transport-agnostic
+(hand it a fetcher thunk). Optional `refreshOn` wires it to the event bus for
+global refresh. `asyncView` maps the state to `when` branches.
+
+### `asyncView`
+
+```ts
+asyncView<T>(res: Resource<T>, views?: AsyncViews<T>): WhenMarker
+```
+
+Map a resource's state to `when` branches (loading/error/empty/data).
+
+#### Supporting types
+
+```ts
+interface ResourceOptions<T> {
+	/** Value for `data` before the first load (e.g. SSR-injected). */
+	initial?: T | null;
+	/** Load on creation (default true). */
+	immediate?: boolean;
+	/** Emitter for `refreshOn` (default the global bus). */
+	bus?: { on(type: string, handler: (...args: any[]) => void): () => void };
+	/** Bus event(s) that trigger a reload. */
+	refreshOn?: string | string[];
+}
+```
+
+```ts
+interface Resource<T> {
+	/** Reactive: the latest data (or `initial`/null). */
+	readonly data: T | null;
+	/** Reactive: a fetch is in flight. */
+	readonly loading: boolean;
+	/** Reactive: the last error, or null. */
+	readonly error: unknown;
+	/** Trigger a reload; returns the settling promise. */
+	reload(): Promise<void>;
+}
+```
+
+```ts
+interface AsyncViews<T> {
+	loading?: () => unknown;
+	error?: (error: unknown) => unknown;
+	empty?: () => unknown;
+	data?: (data: T) => unknown;
+}
+```
+
+
+## format
+
+```js
+import { … } from "@nemanjan00/qrp/format"
+```
+
+Intl-backed pure formatters for dashboards — zero-dep, safe in reactive
+bindings (nullish/NaN → ""). `num`, `compact`, `pct`, `bytes`, `duration`,
+`relTime`, `date`. Each takes optional Intl options.
+
+### `num`
+
+```ts
+num(value: number | null | undefined, opts?: Intl.NumberFormatOptions): string
+```
+
+A plain number: `num(1234.5)` → "1,234.5".
+
+### `compact`
+
+```ts
+compact(value: number | null | undefined, opts?: Intl.NumberFormatOptions): string
+```
+
+Compact notation: `compact(43373)` → "43.4K".
+
+### `pct`
+
+```ts
+pct(value: number | null | undefined, opts?: Intl.NumberFormatOptions): string
+```
+
+Percent of a 0–1 ratio: `pct(0.13)` → "13%".
+
+### `bytes`
+
+```ts
+bytes(value: number | null | undefined, opts?: Intl.NumberFormatOptions): string
+```
+
+Human bytes (base 1024): `bytes(1536)` → "1.5 KB".
+
+### `duration`
+
+```ts
+duration(ms: number | null | undefined, opts?: Intl.NumberFormatOptions): string
+```
+
+Human duration from milliseconds: `duration(87*864e5)` → "2.9 months".
+
+### `relTime`
+
+```ts
+relTime(value: Date | string | number | null | undefined, opts?: Intl.RelativeTimeFormatOptions): string
+```
+
+Relative time vs now: `relTime(iso)` → "2 hours ago".
+
+### `date`
+
+```ts
+date(value: Date | string | number | null | undefined, opts?: Intl.DateTimeFormatOptions): string
+```
+
+A date/time: `date(iso)` → "Jul 17, 2026".
+
+
+## export
+
+```js
+import { … } from "@nemanjan00/qrp/export"
+```
+
+"Get this data out" — `toCSV` / `download` / `copy`. Zero-dep, pairs with
+table/collection: `download(toCSV(view.filtered(), columns), "data.csv")`.
+
+### `toCSV`
+
+```ts
+toCSV(rows: readonly any[], columns?: readonly ExportColumn[]): string
+```
+
+Rows → a CSV string (RFC-4180 quoting). Columns default to the first row's keys.
+
+### `download`
+
+```ts
+download(content: string | Blob, filename: string, type?: string): void
+```
+
+Trigger a browser download of `content` (string or Blob) as `filename`.
+
+### `copy`
+
+```ts
+copy(text: string): Promise<void>
+```
+
+Copy text to the clipboard; returns the clipboard promise.
+
+#### Supporting types
+
+```ts
+type ExportColumn =
+	| string
+	| { key: string; label?: string; value?: (row: any) => unknown;
+```
+
+
+## spark
+
+```js
+import { … } from "@nemanjan00/qrp/spark"
+```
+
+A charting *primitive*: data in, a reactive `el()` `<svg>` out (line / area /
+bar). No tooltips/legends/interaction — the sparkline/mini-chart 80%. Pass
+`() => series` for a live chart. Composes `scale`; enabled by SVG-aware `el`.
+
+### `spark`
+
+```ts
+spark(source: (() => readonly any[]) | readonly any[], opts?: SparkOptions): SVGElement
+```
+
+Data → a reactive `<svg>` mini-chart. Pass `() => data` to make it live.
+
+#### Supporting types
+
+```ts
+interface SparkOptions {
+	kind?: "line" | "area" | "bar";
+	width?: number;
+	height?: number;
+	padding?: number;
+	/** key or accessor for x (default: array index). */
+	x?: string | ((d: any, i: number) => number);
+	/** key or accessor for y (default: the number itself, or `d.y`). */
+	y?: string | ((d: any, i: number) => number);
+	stroke?: string;
+	fill?: string;
+	strokeWidth?: number;
+	dots?: boolean;
+	axis?: boolean;
+	class?: string;
+}
+```
+
+
+## scale
+
+```js
+import { … } from "@nemanjan00/qrp/scale"
+```
+
+Micro scales for charts — `linear`, `ordinal`, `quantize`, `ticks`, and a
+colourblind-safe categorical `palette`. Pure, zero-dep; pairs with `spark`.
+
+### `linear`
+
+```ts
+linear(domain: readonly [number, number], range: readonly [number, number], opts?: { clamp?: boolean }): (x: number) => number
+```
+
+Map numeric domain [d0,d1] onto range [r0,r1]. `{ clamp }` bounds the output.
+
+### `ordinal`
+
+```ts
+ordinal<T>(range: readonly T[], domain?: readonly unknown[]): (value: unknown) => T
+```
+
+Assign values to a cycling range (series → colour), lazily by first-seen order.
+
+### `quantize`
+
+```ts
+quantize<T>(domain: readonly [number, number], range: readonly T[]): (x: number) => T
+```
+
+Bucket a numeric domain into `range.length` bands.
+
+### `ticks`
+
+```ts
+ticks(domain: readonly [number, number], count?: number): number[]
+```
+
+Evenly spaced tick values across [d0,d1] (count+1 points, ends included).
+
+### `palette`
+
+```ts
+palette: string[]
+```
+
+Okabe–Ito colourblind-safe categorical palette (8 hues).
+
+
+## timeseries
+
+```js
+import { … } from "@nemanjan00/qrp/timeseries"
+```
+
+Pure math over time-series points `{ x, y }` (x = ms, y = value) — `deltas`,
+`rate`, `rolling`, `bucket`, `downsample` (LTTB), plus `mean`/`sum`. Zero-dep;
+pairs with `spark`.
+
+### `deltas`
+
+```ts
+deltas(points: readonly Point[]): Point[]
+```
+
+Successive differences (length n-1).
+
+### `rate`
+
+```ts
+rate(points: readonly Point[]): Point[]
+```
+
+Per-second rate of change between samples (length n-1).
+
+### `rolling`
+
+```ts
+rolling(points: readonly Point[], window: number): Point[]
+```
+
+Trailing moving average over the last `window` points (same length).
+
+### `bucket`
+
+```ts
+bucket(points: readonly Point[], interval: number, agg?: (ys: number[]) => number): Point[]
+```
+
+Group into fixed `interval`-ms buckets, aggregating y (default mean).
+
+### `downsample`
+
+```ts
+downsample(points: readonly Point[], threshold: number): Point[]
+```
+
+Downsample to ~`threshold` points via Largest-Triangle-Three-Buckets.
+
+#### Supporting types
+
+```ts
+interface Point { x: number; y: number; }
+```
+
+
 ## events
 
 ```js
@@ -1297,6 +1615,15 @@ visible(): { visible: boolean }
 ```
 
 Reactive tab visibility: { visible }.
+
+### `poll`
+
+```ts
+poll(fn: () => void, ms: number, options?: { immediate?: boolean; whenHidden?: boolean }): { start: () => void
+```
+
+Call `fn` every `ms`, scope-aware: cleared on dispose, and paused while the tab
+is hidden (unless `whenHidden`). `immediate` runs it once up front.
 
 ### `watch`
 

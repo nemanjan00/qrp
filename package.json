@@ -1,6 +1,6 @@
 {
 	"name": "@nemanjan00/qrp",
-	"version": "0.8.0",
+	"version": "0.9.0",
 	"description": "A data-first, declarative, low-overhead framework for dashboards. Zero runtime dependencies, no build step required (works with any bundler — Vite/webpack/Rollup/esbuild — or none). The devDependencies below are only for tests, lint, and git hooks.",
 	"type": "module",
 	"license": "MIT",
@@ -51,6 +51,30 @@
 		"./proto": {
 			"types": "./proto/index.d.ts",
 			"default": "./dist/proto.js"
+		},
+		"./format": {
+			"types": "./format/index.d.ts",
+			"default": "./dist/format.js"
+		},
+		"./resource": {
+			"types": "./resource/index.d.ts",
+			"default": "./dist/resource.js"
+		},
+		"./export": {
+			"types": "./export/index.d.ts",
+			"default": "./dist/export.js"
+		},
+		"./spark": {
+			"types": "./spark/index.d.ts",
+			"default": "./dist/spark.js"
+		},
+		"./scale": {
+			"types": "./scale/index.d.ts",
+			"default": "./dist/scale.js"
+		},
+		"./timeseries": {
+			"types": "./timeseries/index.d.ts",
+			"default": "./dist/timeseries.js"
 		},
 		"./behaviors": {
 			"types": "./behaviors/index.d.ts",

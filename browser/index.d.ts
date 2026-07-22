@@ -36,6 +36,12 @@ export function online(): { online: boolean };
 /** Reactive tab visibility: { visible }. */
 export function visible(): { visible: boolean };
 
+/**
+ * Call `fn` every `ms`, scope-aware: cleared on dispose, and paused while the tab
+ * is hidden (unless `whenHidden`). `immediate` runs it once up front.
+ */
+export function poll(fn: () => void, ms: number, options?: { immediate?: boolean; whenHidden?: boolean }): { start: () => void; stop: () => void };
+
 /** Poll a getter; fire callback when its value changes. Returns stop(). */
 export function watch(getter: () => unknown, callback: (value: unknown) => void, interval?: number): () => void;
 

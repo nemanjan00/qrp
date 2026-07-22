@@ -27,7 +27,7 @@ let your bundler (Vite, webpack, Rollup, esbuild) resolve subpaths and tree-shak
 Same library either way; the build is your choice, not qrp's. Reactivity is a
 `Proxy`, the DOM is real, and the published core is **~4.7 KB min+gzip** — the
 number that lines up next to Solid (~7 KB) or React (~45 KB). The whole library,
-every module, is **~18.9 KB min+gzip**.
+every module, is **~22.3 KB min+gzip**.
 
 > The npm package ships a minified build (esbuild) — a flat per-module mirror in
 > `dist/`, so a browser pulls the small file — still no build step on *your* end. The readable source,
@@ -56,7 +56,7 @@ data, the DOM follows.
 
 ## 🛰️ Small enough to run on a microcontroller
 
-Because the whole library is ~18.9 KB min+gzip, a useful qrp app doesn't need a
+Because the whole library is ~22.3 KB min+gzip, a useful qrp app doesn't need a
 server or a CDN — it fits **in flash on an ESP32**. Not a static form, either: a
 **live dashboard** — telemetry streaming into reactive bindings, an LED you drive,
 a config form that rewrites itself with `when()`, and a WiFi-scan modal built from
@@ -374,9 +374,15 @@ unused exports tree-shake away.
 | `@nemanjan00/qrp/collection` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
 | `@nemanjan00/qrp/datagrid` | Headless data-grid state over `collection`: keyed selection (select-all/indeterminate), column visibility, page-size, windowed pager — no markup |
 | `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing, per-request `responseType` (json/text/binary), pluggable `fetch` |
+| `@nemanjan00/qrp/resource` | Reactive async data: `{ data, loading, error, reload }` over a fetcher thunk; `refreshOn` bus event for global refresh; `asyncView` → `when` branches |
+| `@nemanjan00/qrp/format` | Intl-backed pure formatters: `num`, `compact`, `pct`, `bytes`, `duration`, `relTime`, `date` (nullish → "") |
+| `@nemanjan00/qrp/spark` | Charting primitive: data → a reactive `<svg>` (line/area/bar). Not a chart library — the sparkline 80% |
+| `@nemanjan00/qrp/scale` | Micro scales `linear`/`ordinal`/`quantize`/`ticks` + a colourblind-safe categorical `palette` |
+| `@nemanjan00/qrp/timeseries` | Pure `{x,y}` math: `deltas`, `rate`, `rolling`, `bucket`, `downsample` (LTTB) |
+| `@nemanjan00/qrp/export` | `toCSV` / `download` / `copy` — get table/collection data out |
 | `@nemanjan00/qrp/events` | Global event bus on native `EventTarget`: `bus`, `emitter`, `request`/`respond`, `channel` |
 | `@nemanjan00/qrp/toasts` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
-| `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen` |
+| `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen`, `poll` (scope-aware interval, pauses when hidden) |
 | `@nemanjan00/qrp/behaviors/*` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
 | `@nemanjan00/qrp/utils/*` | Pure data helpers for dashboards: `memoize` (+ttl/invalidate), `lru`, `cache`, `paginate`, `limit` (concurrency/rate/timeout), `debounce`/`throttle`, `validate`, `loadScript` |
 | `@nemanjan00/qrp/proto` | Prototype-level enhancement (objects & `__proto__`, no classes): `findProto`, `wrapMethod`, `onceOnly`, `delegate` |

@@ -10,7 +10,13 @@ import { form, registerInput, inputs, field, parseKV } from "../forms/index.js";
 import { createHttp } from "../http/index.js";
 import { bus, emitter, fromEvent } from "../events/index.js";
 import { notify, createToasts } from "../toasts/index.js";
-import { persisted, viewport, media, seen } from "../browser/index.js";
+import { persisted, viewport, media, seen, poll } from "../browser/index.js";
+import { num, compact, relTime } from "../format/index.js";
+import { resource, asyncView } from "../resource/index.js";
+import { spark } from "../spark/index.js";
+import { linear, ordinal, palette } from "../scale/index.js";
+import { rate, downsample } from "../timeseries/index.js";
+import { toCSV } from "../export/index.js";
 import { portal } from "../behaviors/portal.js";
 import { trapFocus } from "../behaviors/trap-focus.js";
 import { disclosure } from "../behaviors/disclosure.js";
@@ -135,3 +141,26 @@ const vErrCount: number = vres.errors.length; const vVal: any = vres.value;
 
 // silence "unused" without changing meaning
 void [len, item, node, filled, token, fEl, fld, kv, count, pages, pending, sum, page, offErr, rp, rid, limitedP, deb, thr, vErrCount, vVal];
+
+// optional helper modules
+const _fnum: string = num(5);
+const _fcompact: string = compact(1000);
+const _frel: string = relTime(new Date());
+const _res = resource<number[]>(() => Promise.resolve([1]), { refreshOn: "refresh", initial: [] });
+const _rdata: number[] | null = _res.data;
+const _rloading: boolean = _res.loading;
+void _res.reload();
+const _av = asyncView(_res, { loading: () => "…", data: (rows) => rows.length, error: (e) => String(e) });
+void _av;
+const _chart: SVGElement = spark(() => [1, 2, 3], { kind: "area", y: (d: number) => d });
+void _chart;
+const _lin: number = linear([0, 1], [0, 10], { clamp: true })(0.5);
+const _col: string = ordinal(palette)("cpu");
+const _pts = [{ x: 0, y: 1 }, { x: 1, y: 3 }];
+const _rate = rate(_pts);
+const _ds = downsample(_pts, 1);
+void _rate; void _ds;
+const _csv: string = toCSV([{ a: 1 }], ["a", { key: "a", label: "A" }]);
+const _pl = poll(() => {}, 1000, { immediate: true, whenHidden: false });
+_pl.stop();
+void _fnum; void _fcompact; void _frel; void _rdata; void _rloading; void _lin; void _col; void _csv;

@@ -8,6 +8,32 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.9.0
+
+- **Six new optional helper modules** — separate opt-in subpaths, zero-dep,
+  pay-for-what-you-import. Grounded in what real dashboards rebuild by hand:
+  - **`format`** — Intl-backed pure formatters: `num`, `compact`, `pct`, `bytes`,
+    `duration`, `relTime`, `date`. Nullish/NaN → "" (safe inside a binding).
+  - **`resource`** — reactive async data (`{ data, loading, error, reload }`) over
+    a fetcher thunk; transport-agnostic (composes with `http` without coupling).
+    Optional `refreshOn` wires it to the event bus — `bus.emit("refresh")` reloads
+    every listening resource. `asyncView(res, {...})` maps state → `when` branches,
+    killing the loading/error/empty boilerplate.
+  - **`spark`** — a charting *primitive* (not a library): data → a reactive `el()`
+    `<svg>` (line/area/bar). No tooltips/legends — the sparkline 80%. Enabled by
+    0.8.0's SVG-aware `el`; composes `scale`.
+  - **`scale`** — micro scales (`linear`/`ordinal`/`quantize`/`ticks`) + a
+    colourblind-safe categorical `palette`.
+  - **`timeseries`** — pure `{x,y}` math: `deltas`, `rate`, `rolling`, `bucket`,
+    `downsample` (LTTB). Pairs with `spark`.
+  - **`export`** — `toCSV` / `download` / `copy`; pairs with table/collection.
+- **`browser` gains `poll(fn, ms)`** — scope-aware interval (cleared on dispose)
+  that pauses while the tab is hidden (composes `visible()`).
+- **Docs:** GETTING-STARTED now leads the no-build path with a vendored `dist/` +
+  import map (the common self-hosted usage), CDN reframed as demo-only.
+- Whole library ~22.3 KB min+gzip — but you only pay for what you import; core is
+  unchanged at ~4.7 KB.
+
 ## 0.8.0
 
 - **`el()` is SVG-namespace-aware.** SVG tags (`svg`, `path`, `circle`, `rect`,
