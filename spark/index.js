@@ -40,6 +40,16 @@ export const spark = (source, opts = {}) => {
 	const getY = accessor(opts.y, (d) => (typeof d === "number" ? d : d.y));
 	const read = typeof source === "function" ? source : () => source;
 
+	// A scale over `values` onto `range`, but a degenerate extent (a single point,
+	// or a perfectly flat series) maps to the MIDDLE of the range instead of the
+	// low edge — so one snapshot renders centered, not pinned to the corner.
+	const axisScale = (values, range) => {
+		const lo = Math.min(...values);
+		const hi = Math.max(...values);
+
+		return lo === hi ? () => (range[0] + range[1]) / 2 : linear([lo, hi], range);
+	};
+
 	// project data → [ [screenX, screenY], … ] under the current extents
 	const project = () => {
 		const data = read() || [];
@@ -48,8 +58,8 @@ export const spark = (source, opts = {}) => {
 
 		const xs = data.map((d, i) => getX(d, i));
 		const ys = data.map((d, i) => getY(d, i));
-		const xScale = linear([Math.min(...xs), Math.max(...xs)], [padding, width - padding]);
-		const yScale = linear([Math.min(...ys), Math.max(...ys)], [height - padding, padding]); // svg y grows down
+		const xScale = axisScale(xs, [padding, width - padding]);
+		const yScale = axisScale(ys, [height - padding, padding]); // svg y grows down
 
 		return data.map((_d, i) => [xScale(xs[i]), yScale(ys[i])]);
 	};

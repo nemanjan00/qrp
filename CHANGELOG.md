@@ -8,6 +8,17 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.9.1
+
+- **`spark`: single-point / flat series now render centered** instead of pinned
+  to the bottom-left corner. A degenerate extent (one snapshot, or a perfectly
+  flat line) maps to the middle of the axis, so a chart looks tidy before it has
+  history. (`scale.linear`'s zero-span behavior is unchanged; the fix is in
+  spark's projection.)
+- **`spark` docs:** clarified that the mark uses `currentColor` (inherits text
+  colour, theme-friendly) and that `axis: true` draws only a baseline rule (no
+  tick labels — a primitive); for labels, add your own `<text>`/caption.
+
 ## 0.9.0
 
 - **Six new optional helper modules** — separate opt-in subpaths, zero-dep,
