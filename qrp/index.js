@@ -926,9 +926,13 @@ const setupList = (parent, marker) => {
 	// Build a row DETACHED (its effects belong to the row's own scope so they
 	// survive reconciles). The item is wrapped reactively here, once — so cell
 	// bindings track it without the reconcile loop touching every item's proxy.
-	// `proxied` records whether state() actually wrapped it: frozen objects,
-	// primitives, and exotic instances come back as-is, and such a row can't
-	// update through bindings — it must be rebuilt when its item is replaced.
+	// `proxied` means "can this row be rebound": true when state() wrapped the
+	// item AND when the item was already a proxy (state() returns those as-is —
+	// the idiomatic `() => store.rows.filter(...)` source reads elements through
+	// the proxy, so they arrive pre-wrapped). Only items state() can't make
+	// reactive at all — frozen objects, primitives, exotic instances — come back
+	// as their raw selves; such a row can't update through bindings and must be
+	// rebuilt when its item is replaced.
 	const buildRow = (item, index) => {
 		let element;
 		let rowScope;
@@ -940,7 +944,7 @@ const setupList = (parent, marker) => {
 			});
 		});
 
-		return { element, scope: rowScope, item: reactiveItem, rawItem: item, proxied: reactiveItem !== item };
+		return { element, scope: rowScope, item: reactiveItem, rawItem: item, proxied: reactiveItem !== item || raw(item) !== item };
 	};
 
 	effect(() => {

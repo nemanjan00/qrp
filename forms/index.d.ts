@@ -18,10 +18,15 @@
  * and debounce the write-back to the real store — one local state, one effect,
  * one debounce:
  * @example
- * const draft = state({ ...raw(store.loan) });        // form edits land here
+ * const draft = state(structuredClone(raw(store.loan))); // form edits land here
  * const commit = debounce(() => Object.assign(store.loan, raw(draft)), 250);
- * effect(() => { JSON.stringify(draft); commit(); }); // any draft change schedules a commit
+ * effect(() => { JSON.stringify(draft); commit(); });    // any draft change schedules a commit
  * form({ settings: draft, fields });
+ *
+ * The `structuredClone` matters for nested settings: a shallow `{ ...raw(x) }`
+ * copy would share the nested raw objects with the store, so editing them in the
+ * draft mutates the store *behind its proxy* — bypassing reactivity — and the
+ * commit's assign of identical references then triggers nothing.
  */
 /** An input factory: builds a two-way-bound control for settings[key]. */
 export type InputFactory = (

@@ -20,7 +20,9 @@ Fixes from a second production port's field report (a loan dashboard).
   row kept showing stale data and the rebind merge then **threw**
   (`Cannot assign to read only property`) on frozen items. Such rows are now
   rebuilt with fresh bindings; normal rows keep the in-place rebind + element
-  reuse. Related: a frozen *nested* object inside a reactive row is now replaced
+  reuse — including items that arrive *already proxied* (the idiomatic
+  `() => store.rows.filter(...)` source reads elements through the proxy).
+  Related: a frozen *nested* object inside a reactive row is now replaced
   wholesale instead of merged into (which threw).
 - **Unhandled effect errors `console.error` by default.** An effect that throws
   is still torn down and the error still propagates — but if no `onEffectError`

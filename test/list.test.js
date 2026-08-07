@@ -296,6 +296,35 @@ test("rebind removes keys the fresh object dropped (no stale leftovers)", () => 
 	assert.equal(view.querySelector("li").textContent, "a,id");
 });
 
+test("items that arrive as PROXIES (filtered-thunk source) still rebind — element reused", () => {
+	// `() => store.rows.filter(...)` reads elements through the proxy, so the
+	// list sees pre-wrapped items. A wholesale replacement must take the rebind
+	// path (element reuse, row-local UI state survives), not the rebuild path.
+	const store = state({ rows: [
+		{ id: 1, name: "Ada", active: true },
+		{ id: 2, name: "Bob", active: false },
+	] });
+
+	const view = el("ul", {}, list(
+		() => store.rows.filter((r) => r.active),
+		(r) => r.id,
+		(r) => el("li", {}, () => r.name)
+	));
+
+	const firstLi = view.querySelector("li");
+	assert.equal(firstLi.textContent, "Ada");
+	assert.equal(view.querySelectorAll("li").length, 1);
+
+	// refetch: brand-new raw objects, same keys
+	store.rows = [
+		{ id: 1, name: "Ada Lovelace", active: true },
+		{ id: 2, name: "Bob", active: false },
+	];
+
+	assert.equal(view.querySelector("li").textContent, "Ada Lovelace", "content rebound");
+	assert.equal(view.querySelector("li"), firstLi, "element reused — rebind, not rebuild");
+});
+
 test("FROZEN rows under a surviving key are rebuilt, not merged (freeze = opt out of reactivity)", () => {
 	const store = state({ principal: 1000 });
 	// a derive()-style wholesale rebuild whose rows are frozen — the documented
