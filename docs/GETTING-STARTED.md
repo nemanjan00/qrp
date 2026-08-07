@@ -391,7 +391,11 @@ dashboard needs them:
 - **[Tables](./API.md#table)** — `table()` = `collection` (sort/filter/paginate) +
   `list` (keyed reuse), configured by columns.
 - **[HTML templates](./API.md#html--html-templates)** — write markup as HTML
-  strings with `` html`` `` if you prefer that to `el()`.
+  strings with `` html`` ``. Not just a preference: past about **three levels of
+  static nesting**, `el()` trees turn into hard-to-balance paren soup — the
+  intended style is to *mix*, `` html`` `` for dense static scaffolds with
+  `el()`/thunks for the live bits. Don't hold onto one idiom for consistency's
+  sake.
 - **[HTTP](./API.md#http)** — a `fetch` client with a reactive in-flight loader
   and centralized errors.
 - **[Routing](./API.md#qrp--core)** — `router()` with `:param` patterns over the

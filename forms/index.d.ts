@@ -11,6 +11,17 @@
  *   return input;
  * });
  * form({ settings, fields: { CALL: { name: "Callsign", type: "callsign" } } });
+ *
+ * **Recipe — debounced commit.** Inputs bind two-way to their `settings` object
+ * on every keystroke. When that's too eager (a form driving an expensive
+ * `derive`, or writes going to storage), point the form at a *local* draft state
+ * and debounce the write-back to the real store — one local state, one effect,
+ * one debounce:
+ * @example
+ * const draft = state({ ...raw(store.loan) });        // form edits land here
+ * const commit = debounce(() => Object.assign(store.loan, raw(draft)), 250);
+ * effect(() => { JSON.stringify(draft); commit(); }); // any draft change schedules a commit
+ * form({ settings: draft, fields });
  */
 /** An input factory: builds a two-way-bound control for settings[key]. */
 export type InputFactory = (

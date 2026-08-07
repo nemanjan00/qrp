@@ -6,8 +6,10 @@ import { onDispose } from "../qrp/index.js";
 
 /**
  * Call `onDismiss` when the user presses Escape or clicks outside `node`.
- * The outside-click listener is attached on the next tick so the same click
- * that opened the element doesn't immediately dismiss it.
+ * Guarantee: the outside-click listener is attached on the next tick, so the
+ * same interaction that opened the element (a "…" menu click, an "edit" button
+ * spawning an inline editor) never counts as an outside click and
+ * self-dismisses it — no stopPropagation needed at the opener.
  * The teardown also registers with the current scope (`scope`/`scoped`/`mount`),
  * so disposing the owner detaches the listeners — no need to track the undo by
  * hand. The returned undo is idempotent (safe to also call manually).

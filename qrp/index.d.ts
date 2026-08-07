@@ -124,8 +124,9 @@ export interface EffectErrorContext {
 /**
  * Register a handler called when any effect (a render binding, a derive, a user
  * effect) throws — before the error propagates. The central place to wire crash
- * reporting; without it a throwing binding is only observable at the write site.
- * Returns an unsubscribe function.
+ * reporting. With no handler registered, qrp `console.error`s the failure by
+ * default (so a mount-time throw is never a silent blank page); registering any
+ * handler takes over and silences that default. Returns an unsubscribe function.
  * @example
  * onEffectError((error, { phase, name }) => Sentry.captureException(error, { tags: { phase, name } }));
  */
@@ -238,6 +239,13 @@ export interface ListMarker<T> extends QrpRenderable {
  * items can't share one element) and `console.error` by default — tune with
  * `options.onDuplicateKey`. If `render` throws, the error propagates out of the
  * reconcile (like any effect that throws).
+ *
+ * **Replacement items under a surviving key** (a refetch, or a `derive()` that
+ * rebuilds the array wholesale) are handled: a normal row is *rebound* in place —
+ * its bindings update, the element is reused — and a row whose item couldn't be
+ * made reactive (frozen — the opt-out idiom — a primitive, or an exotic instance)
+ * is *rebuilt* with fresh bindings instead. Bind cells to the item the render
+ * callback receives; it stays live across rebuilds of the source array.
  * @example
  * el("tbody", {}, list(
  *   () => store.rows,          // thunk → current array

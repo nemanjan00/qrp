@@ -25,15 +25,29 @@ branded internals) — which is what makes it safe to stash them in state.
 `Object.freeze(x)` is the documented opt-out from reactivity, and it makes reads
 free.
 
+**Freezing opts out of reactivity *inside `list()` rows* too.** A frozen item
+can't be wrapped, so bindings in its row (`() => r.payment`) have nothing to
+track — they render once and never update. `list()` handles the refetch case
+for you: when a *replacement* item arrives under a surviving key (a rebuilt
+array from a `derive()`, a refetch), a frozen row is **rebuilt** — fresh element,
+fresh bindings — where a normal row is rebound in place (bindings update, element
+identity preserved). So both stay correct; the difference is that frozen rows
+lose element reuse. Freeze rows you'll only ever replace wholesale; leave rows
+you bind to unfrozen. (Rows fed from a `derive()` that rebuilds the array on
+every change are the *normal* case, not a special one — bind to the item the
+render callback receives and the rebind keeps cells live.)
+
 **Writes are synchronous, with no batching.** An assignment runs its dependent
 effects immediately — that's why updates are cheap and why qrp is *not*
 interruptible the way a scheduler-based renderer is. For a high-frequency stream,
 coalesce upstream of `state` (see [`debounce`/`throttle`](./API.md#utils)).
 
 **An effect that throws is torn down** (its subscriptions removed) and the error
-propagates. Register [`onEffectError`](./API.md#qrp--core) to observe them
-centrally (Sentry, etc.) — otherwise a throwing binding is only visible at the
-write site.
+propagates. With no handler registered, qrp `console.error`s the failure by
+default — so a component that dies during mount is never a *silent* blank region;
+the console names the effect and its phase. Register
+[`onEffectError`](./API.md#qrp--core) to route errors to your own reporting
+(Sentry, etc.) — any registered handler takes over and silences the default.
 
 **An effect that synchronously writes state it (transitively) reads re-enters
 itself forever.** The classic version is two effects that write *each other's*
@@ -138,7 +152,10 @@ outlet.append(el("div", {}, header, when(() => empty, …, () => table)));
 dynamic/branchy nodes (reactive children, event handlers); a deeply nested
 *static* cell (icon + title + subtitle) becomes hard-to-balance `el(...)` paren
 soup. For dense static structure, [`` html`` ``](./API.md#html--html-templates) reads better —
-mix the two: `html` for the scaffold, `el()`/thunks for the live bits.
+mix the two: `html` for the scaffold, `el()`/thunks for the live bits. Field
+reports agree on where the line sits: around **three levels of static nesting**,
+`el()` trees stop being scannable. "One idiom for consistency" is the wrong
+trade — mixing is the intended style, not a compromise.
 
 ## Behaviors
 

@@ -8,6 +8,34 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.9.2
+
+Fixes from a second production port's field report (a loan dashboard).
+
+- **`list()`: non-proxyable rows are rebuilt on replacement, not silently
+  frozen.** A row whose item `state()` can't wrap (a **frozen** object — the
+  documented reactivity opt-out — a primitive, or an exotic instance) has
+  bindings that can never update; when a replacement item arrived under a
+  surviving key (a refetch, or a `derive()` rebuilding the array wholesale), the
+  row kept showing stale data and the rebind merge then **threw**
+  (`Cannot assign to read only property`) on frozen items. Such rows are now
+  rebuilt with fresh bindings; normal rows keep the in-place rebind + element
+  reuse. Related: a frozen *nested* object inside a reactive row is now replaced
+  wholesale instead of merged into (which threw).
+- **Unhandled effect errors `console.error` by default.** An effect that throws
+  is still torn down and the error still propagates — but if no `onEffectError`
+  handler is registered, qrp now also reports it to the console (effect name +
+  phase). A component dying during `mount()` was previously invisible when the
+  caller swallowed the propagated throw: a blank page with an empty console.
+  Registering any `onEffectError` handler takes over and silences the default.
+- **Docs, from the same field report:** SHARP-EDGES entry on freeze × `list()`
+  rows (and that `derive()`-rebuilt arrays are the normal, supported case);
+  `dismissable` now documents the same-click-that-opened guarantee (next-tick
+  listener — no `stopPropagation` needed at the opener); a debounced-commit
+  recipe in `forms`; a multi-series shared-scale chart recipe in `spark`; a
+  stronger "mix `` html`` `` and `el()` past ~3 levels of static nesting" nudge
+  in the tutorial.
+
 ## 0.9.1
 
 - **`spark`: single-point / flat series now render centered** instead of pinned

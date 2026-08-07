@@ -160,7 +160,19 @@ test("state() on a frozen object returns it as-is (no proxy, no throw)", () => {
 
 // --- error inside an effect: boundary behavior -----------------------------
 
+// With no onEffectError handler registered, qrp console.errors by default —
+// expected in the intentional-throw tests below, so capture it.
+const muteConsoleError = () => {
+	const original = console.error;
+	const seen = [];
+
+	console.error = (...parts) => seen.push(parts);
+
+	return { seen, restore: () => { console.error = original; } };
+};
+
 test("a throw inside an effect propagates and does not corrupt the stack", () => {
+	const muted = muteConsoleError();
 	const s = state({ n: 0 });
 
 	// An effect that throws on first run: the error propagates to the caller
@@ -177,9 +189,14 @@ test("a throw inside an effect propagates and does not corrupt the stack", () =>
 
 	s.n = 5;
 	assert.equal(ok, 6);
+
+	assert.equal(muted.seen.length, 1, "the unhandled effect error was console.error'd by default");
+	assert.match(String(muted.seen[0][0]), /onEffectError/, "the default report points at onEffectError");
+	muted.restore();
 });
 
 test("a throw on RE-RUN propagates on the triggering write", () => {
+	const muted = muteConsoleError();
 	const s = state({ n: 0 });
 
 	effect(() => {
@@ -195,6 +212,8 @@ test("a throw on RE-RUN propagates on the triggering write", () => {
 	let seen;
 	effect(() => { seen = s.n; });
 	assert.equal(seen, 2);
+
+	muted.restore();
 });
 
 // --- onEffectError (central crash reporting) --------------------------------
@@ -212,8 +231,23 @@ test("onEffectError fires before the error propagates, then unsubscribes", () =>
 	off2();
 
 	off();
+
+	const muted = muteConsoleError();
 	assert.throws(() => effect(() => { throw new Error("again"); }), /again/);
 	assert.deepEqual(seen, ["kaboom"], "no longer called after unsubscribe");
+	assert.equal(muted.seen.length, 1, "with all handlers gone, the default console.error takes over");
+	muted.restore();
+});
+
+test("a registered onEffectError handler silences the default console.error", () => {
+	const muted = muteConsoleError();
+	const off = onEffectError(() => {});
+
+	assert.throws(() => effect(() => { throw new Error("handled"); }), /handled/);
+	assert.equal(muted.seen.length, 0, "no default console.error while a handler is registered");
+
+	off();
+	muted.restore();
 });
 
 test("onEffectError also catches throws on re-run", () => {

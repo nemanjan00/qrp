@@ -119,8 +119,9 @@ onEffectError(handler: (error: unknown, context: EffectErrorContext) => void): (
 
 Register a handler called when any effect (a render binding, a derive, a user
 effect) throws — before the error propagates. The central place to wire crash
-reporting; without it a throwing binding is only observable at the write site.
-Returns an unsubscribe function.
+reporting. With no handler registered, qrp `console.error`s the failure by
+default (so a mount-time throw is never a silent blank page); registering any
+handler takes over and silences that default. Returns an unsubscribe function.
 
 ```js
 onEffectError((error, { phase, name }) => Sentry.captureException(error, { tags: { phase, name } }));
@@ -265,6 +266,13 @@ be callable rather than a property.
 items can't share one element) and `console.error` by default — tune with
 `options.onDuplicateKey`. If `render` throws, the error propagates out of the
 reconcile (like any effect that throws).
+
+**Replacement items under a surviving key** (a refetch, or a `derive()` that
+rebuilds the array wholesale) are handled: a normal row is *rebound* in place —
+its bindings update, the element is reused — and a row whose item couldn't be
+made reactive (frozen — the opt-out idiom — a primitive, or an exotic instance)
+is *rebuilt* with fresh bindings instead. Bind cells to the item the render
+callback receives; it stays live across rebuilds of the source array.
 
 ```js
 el("tbody", {}, list(
@@ -1266,6 +1274,12 @@ low opacity) — no tick labels; this is a primitive, not an axis component. For
 labelled ticks, add your own `<text>` (see `scale.ticks`) or a caption next to
 the chart.
 
+**Recipe — multiple series on a shared scale** (actual-vs-target,
+before-vs-after). `spark()` is deliberately single-series; the multi-line 80%
+chart is a short composition in the same idiom — a static `el()` `<svg>`
+skeleton, one reactive `points` binding per series over a *shared* y-domain,
+and `list()` for grid lines keyed by tick value:
+
 ### `spark`
 
 ```ts
@@ -1712,6 +1726,11 @@ dismissable(node: Node, onDismiss: (event: Event) => void, options?: Dismissable
 
 Call onDismiss on Escape or outside pointerdown; returns an idempotent
 dispose(). Also auto-registers teardown with the current scope.
+
+**Guarantee:** the outside-pointerdown listener attaches on the *next tick*,
+so the same interaction that opened the element (the click on a "…" menu, an
+"edit" button spawning an inline editor) never counts as an outside click and
+self-dismisses it. Rely on this — no `stopPropagation` needed at the opener.
 
 ### `trapFocus`
 

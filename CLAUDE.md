@@ -68,8 +68,11 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`,
   `onEffectError` for central crash reporting — `phase: "loop"` when the
   runaway-effect guard tears down an effect that writes state it reads; tune with
-  `effect(fn, { loopLimit })`), DOM (`el`, `reactive`, `bind`,
-  `clear`), keyed lists (`list` — element reuse + `itemFor` delegation),
+  `effect(fn, { loopLimit })`; with NO handler registered the failure is
+  `console.error`'d by default — no silent blank pages), DOM (`el`, `reactive`, `bind`,
+  `clear`), keyed lists (`list` — element reuse + `itemFor` delegation; a
+  replacement item under a surviving key is rebound in place, or the row is
+  REBUILT when the item isn't proxyable — frozen/primitive/exotic),
   conditional subtrees (`when` — swaps branch + disposes old scope), components
   (`mount`/`scope`/`onDispose`), routing
   (`router`/`navigate`/`compilePath`, reactive `currentRoute`). `state()` skips
@@ -169,7 +172,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   copy-the-dir. The npm package ships `dist/` (minified) + the hand-written
   `.d.ts` — **not** the raw source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so
   the reference travels with the package: a coding agent reads the API straight
-  out of `node_modules`). Core is **~4.6 KB min+gzip**, whole library ~18.7 KB.
+  out of `node_modules`). Core is **~4.8 KB min+gzip**, whole library ~22.5 KB.
   `dist/` is gitignored (rebuilt on pack/publish). The consumer still runs zero
   build. (No code-splitting: the opaque `chunk-*.js` files it produced made
   self-hosting on a plain static server confusing — the user rejected chunking.)

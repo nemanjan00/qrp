@@ -278,8 +278,10 @@ const errorHandlers = new Set();
 /**
  * Register a handler called whenever an effect (a render binding, a derive, a
  * user effect) throws — before the error propagates. This is the central place
- * to wire crash reporting; without it a throwing binding is only observable at
- * the write site. Returns an unsubscribe function. The handler gets the error
+ * to wire crash reporting. With no handler registered, qrp console.errors the
+ * failure by default (a mount-time throw must never be a silent blank page);
+ * registering any handler takes over and silences that default.
+ * Returns an unsubscribe function. The handler gets the error
  * and a context: `{ phase }` — "create" (first run), "update" (a reactive
  * re-run), or "loop" (the runaway guard tripped and the effect was stopped) —
  * plus `name` if the effect was created with `effect(fn, { name })`.
@@ -293,6 +295,18 @@ export const onEffectError = (handler) => {
 };
 
 const reportEffectError = (error, context) => {
+	// No reporter registered: console.error by default. The error still
+	// propagates to the write site, but during initial mount that throw can be
+	// swallowed by whatever called mount() (a promise chain, an event handler
+	// with a catch) — and a silently blank page is the worst failure mode a
+	// no-build library can have. Registering any onEffectError handler takes
+	// over completely and silences this default.
+	if(errorHandlers.size === 0) {
+		console.error(`qrp: effect${context.name ? ` "${context.name}"` : ""} threw (phase: ${context.phase}). Register onEffectError() to route this to your own reporting.`, error);
+
+		return;
+	}
+
 	errorHandlers.forEach(handler => {
 		try {
 			handler(error, context);
@@ -874,7 +888,9 @@ const reconcileItem = (targetProxy, source, depth) => {
 		const sv = source[key];
 		const tv = targetRaw[key];
 
-		if(depth > 0 && isPlainObject(sv) && isPlainObject(tv)) {
+		// A frozen nested target can't be merged into (writes throw) — fall
+		// through to reference assignment on the parent, replacing it wholesale.
+		if(depth > 0 && isPlainObject(sv) && isPlainObject(tv) && !Object.isFrozen(tv)) {
 			reconcileItem(targetProxy[key], sv, depth - 1);
 		} else if(!Object.is(tv, sv)) {
 			targetProxy[key] = sv;
@@ -906,6 +922,26 @@ const setupList = (parent, marker) => {
 
 		anchor.remove();
 	});
+
+	// Build a row DETACHED (its effects belong to the row's own scope so they
+	// survive reconciles). The item is wrapped reactively here, once — so cell
+	// bindings track it without the reconcile loop touching every item's proxy.
+	// `proxied` records whether state() actually wrapped it: frozen objects,
+	// primitives, and exotic instances come back as-is, and such a row can't
+	// update through bindings — it must be rebuilt when its item is replaced.
+	const buildRow = (item, index) => {
+		let element;
+		let rowScope;
+		const reactiveItem = state(item);
+
+		untracked(() => {
+			rowScope = scope(() => {
+				element = toNodes(marker.render(reactiveItem, index))[0];
+			});
+		});
+
+		return { element, scope: rowScope, item: reactiveItem, rawItem: item, proxied: reactiveItem !== item };
+	};
 
 	effect(() => {
 		// Track that the array changed (identity/length), then iterate the RAW
@@ -942,30 +978,28 @@ const setupList = (parent, marker) => {
 			let entry = cache.get(key) || next.get(key);
 
 			if(!entry) {
-				// New row: build DETACHED (its effects belong to the row's own
-				// scope so they survive reconciles). Wrap the item reactively
-				// here, once — so cell bindings track it, without the reconcile
-				// loop touching every item's proxy.
-				let element;
-				let rowScope;
-				const reactiveItem = state(item);
-
-				untracked(() => {
-					rowScope = scope(() => {
-						element = toNodes(marker.render(reactiveItem, index))[0];
-					});
-				});
-
-				entry = { element, scope: rowScope, item: reactiveItem, rawItem: item };
+				entry = buildRow(item, index);
 			} else if(entry.rawItem !== item) {
-				// Surviving key, but a FRESH object (e.g. a refetch): rebind the
-				// row's reactive item so its cells show the new data instead of
-				// the object captured when the row was built. A bounded recursive
-				// merge preserves nested proxy identity and only triggers changed
-				// leaves; dropped keys are removed. Same-identity (mutated-in-place)
-				// rows already updated through their own bindings.
-				untracked(() => reconcileItem(entry.item, item, REBIND_DEPTH));
-				entry.rawItem = item;
+				if(entry.proxied) {
+					// Surviving key, but a FRESH object (e.g. a refetch): rebind the
+					// row's reactive item so its cells show the new data instead of
+					// the object captured when the row was built. A bounded recursive
+					// merge preserves nested proxy identity and only triggers changed
+					// leaves; dropped keys are removed. Same-identity (mutated-in-place)
+					// rows already updated through their own bindings.
+					untracked(() => reconcileItem(entry.item, item, REBIND_DEPTH));
+					entry.rawItem = item;
+				} else {
+					// The row's item was never reactive (frozen — the documented
+					// opt-out — or a primitive/exotic instance): its bindings can't
+					// update and merging would throw on a frozen target, so rebuild
+					// the row. Dropping the key from `cache` makes the reorder pass
+					// treat the fresh element as new (the old one is gone).
+					entry.scope.dispose();
+					entry.element.remove();
+					cache.delete(key);
+					entry = buildRow(item, index);
+				}
 			}
 
 			next.set(key, entry);

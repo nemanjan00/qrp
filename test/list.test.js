@@ -168,11 +168,20 @@ test("onDuplicateKey: 'warn' quiets the dup-key report to console.warn", () => {
 test("onDuplicateKey: 'throw' makes a duplicate key fatal", () => {
 	const store = state({ items: [{ id: 1 }, { id: 1 }] });
 
-	// the throw propagates out of the reconcile effect on first render
-	assert.throws(
-		() => el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, String(i.id)), { onDuplicateKey: "throw" })),
-		/duplicate key/,
-	);
+	// with no onEffectError handler, the throwing effect also console.errors by
+	// default — expected here, so capture it
+	const realError = console.error;
+	console.error = () => {};
+
+	try {
+		// the throw propagates out of the reconcile effect on first render
+		assert.throws(
+			() => el("ul", {}, list(() => store.items, (i) => i.id, (i) => el("li", {}, String(i.id)), { onDuplicateKey: "throw" })),
+			/duplicate key/,
+		);
+	} finally {
+		console.error = realError;
+	}
 });
 
 test("list over primitive items does not throw", () => {
@@ -285,6 +294,51 @@ test("rebind removes keys the fresh object dropped (no stale leftovers)", () => 
 	assert.equal(view.querySelector("li").textContent, "a,b,id");
 	store.rows = [{ id: 1, a: "1" }];   // b dropped
 	assert.equal(view.querySelector("li").textContent, "a,id");
+});
+
+test("FROZEN rows under a surviving key are rebuilt, not merged (freeze = opt out of reactivity)", () => {
+	const store = state({ principal: 1000 });
+	// a derive()-style wholesale rebuild whose rows are frozen — the documented
+	// "freeze to opt out" escape hatch. Bindings can't update such a row, so a
+	// replacement under the same key must rebuild the element.
+	const rows = () => [1, 2].map((i) => Object.freeze({ id: i, payment: store.principal / 10 + i }));
+	const holder = state({ rows: rows() });
+
+	const view = el("ul", {}, list(() => holder.rows, (r) => r.id, (r) => el("li", {}, () => String(r.payment))));
+	const firstLi = view.querySelector("li");
+
+	assert.equal(firstLi.textContent, "101");
+
+	store.principal = 2000;
+	holder.rows = rows();
+
+	assert.equal(view.querySelectorAll("li")[0].textContent, "201", "fresh frozen row shows fresh data");
+	assert.equal(view.querySelectorAll("li")[1].textContent, "202");
+	assert.notEqual(view.querySelector("li"), firstLi, "the row was rebuilt (frozen rows can't rebind)");
+});
+
+test("frozen rows keep their order through a rebuild-in-place refetch", () => {
+	const make = (n) => [1, 2, 3].map((i) => Object.freeze({ id: i, v: n * 10 + i }));
+	const store = state({ rows: make(1) });
+
+	const view = el("ul", {}, list(() => store.rows, (r) => r.id, (r) => el("li", {}, () => String(r.v))));
+
+	assert.deepEqual([...view.querySelectorAll("li")].map((li) => li.textContent), ["11", "12", "13"]);
+
+	store.rows = make(2);
+	assert.deepEqual([...view.querySelectorAll("li")].map((li) => li.textContent), ["21", "22", "23"]);
+});
+
+test("a frozen NESTED object inside a reactive row is replaced wholesale, not merged into", () => {
+	const store = state({ rows: [{ id: 1, meta: Object.freeze({ status: "active" }) }] });
+
+	const view = el("ul", {}, list(() => store.rows, (r) => r.id, (r) => el("li", {}, () => r.meta.status)));
+	assert.equal(view.querySelector("li").textContent, "active");
+
+	assert.doesNotThrow(() => {
+		store.rows = [{ id: 1, meta: Object.freeze({ status: "idle" }) }];
+	});
+	assert.equal(view.querySelector("li").textContent, "idle");
 });
 
 test("rebind terminates on cyclic objects (depth bound, no stack overflow)", () => {
