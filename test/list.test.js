@@ -82,6 +82,22 @@ test("list adds new keys and removes gone keys, keeping survivors", () => {
 	assert.equal(after[0], originalB); // survivor reused
 });
 
+test("list reacts to IN-PLACE array mutation (push/splice/pop), reusing survivors", () => {
+	const { store, rows } = render();
+	const [liA, liB] = rows();
+
+	store.items.push({ id: 4, n: "d" });
+	assert.deepEqual(rows().map((li) => li.textContent), ["a", "b", "c", "d"]);
+
+	store.items.splice(0, 1);
+	assert.deepEqual(rows().map((li) => li.textContent), ["b", "c", "d"]);
+	assert.equal(rows()[0], liB);          // survivor reused, not rebuilt
+	assert.equal(liA.isConnected, false);  // removed row is gone
+
+	store.items.pop();
+	assert.deepEqual(rows().map((li) => li.textContent), ["b", "c"]);
+});
+
 test("a surviving row self-updates in place (element identity stable)", () => {
 	const { store, rows } = render();
 	const li = rows()[0];

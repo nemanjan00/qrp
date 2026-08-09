@@ -93,6 +93,22 @@ table({ rows: store.rows })         // ✗ frozen at the value it had then
 If something "won't update," this is the first thing to check: did you pass a
 value where a `() =>` thunk was meant?
 
+**`...arr.map()` is the most convincing version of that mistake.** It *reads*
+reactive state, so it looks like it should track — but the spread runs at the
+call site, before `el()` is invoked, so `el` only ever sees a fixed list of
+finished nodes:
+
+```js
+el("select", {}, ...app.targets.map((t) => el("option", {}, t)));            // ✗ once
+el("select", {}, list(() => app.targets, (t) => t, (t) => el("option", {}, t)));  // ✓
+```
+
+**If the array can change after first render, it's `list()`.** (A *function*
+child — `() => app.targets.map(…)` — does update, but rebuilds the whole subtree
+on every change: no element reuse, focus and scroll lost. Correct for a few
+static-ish nodes, wrong for rows.) See the
+[reactivity cheatsheet](./GETTING-STARTED.md#7-the-reactivity-cheatsheet).
+
 ## DOM & rendering
 
 **A DOM node lives in exactly one place.** Appending "the same" node in two spots

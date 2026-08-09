@@ -233,7 +233,13 @@ export interface ListMarker<T> extends QrpRenderable {
  * array that's `() => store.rows`; when the data comes from a `collection`,
  * `items()` is a method, so it's `() => view.items()`. Both are the same
  * contract (a function returning an array); `collection.items` just happens to
- * be callable rather than a property.
+ * be callable rather than a property. Both **replacing** the array
+ * (`store.rows = next`) and **mutating it in place** (`push`/`splice`/`pop`)
+ * re-run the list.
+ *
+ * `list()` is the reactive-array primitive: a spread of `.map()`
+ * (`el("ul", {}, ...store.rows.map(Row))`) renders **once** — the spread happens
+ * before `el()` is called, so there is no function for qrp to re-run.
  *
  * `keyFn` must return a **unique** key per item. Duplicate keys drop the row (two
  * items can't share one element) and `console.error` by default — tune with

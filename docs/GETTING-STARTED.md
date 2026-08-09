@@ -10,9 +10,10 @@ about ten minutes and assumes only that you know JavaScript and the DOM. There i
 - [4. Derived values](#4-derived-values)
 - [5. Conditional UI with `when`](#5-conditional-ui-with-when)
 - [6. Keyed lists with `list`](#6-keyed-lists-with-list)
-- [7. A small dashboard, end to end](#7-a-small-dashboard-end-to-end)
-- [8. Reusable components (the factory pattern)](#8-reusable-components-the-factory-pattern)
-- [9. Where to go next](#9-where-to-go-next)
+- [7. The reactivity cheatsheet](#7-the-reactivity-cheatsheet)
+- [8. A small dashboard, end to end](#8-a-small-dashboard-end-to-end)
+- [9. Reusable components (the factory pattern)](#9-reusable-components-the-factory-pattern)
+- [10. Where to go next](#10-where-to-go-next)
 
 ---
 
@@ -244,7 +245,81 @@ Three things to remember:
 
 ---
 
-## 7. A small dashboard, end to end
+## 7. The reactivity cheatsheet
+
+Everything above is one rule: **qrp re-runs functions it owns; a bare value is a
+snapshot taken once.** If something "doesn't update," it's almost always because a
+value was passed where a function was meant. The whole model on one screen:
+
+| you write | updates? | why |
+|---|---|---|
+| `el("p", {}, () => s.name)` | ✓ | function child → reactive text |
+| `el("p", {}, s.name)` | ✗ | the string was read at construction |
+| `el("p", { class: () => s.cls })` | ✓ | function prop → re-applied on change |
+| `el("p", { class: s.cls })` | ✗ | set once |
+| `el("ul", {}, list(() => s.rows, r => r.id, Row))` | ✓ | **the reactive array primitive** |
+| `el("ul", {}, ...s.rows.map(Row))` | ✗ | the spread ran *before* `el()` — see below |
+| `el("ul", {}, () => s.rows.map(Row))` | ✓ | but rebuilds every row on any change |
+| `when(() => s.open, A, B)` | ✓ | the reactive conditional |
+| `s.open && el("div", {})` | ✗ | evaluated once |
+| `table({ rows: () => s.rows })` | ✓ | thunk |
+| `table({ rows: s.rows })` | ✗ | frozen at that value |
+
+### The `...arr.map()` footgun
+
+This is the one that costs people fifteen minutes, because it *looks* right — it
+reads reactive state, so surely qrp tracks it:
+
+```js
+// ✗ renders once, then never again
+el("select", {}, ...app.targets.map((t) => el("option", {}, t)));
+```
+
+It can't work: `...app.targets.map(...)` runs **at the call site**, before `el()`
+is ever invoked. `el` receives a fixed list of finished nodes and has no way to
+know where they came from — there is no function to re-run. Reach for `list()`,
+which owns the array and keeps the rows in sync:
+
+```js
+// ✓ keyed, reactive, reuses <option> elements
+el("select", {}, list(() => app.targets, (t) => t, (t) => el("option", { value: t }, t)));
+```
+
+> **Rule of thumb:** if the array can change after first render, it's `list()`.
+> Spread `.map()` only for arrays that are genuinely static.
+
+`() => s.rows.map(Row)` (a *function* child) does update — the thunk re-runs — but
+it throws away and rebuilds the whole subtree on every change, losing focus,
+scroll and element identity. That's fine for a handful of static-ish nodes and
+wrong for a table; `list()` is the keyed version and the default choice.
+
+### Recipe: a reactive `<select>`
+
+`list()` works anywhere children go, `<select>` included — both the options and
+the selection can be live:
+
+```js
+const app = state({ targets: ["esp32", "esp8266"], target: "esp32" });
+
+el("select", {
+  value: () => app.target,                          // reactive selection
+  onchange: (e) => app.target = e.target.value      // write back
+},
+  list(                                             // reactive options
+    () => app.targets,
+    (t) => t,                                       // the string itself is the key
+    (t) => el("option", { value: t }, t)
+  ));
+```
+
+`el()` appends children **before** applying props, so the `<option>`s exist by the
+time `value` is set — the initial selection sticks. (For a whole settings panel
+built this way from a field spec, see [forms](./API.md#forms), whose `select`
+input does exactly this for you.)
+
+---
+
+## 8. A small dashboard, end to end
 
 Putting it together — a live, filterable list with a derived count, an add form,
 and conditional empty-state. This is a real dashboard in ~30 lines:
@@ -306,7 +381,7 @@ updates one button through its own binding. No re-render, no reconcile pass.
 
 ---
 
-## 8. Reusable components (the factory pattern)
+## 9. Reusable components (the factory pattern)
 
 qrp has no `Component` class and no registration step — **a component is just a
 function that returns DOM.** To make one reusable, write a factory that takes its
@@ -381,7 +456,7 @@ plain factory function is all you need — that's the point.
 
 ---
 
-## 9. Where to go next
+## 10. Where to go next
 
 You now know the core. The rest of qrp is optional modules you import only when a
 dashboard needs them:

@@ -8,6 +8,25 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.9.3
+
+From a field report: the one thing that cost a user fifteen minutes.
+
+- **`list()` reacts to in-place array mutation again.** The reconcile effect
+  unwrapped the source array (`raw(source())`) before iterating, so it only ever
+  tracked the *key* holding the array — `store.rows = next` re-rendered, but
+  `store.rows.push(row)` / `splice` / `pop` did **not**. It now touches `.length`
+  through the proxy first: one extra tracked read, keeping the raw-iteration
+  fast path (no per-element proxy tax). The `push`-driven example in the getting
+  started guide works as documented.
+- **Docs: the `...arr.map()` footgun is now loud.** A spread of `.map()` reads
+  reactive state and looks correct, but renders once — the spread runs before
+  `el()` is called, so there's no function to re-run. New
+  [reactivity cheatsheet](docs/GETTING-STARTED.md#7-the-reactivity-cheatsheet)
+  (function re-runs vs value-evaluated-once, in one table), a matching
+  [sharp edge](docs/SHARP-EDGES.md), and a **reactive `<select>` recipe**
+  (live options + live selection).
+
 ## 0.9.2
 
 Fixes from a second production port's field report (a loan dashboard).

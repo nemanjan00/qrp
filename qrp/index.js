@@ -952,7 +952,15 @@ const setupList = (parent, marker) => {
 		// array — keying/diffing must not re-read every element through the
 		// reactive proxy on each change (that made an N-item swap pay an
 		// O(rows) proxy tax). Rows are wrapped reactively only when built.
-		const items = raw(marker.source() || []);
+		const source = marker.source() || [];
+
+		// Reading source() tracks the KEY that holds the array (`store.rows`), so
+		// replacing the array re-runs this. Touching `.length` THROUGH the proxy
+		// additionally tracks in-place mutation (push/pop/splice/shift) — one
+		// extra tracked read, not the per-element tax of iterating the proxy.
+		void source.length;
+
+		const items = raw(source);
 
 		const next = new Map();
 		const desired = [];
