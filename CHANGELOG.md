@@ -6,7 +6,12 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
-_(nothing yet)_
+- **Docs: transitive tracking is now spelled out.** An effect depends on every
+  key read *while it runs*, including reads inside functions it calls — so
+  `effect(() => { theme.revision; render(); })` silently subscribes to whatever
+  `render()` reads. New
+  [section in the cheatsheet](docs/GETTING-STARTED.md#the-other-footgun-tracking-is-transitive)
+  and expanded `effect`/`untracked` reference docs.
 
 ## 0.9.4
 

@@ -293,6 +293,40 @@ it throws away and rebuilds the whole subtree on every change, losing focus,
 scroll and element identity. That's fine for a handful of static-ish nodes and
 wrong for a table; `list()` is the keyed version and the default choice.
 
+### The other footgun: tracking is transitive
+
+An effect depends on every state key read *while it runs* — including keys read
+inside functions it calls, however deep. That's what makes `el()` bindings work
+without you declaring anything, and it's also how an effect ends up with
+dependencies you never intended:
+
+```js
+// ✗ meant to re-theme the plot; actually rebuilds it on every data point
+effect(() => {
+  theme.revision;   // the dependency you wanted
+  render();         // ...but render() reads chart data, so that's tracked too
+});
+```
+
+Nothing looks wrong at the call site: the only state *named* in the effect is
+`theme.revision`. But `render()` reads `chart.points`, so the effect subscribes
+to `chart.points` as well and tears the plot down on every update.
+
+`untracked()` runs a function without recording what it reads, which turns an
+implicit dependency list into one you state yourself:
+
+```js
+// ✓ re-runs on theme changes only
+effect(() => {
+  theme.revision;
+  untracked(render);
+});
+```
+
+> **Rule of thumb:** if an effect calls a function that touches state the effect
+> shouldn't react to, that call goes in `untracked()`. Read the keys you *do*
+> want to depend on at the top of the body, where they're visible.
+
 ### Recipe: a reactive `<select>`
 
 `list()` works anywhere children go, `<select>` included — both the options and

@@ -92,6 +92,13 @@ effect(fn: () => void, options?: { name?: string; loopLimit?: number }): EffectH
 Run fn now and re-run it whenever any state key it read changes. Effects
 created inside a component/scope are owned by it and disposed with it.
 
+Tracking is **transitive**: an effect depends on every key read while it runs,
+including reads inside functions it calls. `effect(() => { theme.revision;
+render(); })` also subscribes to whatever `render()` reads — so unrelated data
+changes re-run (and rebuild) the effect. Wrap the call in {@link untracked} to
+declare the dependencies yourself: `effect(() => { theme.revision;
+untracked(render); })`.
+
 Edge cases: writing `NaN` over `NaN` does not re-trigger (uses `Object.is`).
 An effect that reads and writes the *same* key runs once and settles (the
 trigger skips the currently-running effect) — it does not self-loop. An
@@ -133,7 +140,16 @@ onEffectError((error, { phase, name }) => Sentry.captureException(error, { tags:
 untracked<T>(fn: () => T): T
 ```
 
-Read state inside fn WITHOUT tracking it as a dependency.
+Read state inside fn WITHOUT tracking it as a dependency. Because tracking is
+transitive, this is how you call a function that reads unrelated state from
+inside an effect without subscribing to it.
+
+```js
+effect(() => {
+	theme.revision;         // the ONE dependency this effect wants
+	untracked(render);      // render() reads chart data — don't subscribe to it
+});
+```
 
 ### `derive`
 
