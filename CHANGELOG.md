@@ -6,6 +6,22 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
+_(nothing yet)_
+
+## 0.9.5
+
+From a field report: a table whose headers did nothing.
+
+- **`table()`/`collection()` accept a plain object for `sort` (and `page`,
+  `filter`).** The docs show `state({ key, dir })`, and the types accept a
+  bare `{ key: "count", dir: -1 }` structurally — so a literal typechecked,
+  rendered the correct INITIAL order, and then ignored every header click: the
+  sort indicator stayed on the starting column and the rows only re-sorted the
+  next time the DATA changed. On a dashboard pushing a snapshot every couple of
+  seconds that reads as "sorting takes two seconds", which sends you profiling
+  layout instead of reactivity. These options are now wrapped in `state()`
+  (idempotent, so passing `state({...})` still hands back *your* object and your
+  reference keeps working).
 - **Docs: transitive tracking is now spelled out.** An effect depends on every
   key read *while it runs*, including reads inside functions it calls — so
   `effect(() => { theme.revision; render(); })` silently subscribes to whatever

@@ -62,7 +62,8 @@ const sortValue = (fieldSpec, item) => {
  * @param {(Function|Array)} options.rows reactive source or array
  * @param {object[]} options.fields column descriptors (see file header)
  * @param {Function} [options.key] item => stable key (default item.id)
- * @param {object} [options.sort] state({ key, dir }); dir 1 asc, -1 desc
+ * @param {object} [options.sort] { key, dir }; dir 1 asc, -1 desc. A plain
+ *   object is wrapped in state() for you; pass state({...}) to keep a handle
  * @param {object} [options.page] state({ index, size }) for pagination
  * @param {object} [options.filter] filter state consumed by filterFn
  * @param {Function} [options.filterFn] (item, filterState) => boolean
@@ -81,7 +82,10 @@ export const table = (options) => {
 
 	const source = typeof options.rows === "function" ? options.rows : () => options.rows;
 	const keyFn = options.key || ((item) => item.id);
-	const sort = options.sort || state({ key: options.sortField || null, dir: options.sortDesc ? -1 : 1 });
+	// Wrapped, not just defaulted: a plain `sort: { key: "count", dir: -1 }`
+	// used to render the right initial order and then never respond to a header
+	// click (the indicator arrow stuck on the initial column) — see collection().
+	const sort = state(options.sort || { key: options.sortField || null, dir: options.sortDesc ? -1 : 1 });
 
 	const view = collection(source, {
 		sort,

@@ -24,8 +24,9 @@ import { state } from "../qrp/index.js";
 /**
  * @param {Function} source () => Array (reactive)
  * @param {object} [options]
- * @param {object} [options.sort] state({ key, dir }) — dir 1 asc, -1 desc
- * @param {object} [options.page] state({ index, size }) — size 0 = no paging
+ * @param {object} [options.sort] { key, dir } — dir 1 asc, -1 desc; a plain
+ *   object is wrapped in state() for you, pass state({...}) to keep a handle
+ * @param {object} [options.page] { index, size } — size 0 = no paging (wrapped)
  * @param {object} [options.filter] state consumed by filterFn (e.g. { q })
  * @param {Function} [options.filterFn] (item, filterState) => boolean
  * @param {Function} [options.compare] (a, b, sortState) => number (custom sort)
@@ -33,9 +34,14 @@ import { state } from "../qrp/index.js";
  *   toggleSort }
  */
 export const collection = (source, options = {}) => {
-	const sort = options.sort || state({ key: null, dir: 1 });
-	const filter = options.filter || state({});
-	const page = options.page || state({ index: 0, size: 0 });
+	// state() is idempotent on an existing proxy, so a caller who passes
+	// state({...}) keeps their own object (and their reference to it), while a
+	// plain object literal gets wrapped instead of silently producing a table
+	// whose headers do nothing: without this, toggleSort() mutated an untracked
+	// object, so the view only re-sorted the next time the DATA changed.
+	const sort = state(options.sort || { key: null, dir: 1 });
+	const filter = state(options.filter || {});
+	const page = state(options.page || { index: 0, size: 0 });
 
 	const filtered = () => {
 		const items = source() || [];

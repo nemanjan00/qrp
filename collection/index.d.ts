@@ -19,6 +19,10 @@ export interface PageState {
 }
 
 export interface CollectionOptions<T> {
+	/**
+	 * Sort state. A plain object literal is wrapped in `state()` for you; pass
+	 * `state({ key, dir })` when you want a handle to drive the sort yourself.
+	 */
 	sort?: SortState;
 	page?: PageState;
 	filter?: Record<string, any>;

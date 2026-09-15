@@ -315,3 +315,48 @@ test("expandable: clicking an interactive cell does NOT toggle the row", () => {
 	assert.equal(acted, 1);
 	assert.equal(t.querySelectorAll(".qrp-expand").length, 0, "button click did not expand");
 });
+
+test("a PLAIN OBJECT sort option is still reactive (headers sort, arrow moves)", () => {
+	const store = state({ rows: [
+		{ id: "a", name: "b", count: 5 },
+		{ id: "b", name: "a", count: 9 }
+	] });
+
+	// Not state({...}) — the shape the docs show, written as a literal. It used
+	// to render the right INITIAL order and then ignore every header click: the
+	// view only re-sorted when the data itself changed.
+	const t = table({
+		rows: () => store.rows,
+		key: (r) => r.id,
+		fields: [{ key: "name", label: "name", sortable: true }, { key: "count", label: "reqs", sortable: true }],
+		sort: { key: "count", dir: -1 }
+	});
+
+	const order = () => [...t.querySelectorAll("tbody td:first-child")].map((td) => td.textContent).join(",");
+	const headers = () => [...t.querySelectorAll("th")].map((th) => th.textContent.trim()).join("|");
+
+	assert.equal(order(), "a,b", "initial sort applied (count desc)");
+	assert.match(headers(), /reqs ▼/, "indicator starts on the initial column");
+
+	t.querySelectorAll("th")[0].click();          // sort by name, ascending
+
+	assert.match(headers(), /name ▲/, "the indicator moved to the clicked column");
+	assert.doesNotMatch(headers(), /reqs ▼/, "and left the old one");
+
+	t.querySelectorAll("th")[0].click();          // same column again → descending
+
+	assert.equal(order(), "b,a", "a second click reverses immediately, without a data change");
+	assert.match(headers(), /name ▼/);
+});
+
+test("a state() sort option keeps the caller's handle (identity, not a copy)", () => {
+	const store = state({ rows: [{ id: 1, n: 1 }] });
+	const sort = state({ key: "n", dir: 1 });
+	const t = table({ rows: () => store.rows, key: (r) => r.id, fields: [{ key: "n", sortable: true }], sort });
+
+	assert.equal(t.view.sort, sort, "the passed state object is used as-is");
+
+	t.view.toggleSort("n");
+
+	assert.equal(sort.dir, -1, "the caller's own reference sees the change");
+});

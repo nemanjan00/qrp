@@ -50,6 +50,10 @@ export interface TableOptions<T> {
 	expandable?: (item: T) => Renderable;
 	/** item => stable key (the :key equivalent; default item.id). */
 	key?: (item: T) => unknown;
+	/**
+	 * Sort state. A plain object literal is wrapped in `state()` for you; pass
+	 * `state({ key, dir })` when you want a handle to drive the sort yourself.
+	 */
 	sort?: SortState;
 	page?: PageState;
 	filter?: Record<string, any>;
