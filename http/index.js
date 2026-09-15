@@ -44,8 +44,9 @@ const JSON_CONTENT_TYPE = "application/json";
  * Create an HTTP client bound to a backend.
  *
  * @param {object} [options]
- * @param {string} [options.baseUrl] prefix for relative URLs (absolute URLs
- *   starting with "http" are left untouched)
+ * @param {string} [options.baseUrl] prefix for relative URLs, joined to the path
+ *   with exactly one "/" (a leading slash on the path is optional); absolute
+ *   URLs starting with "http" are left untouched
  * @param {function} [options.token] () => string|null bearer token getter
  * @param {function} [options.client] () => string|null value for the
  *   x-authorization-client header
@@ -92,11 +93,44 @@ export const createHttp = (options = {}) => {
 		}
 	});
 
+	// Join baseUrl and path with exactly one "/" between them, whichever side
+	// brought it (or neither). Naive concatenation made
+	// createHttp({ baseUrl: "/api/v1" }).get("dimensions") hit "/api/v1dimensions"
+	// — a silent 404 with a confusing cause.
+	const join = (base, path) => {
+		if(!base) {
+			return path;
+		}
+
+		if(!path) {
+			return base;
+		}
+
+		const baseEnds = base.endsWith("/");
+		const pathStarts = path.startsWith("/");
+
+		if(baseEnds && pathStarts) {
+			return base + path.slice(1);
+		}
+
+		if(baseEnds || pathStarts) {
+			return base + path;
+		}
+
+		// A path that is only a query/fragment continues the base, it doesn't
+		// become a new segment: baseUrl "/api" + "?page=2" → "/api?page=2".
+		if(path.startsWith("?") || path.startsWith("#")) {
+			return base + path;
+		}
+
+		return base + "/" + path;
+	};
+
 	const buildUrl = (path, params) => {
 		let url = path;
 
 		if(path.indexOf("http") !== 0) {
-			url = baseUrl + path;
+			url = join(baseUrl, path);
 		}
 
 		if(params) {

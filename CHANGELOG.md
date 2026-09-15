@@ -8,6 +8,17 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.9.4
+
+From a field report: a silent 404 with a confusing cause.
+
+- **`createHttp({ baseUrl })` now joins `baseUrl` and the path on exactly one
+  `/`.** `baseUrl: "/api/v1"` + `http.get("dimensions")` concatenated naively
+  into `/api/v1dimensions` — a 404 at runtime that nothing warned about (the
+  docs' examples all happen to pass a leading slash). A slash on either side,
+  both, or neither now all produce `/api/v1/dimensions`. Absolute (`http…`)
+  URLs, an empty `baseUrl`, and query-only paths (`"?page=2"`) are unchanged.
+
 ## 0.9.3
 
 From a field report: the one thing that cost a user fifteen minutes.

@@ -371,3 +371,30 @@ test("options.fetch overrides the global transport", () => {
 		assert.deepEqual(data, { ok: true });
 	});
 });
+
+// --- baseUrl / path joining -------------------------------------------------
+
+const urlFor = async (baseUrl, path, config) => {
+	stubFetch(true, {});
+	const http = createHttp({ baseUrl, bus: emitter() });
+	await http.get(path, config);
+	return globalThis.fetch.calls[0].url;
+};
+
+test("baseUrl and path join on exactly one slash, whichever side brings it", async () => {
+	assert.equal(await urlFor("/api/v1", "dimensions"), "/api/v1/dimensions");
+	assert.equal(await urlFor("/api/v1", "/dimensions"), "/api/v1/dimensions");
+	assert.equal(await urlFor("/api/v1/", "dimensions"), "/api/v1/dimensions");
+	assert.equal(await urlFor("/api/v1/", "/dimensions"), "/api/v1/dimensions");
+});
+
+test("baseUrl joining leaves absolute URLs, empty baseUrl and query-only paths alone", async () => {
+	assert.equal(await urlFor("/api", "https://x.test/y"), "https://x.test/y");
+	assert.equal(await urlFor("", "/things"), "/things");
+	assert.equal(await urlFor("/api", "?page=2"), "/api?page=2");
+	assert.equal(await urlFor("/api", ""), "/api");
+});
+
+test("params still append after the joined path", async () => {
+	assert.equal(await urlFor("/api", "things", { params: { page: 2 } }), "/api/things?page=2");
+});

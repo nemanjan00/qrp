@@ -14,6 +14,11 @@
 import type { Emitter } from "../events/index.js";
 
 export interface HttpOptions {
+	/**
+	 * Prefix for relative URLs, joined to the path with exactly one `/` — a
+	 * leading slash on the path is optional (`"/api/v1"` + `"dimensions"` →
+	 * `/api/v1/dimensions`). URLs starting with `http` are left untouched.
+	 */
 	baseUrl?: string;
 	/** () => bearer token, attached as Authorization. */
 	token?: () => string | null | undefined;
