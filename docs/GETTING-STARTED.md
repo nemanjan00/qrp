@@ -327,6 +327,30 @@ effect(() => {
 > shouldn't react to, that call goes in `untracked()`. Read the keys you *do*
 > want to depend on at the top of the body, where they're visible.
 
+### The third footgun: writing to the object instead of the proxy
+
+`state()` returns a **proxy**; the object you handed it is still sitting there,
+and writes that go to it directly notify nothing:
+
+```js
+const row = { id: "a", count: 10 };
+const app = state({ rows: [row] });
+
+row.count = 99;              // ✗ the DOM still shows 10 — the proxy never saw it
+app.rows[0].count = 99;      // ✓ read it back out of state, then write
+```
+
+This bites hardest in a "merge the refetch into what's on screen" helper, where
+you keep your own `Map` of rows to preserve their identity: the objects in that
+Map are the raw ones, so mutating them updates nothing. Read the row out of
+state (or store `state(row)` in the Map — `state()` is idempotent, so wrapping
+twice hands back the same proxy) and mutate that.
+
+The confusing part is what it looks like when it happens next to a sort: the
+sort re-runs and picks the *new* values, while the cells still show the old
+ones, so the table looks mis-sorted rather than stale. Reach for
+[`raw()`](./API.md#qrp) only to hand an object to something outside qrp.
+
 ### Recipe: a reactive `<select>`
 
 `list()` works anywhere children go, `<select>` included — both the options and

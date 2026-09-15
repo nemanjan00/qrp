@@ -360,3 +360,21 @@ test("a state() sort option keeps the caller's handle (identity, not a copy)", (
 
 	assert.equal(sort.dir, -1, "the caller's own reference sees the change");
 });
+
+test("an OPEN expandable panel refreshes when the row's item is replaced", () => {
+	const store = state({ rows: [{ id: 1, n: 10 }] });
+	const t = table({
+		rows: () => store.rows, key: (r) => r.id,
+		fields: [{ key: "n" }],
+		expandable: (item) => el("div", { class: "detail" }, () => "n=" + item.n)
+	});
+
+	t.querySelector("tbody tr").click();
+	assert.equal(t.querySelector(".detail").textContent, "n=10");
+
+	// a refetch: same key, brand new object (the dashboard model)
+	store.rows = [{ id: 1, n: 99 }];
+
+	assert.equal(t.querySelector("tbody td").textContent, "99", "the cell updated");
+	assert.equal(t.querySelector(".detail").textContent, "n=99", "and so did the open panel");
+});

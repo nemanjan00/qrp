@@ -232,7 +232,11 @@ export const table = (options) => {
 		row(holder),
 		when(() => !!open[holder.key], () =>
 			el("tr", { class: "qrp-expand" },
-				el("td", { colspan: () => currentFields().length }, expandable(holder.item))))
+				// A THUNK, like a render: cell — the panel is rebuilt when the row's
+				// item is replaced (refetch). Without it an open panel kept showing
+				// the values it was built with while the row's own cells updated
+				// around it, so a live dashboard's detail view silently went stale.
+				el("td", { colspan: () => currentFields().length }, () => expandable(holder.item))))
 	);
 
 	const headerRow = dynamicFields

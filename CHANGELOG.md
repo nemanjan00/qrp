@@ -8,6 +8,21 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.9.6
+
+- **`table({ expandable })`: an OPEN detail panel now refreshes on refetch.** A
+  custom `render:` cell is a thunk, so it re-runs when the row's item is
+  replaced — but the expandable panel was built once, so on a live dashboard it
+  kept showing the values it was opened with while the row's own cells updated
+  around it. It is a thunk now too (the panel rebuilds when the item is
+  replaced, same as a render cell).
+- **Docs: writing to the raw object instead of the proxy.** `state()` returns a
+  proxy and the original object is still reachable; writes that go straight to
+  it notify nothing. Next to a sort this reads as a *mis-sorted* table rather
+  than a stale one — the sort re-runs on the new values while the cells still
+  show the old. New
+  [cheatsheet section](docs/GETTING-STARTED.md#the-third-footgun-writing-to-the-object-instead-of-the-proxy).
+
 ## 0.9.5
 
 From a field report: a table whose headers did nothing.
