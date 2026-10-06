@@ -152,6 +152,22 @@ export function onEffectError(handler: (error: unknown, context: EffectErrorCont
 export function untracked<T>(fn: () => T): T;
 
 /**
+ * Apply several writes as one update. Writes inside fn take effect immediately
+ * (reads inside fn see them), but the effects they trigger are held back and run
+ * ONCE each after fn returns, against the final state. Without it every write
+ * re-runs its effects on the spot, so an effect reading two keys can briefly see
+ * the new value of one next to the old value of the other. Nestable (only the
+ * outermost batch flushes); returns fn's result. If a flushed effect throws, the
+ * remaining effects still run and the first error is rethrown.
+ * @example
+ * const apply = (next) => batch(() => {
+ * 	store.overall = next.overall;
+ * 	store.latencyBounds = next.latencyBounds;   // a chart reading both runs once, consistent
+ * });
+ */
+export function batch<T>(fn: () => T): T;
+
+/**
  * A read-only reactive value derived from other state.
  * @example
  * const full = derive(() => `${s.first} ${s.last}`);

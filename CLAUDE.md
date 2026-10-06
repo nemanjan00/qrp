@@ -66,6 +66,9 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 `/index.js` is always written out.
 
 - `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`,
+  `batch` — holds effects until a multi-key update ends, flushes each once in
+  creation order so parents dispose stale children first; cascades during the
+  flush run synchronously so the runaway guard still works;
   `onEffectError` for central crash reporting — `phase: "loop"` when the
   runaway-effect guard tears down an effect that writes state it reads; tune with
   `effect(fn, { loopLimit })`; with NO handler registered the failure is
@@ -169,10 +172,12 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   minifies each module in place into `dist/` — a flat mirror (one file per
   module, same names, no hashes, no chunks); cross-module imports stay relative
   (`table.js` → `./qrp.js`) so core is shared, not duplicated, and vendoring is
-  copy-the-dir. The npm package ships `dist/` (minified) + the hand-written
+  copy-the-dir. Each file gets an external `.js.map` with `sourcesContent`
+  (original commented source, for debugging an app built on qrp — a reviewer
+  asked; ~doubles the tarball, zero runtime cost). The npm package ships `dist/` (minified) + the hand-written
   `.d.ts` — **not** the raw source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so
   the reference travels with the package: a coding agent reads the API straight
-  out of `node_modules`). Core is **~4.8 KB min+gzip**, whole library ~22.5 KB.
+  out of `node_modules`). Core is **~5.0 KB min+gzip**, whole library ~23.6 KB.
   `dist/` is gitignored (rebuilt on pack/publish). The consumer still runs zero
   build. (No code-splitting: the opaque `chunk-*.js` files it produced made
   self-hosting on a plain static server confusing — the user rejected chunking.)

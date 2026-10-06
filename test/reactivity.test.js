@@ -3,7 +3,7 @@ import "./setup.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { state, effect, derive, untracked, onEffectError } from "../qrp/index.js";
+import { state, effect, derive, untracked, onEffectError, batch } from "../qrp/index.js";
 
 // These tests pin down qrp's reactivity SEMANTICS — the questions a
 // reactivity-literate reader asks first. They are the spec, in code.
@@ -314,5 +314,113 @@ test("a hot effect updated thousands of times in a tick does NOT trip the guard"
 
 	assert.equal(runs, 5001, "fired once per write, none suppressed");
 	assert.equal(loops, 0, "5000 sequential updates (depth 1) never trip the depth guard");
+	off();
+});
+
+// --- batch: hold effects until a multi-key update is complete ---------------
+
+test("batch: an effect reading two keys never sees a half-applied update", () => {
+	const s = state({ a: 1, b: 1 });
+	const seen = [];
+
+	effect(() => { seen.push([s.a, s.b]); });
+
+	batch(() => {
+		s.a = 2;
+		s.b = 2;
+	});
+
+	assert.deepEqual(seen, [[1, 1], [2, 2]]);
+});
+
+test("batch: writes are readable inside, effects deferred to the end", () => {
+	const s = state({ a: 1 });
+	let runs = 0;
+
+	effect(() => { s.a; runs += 1; });
+
+	batch(() => {
+		s.a = 5;
+		assert.equal(s.a, 5);
+		assert.equal(runs, 1);
+	});
+
+	assert.equal(runs, 2);
+});
+
+test("batch: nested batches flush once, at the outermost exit", () => {
+	const s = state({ a: 1, b: 1 });
+	let runs = 0;
+
+	effect(() => { s.a; s.b; runs += 1; });
+
+	batch(() => {
+		s.a = 2;
+		batch(() => { s.b = 2; });
+		assert.equal(runs, 1);
+	});
+
+	assert.equal(runs, 2);
+});
+
+test("batch: returns fn's value", () => {
+	assert.equal(batch(() => 42), 42);
+});
+
+test("batch: derived chains settle; the sink runs once with final values", () => {
+	const s = state({ a: 1, b: 1 });
+	const sum = derive(() => s.a + s.b);
+	const seen = [];
+
+	effect(() => { seen.push(sum.value); });
+
+	batch(() => {
+		s.a = 10;
+		s.b = 20;
+	});
+
+	assert.deepEqual(seen, [2, 30]);
+});
+
+test("batch: an effect disposed during the flush is skipped", () => {
+	const s = state({ show: true, x: 1 });
+	const inner = [];
+
+	effect(() => {
+		if(s.show) {
+			effect(() => { inner.push(s.x); });
+		}
+	});
+
+	batch(() => {
+		s.x = 2;
+		s.show = false;
+	});
+
+	// the child was queued by the x write, then torn down by the parent's re-run
+	assert.deepEqual(inner, [1]);
+});
+
+test("batch: a throwing effect doesn't starve the rest; first error is rethrown", () => {
+	const off = onEffectError(() => {});
+	const s = state({ a: 1 });
+	let ok = 0;
+
+	effect(() => { if(s.a > 1) { throw new Error("boom"); } });
+	effect(() => { s.a; ok += 1; });
+
+	assert.throws(() => batch(() => { s.a = 2; }), /boom/);
+	assert.equal(ok, 2);
+	off();
+});
+
+test("batch: an effect cycle in the flush still trips the runaway guard", () => {
+	const off = onEffectError(() => {});
+	const s = state({ a: 0, b: 0, go: false });
+
+	effect(() => { s.b = s.a + 1; });
+	effect(() => { if(s.go) { s.a = s.b + 1; } }, { loopLimit: 50 });
+
+	assert.throws(() => batch(() => { s.go = true; }), /re-entered/);
 	off();
 });

@@ -1,7 +1,7 @@
 // Type-level test: exercises the public .d.ts surface. `tsc --noEmit` on this
 // is the "test" for the declarations — it fails if a signature is wrong.
 
-import { state, effect, derive, el, list, when, mount, router, navigate, onEffectError, currentRoute } from "../qrp/index.js";
+import { state, effect, derive, el, list, when, mount, router, navigate, onEffectError, currentRoute, batch } from "../qrp/index.js";
 import { html, ref } from "../html/index.js";
 import { table } from "../table/index.js";
 import { collection } from "../collection/index.js";
@@ -127,6 +127,7 @@ const offErr: () => void = onEffectError((err: unknown, ctx) => {
 	const phase: "create" | "update" | "loop" = ctx.phase;
 	void err; void phase;
 });
+const batched: number = batch(() => 1);
 const rp: string = currentRoute.path;
 const rid: string | undefined = currentRoute.params.id;
 const limited = limit(async (id: number) => id * 2, { max: 3, perSecond: 5, timeout: 1000 });

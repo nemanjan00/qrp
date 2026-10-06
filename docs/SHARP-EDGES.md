@@ -37,10 +37,31 @@ you bind to unfrozen. (Rows fed from a `derive()` that rebuilds the array on
 every change are the *normal* case, not a special one — bind to the item the
 render callback receives and the rebind keeps cells live.)
 
-**Writes are synchronous, with no batching.** An assignment runs its dependent
+**Writes are synchronous; batching is opt-in.** An assignment runs its dependent
 effects immediately — that's why updates are cheap and why qrp is *not*
-interruptible the way a scheduler-based renderer is. For a high-frequency stream,
-coalesce upstream of `state` (see [`debounce`/`throttle`](./API.md#utils)).
+interruptible the way a scheduler-based renderer is. The flip side: an update
+that spans several keys is applied one key at a time, and an effect reading two
+of them can run *between* the writes and see the new `overall` next to the old
+`latencyBounds`. Wrap a multi-key update in [`batch`](./API.md#qrp--core):
+
+```js
+const apply = (next) => batch(() => {
+	store.overall = next.overall;
+	store.latencyBounds = next.latencyBounds;
+	store.rows = next.rows;
+});   // each dependent effect runs once, here, against the final state
+```
+
+Writes inside `batch` still land immediately (reads inside it see them); only the
+effects wait. Batches nest — the outermost one flushes. For a high-frequency
+stream, coalesce upstream of `state` (see [`debounce`/`throttle`](./API.md#utils)).
+
+**Table cells are reactive without thunks.** The thunk-vs-value rule (below) holds
+everywhere you build the DOM yourself — but `table()` wraps every
+`render:`/`formatter:` cell (and the `expandable` panel) in a thunk for you, so a
+cell returning plain values still updates when its row is replaced or the state
+it reads changes. Inner thunks in a `render:` only make the update finer (a text
+node instead of the whole cell's content).
 
 **An effect that throws is torn down** (its subscriptions removed) and the error
 propagates. With no handler registered, qrp `console.error`s the failure by

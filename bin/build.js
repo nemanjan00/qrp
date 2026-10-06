@@ -131,6 +131,10 @@ esbuild.build({
 	minify: true,
 	target: "es2022",
 	legalComments: "none",
+	// External .map per file, with sourcesContent: devtools (and anyone reading
+	// node_modules) get the original, commented source. Costs nothing at runtime —
+	// browsers only fetch a map when devtools are open.
+	sourcemap: true,
 	plugins: [flatExternals]
 }).then(() => {
 	// GUARD: every public exports subpath must resolve to a file we just built,
@@ -141,7 +145,7 @@ esbuild.build({
 	// report min+gzip per built file — the numbers we publish must be measured
 	const files = fs.readdirSync(OUTDIR, { recursive: true })
 		.filter((f) => f.endsWith(".js"))
-		.sort();
+		.sort();   // .js.map excluded: maps aren't part of the shipped weight
 	let total = 0;
 	files.forEach((f) => {
 		const buf = fs.readFileSync(`${OUTDIR}/${f}`);

@@ -88,8 +88,74 @@ const trigger = (target, key) => {
 			return;
 		}
 
+		// Inside batch(): defer to the flush. A Set, so a runner hit by several
+		// writes in the batch still runs once.
+		if(batchDepth > 0) {
+			pendingRunners.add(runner);
+
+			return;
+		}
+
 		runner();
 	});
+};
+
+// batch() bookkeeping: nesting depth + the runners deferred until the outermost
+// batch returns.
+let batchDepth = 0;
+const pendingRunners = new Set();
+let effectSeq = 0;   // creation order, for flushPending
+
+// Run every deferred runner, in CREATION order: an owner is always created before
+// the effects it owns, so a parent re-runs (and disposes its stale children)
+// before any child queued in the same batch gets a wasted run. Nothing is added
+// to the queue mid-flush — cascading writes run synchronously as usual (batchDepth
+// is 0 again), which keeps the runaway guard's re-entrancy test working. A runner
+// that already ran in such a cascade removed itself from the queue (see runner)
+// and is skipped: it saw the final state. Every runner gets its turn even if one
+// throws; the first error is rethrown at the end (all of them already went
+// through onEffectError).
+const flushPending = () => {
+	const queue = [...pendingRunners].sort((a, b) => a.id - b.id);
+	const errors = [];
+
+	queue.forEach((runner) => {
+		if(!pendingRunners.delete(runner) || runner.disposed) {
+			return;
+		}
+
+		try {
+			runner();
+		} catch(error) {
+			errors.push(error);
+		}
+	});
+
+	if(errors.length > 0) {
+		throw errors[0];
+	}
+};
+
+/**
+ * Run fn with effects held back: writes inside it apply immediately (reads see
+ * them), but dependent effects run once, after fn returns, against the final
+ * state — so no effect ever observes a half-applied multi-key update.
+ * Nestable; only the outermost batch flushes. Returns fn's return value.
+ *
+ *   batch(() => { store.overall = next.overall; store.bounds = next.bounds; });
+ */
+export const batch = (fn) => {
+	batchDepth += 1;
+
+	try {
+		return fn();
+	} finally {
+		batchDepth -= 1;
+
+		if(batchDepth === 0) {
+			flushPending();
+		}
+	}
 };
 
 const RAW = Symbol("qrp.raw");
@@ -354,6 +420,9 @@ export const effect = (fn, options = {}) => {
 
 		cleanupEffect(runner);
 
+		// Running now sees the latest state, so a pending batched run is moot.
+		pendingRunners.delete(runner);
+
 		runner.depth += 1;
 		effectStack.push(runner);
 		activeEffect = runner;
@@ -389,6 +458,8 @@ export const effect = (fn, options = {}) => {
 	runner.disposers = [];
 	runner.disposed = false;
 	runner.depth = 0;
+	effectSeq += 1;
+	runner.id = effectSeq;
 	runner.dispose = () => disposeEffect(runner);
 
 	if(activeEffect) {

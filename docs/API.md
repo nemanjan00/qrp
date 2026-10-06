@@ -151,6 +151,27 @@ effect(() => {
 });
 ```
 
+### `batch`
+
+```ts
+batch<T>(fn: () => T): T
+```
+
+Apply several writes as one update. Writes inside fn take effect immediately
+(reads inside fn see them), but the effects they trigger are held back and run
+ONCE each after fn returns, against the final state. Without it every write
+re-runs its effects on the spot, so an effect reading two keys can briefly see
+the new value of one next to the old value of the other. Nestable (only the
+outermost batch flushes); returns fn's result. If a flushed effect throws, the
+remaining effects still run and the first error is rethrown.
+
+```js
+const apply = (next) => batch(() => {
+	store.overall = next.overall;
+	store.latencyBounds = next.latencyBounds;   // a chart reading both runs once, consistent
+});
+```
+
 ### `derive`
 
 ```ts
@@ -868,9 +889,19 @@ interface Column<T> {
 	label?: string;
 	/** item => raw value (default item[key]); supports nesting. */
 	accessor?: (item: T) => unknown;
-	/** (rawValue, item) => display text. */
+	/** (rawValue, item) => display text. Already reactive (see `render`). */
 	formatter?: (value: any, item: T) => Renderable;
-	/** item => Element — a custom cell (overrides formatter). */
+	/** item => Element — a custom cell (overrides formatter).
+	 *
+	 *  **Already reactive — no thunk needed.** table() calls `render` inside a
+	 *  reactive region of its own (the `<td>`'s child is `() => render(item)`), so
+	 *  the cell re-renders whenever the row's item is REPLACED (refetch) or any
+	 *  state `render` reads changes. Returning plain values is fine and stays live.
+	 *  Inner thunks are an optimization, not a requirement: with
+	 *  `render: (r) => el("b", {}, () => r.count)` only the text node updates; without
+	 *  the thunk the whole cell's content is rebuilt (matters for cells holding
+	 *  focus, an `<input>`, or expensive markup — not for correctness).
+	 *  `formatter` and `expandable` follow the same rule. */
 	render?: (item: T) => Renderable;
 	/** column => Renderable — custom header content (a select-all box, filter…);
 	 *  its own clicks don't trigger the column sort. Overrides `label`. */

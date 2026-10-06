@@ -6,7 +6,22 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
-_(nothing yet)_
+- **New: `batch(fn)` in core.** Writes inside `fn` apply immediately, but the
+  effects they trigger are held back and run once each after `fn` returns,
+  against the final state. Before this, a multi-key update (`store.overall = …;
+  store.latencyBounds = …`) re-ran effects after every write, so an effect reading
+  both keys could briefly see the new value of one next to the old value of the
+  other. Batches nest; the flush runs in effect creation order (owners before the
+  effects they own, so a child the parent is about to dispose never gets a wasted
+  run); a throwing effect doesn't skip the others, and the first error is rethrown.
+  Adds ~0.14 KB gzip to core.
+- **The package now ships source maps.** Every `dist/*.js` has a `.js.map` with
+  the original source embedded, so devtools show the commented source when you
+  debug an app built on qrp. No runtime cost; the tarball is larger.
+- **Docs: table cells are reactive without thunks.** `table()` already wraps
+  every `render:`/`formatter:` cell and the `expandable` panel in a thunk; this is
+  now documented (the `Column.render` JSDoc, SHARP-EDGES). Inner thunks only make
+  the update finer.
 
 ## 0.9.6
 

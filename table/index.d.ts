@@ -26,9 +26,19 @@ export interface Column<T> {
 	label?: string;
 	/** item => raw value (default item[key]); supports nesting. */
 	accessor?: (item: T) => unknown;
-	/** (rawValue, item) => display text. */
+	/** (rawValue, item) => display text. Already reactive (see `render`). */
 	formatter?: (value: any, item: T) => Renderable;
-	/** item => Element — a custom cell (overrides formatter). */
+	/** item => Element — a custom cell (overrides formatter).
+	 *
+	 *  **Already reactive — no thunk needed.** table() calls `render` inside a
+	 *  reactive region of its own (the `<td>`'s child is `() => render(item)`), so
+	 *  the cell re-renders whenever the row's item is REPLACED (refetch) or any
+	 *  state `render` reads changes. Returning plain values is fine and stays live.
+	 *  Inner thunks are an optimization, not a requirement: with
+	 *  `render: (r) => el("b", {}, () => r.count)` only the text node updates; without
+	 *  the thunk the whole cell's content is rebuilt (matters for cells holding
+	 *  focus, an `<input>`, or expensive markup — not for correctness).
+	 *  `formatter` and `expandable` follow the same rule. */
 	render?: (item: T) => Renderable;
 	/** column => Renderable — custom header content (a select-all box, filter…);
 	 *  its own clicks don't trigger the column sort. Overrides `label`. */
