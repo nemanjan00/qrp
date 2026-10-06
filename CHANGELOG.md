@@ -6,6 +6,10 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
+_(nothing yet)_
+
+## 0.10.0
+
 - **New: `batch(fn)` in core.** Writes inside `fn` apply immediately, but the
   effects they trigger are held back and run once each after `fn` returns,
   against the final state. Before this, a multi-key update (`store.overall = …;
