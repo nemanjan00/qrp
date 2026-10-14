@@ -533,6 +533,18 @@ test("el(): false keeps its meaning on aria* and contentEditable", () => {
 	}
 });
 
+test("el(): read-only props (list, form) fall back to the attribute", () => {
+	const s = state({ list: "suggestions" });
+	const input = el("input", { list: () => s.list, form: "settings" });
+
+	assert.equal(input.getAttribute("list"), "suggestions");
+	assert.equal(input.getAttribute("form"), "settings");
+
+	s.list = null;
+
+	assert.equal(input.hasAttribute("list"), false);
+});
+
 test("el(): clearing htmlFor removes the for attribute", () => {
 	const s = state({ target: "name" });
 	const label = el("label", { htmlFor: () => s.target });

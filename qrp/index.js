@@ -672,6 +672,35 @@ const CONTENT_PROPS = new Set(["value", "textContent", "innerText", "innerHTML"]
 // Props whose attribute name isn't the lowercased property name.
 const PROP_ATTRS = { htmlFor: "for", httpEquiv: "http-equiv", acceptCharset: "accept-charset" };
 
+// Read-only DOM props (input.list, input.form, …) are getters with no setter:
+// assigning one throws in strict mode, so their attribute is set instead.
+// Cached per prototype + key — the descriptor walk runs once per element type.
+const readOnlyCache = new WeakMap();
+
+const findDescriptor = (proto, key) => {
+	if(!proto) {
+		return undefined;
+	}
+
+	return Object.getOwnPropertyDescriptor(proto, key) || findDescriptor(Object.getPrototypeOf(proto), key);
+};
+
+const isReadOnly = (node, key) => {
+	const proto = Object.getPrototypeOf(node);
+	const known = readOnlyCache.get(proto) || new Map();
+
+	readOnlyCache.set(proto, known);
+
+	if(!known.has(key)) {
+		const descriptor = findDescriptor(node, key);
+		const readOnly = Boolean(descriptor) && (descriptor.get ? !descriptor.set : descriptor.writable === false);
+
+		known.set(key, readOnly);
+	}
+
+	return known.get(key);
+};
+
 // Enumerated string props where `false` is a real value ("false"), not "unset":
 // aria-* booleans and contentEditable (assigning "" to it throws).
 const keepsFalse = (key) => key === "contentEditable" || /^aria[A-Z]/.test(key);
@@ -738,7 +767,7 @@ const setAttr = (node, key, value) => {
 		return;
 	}
 
-	if(!isSvg && key in node) {
+	if(!isSvg && key in node && !isReadOnly(node, key)) {
 		if(isEmpty) {
 			clearProp(node, key, value);
 		} else {

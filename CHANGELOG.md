@@ -8,6 +8,15 @@ find out by reading a diff. Newest first.
 
 _(nothing yet)_
 
+## 0.13.1
+
+- **`el()`: read-only DOM props fall back to the attribute.** Passing `list`
+  (or `form`, or any other getter-only property) to an `<input>` threw
+  "Cannot set property list … which has only a getter", because `el()` assigned
+  every key that exists on the element as a property. A prop with no setter now
+  goes through `setAttribute`/`removeAttribute`. The check is cached per element
+  type.
+
 ## 0.13.0
 
 A batch of community fixes (thanks @mihailozepina, #1–#27).
