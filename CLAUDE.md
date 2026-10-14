@@ -287,8 +287,9 @@ bump before it's published. Order:
    already-published section.
 3. `npm version X.Y.Z --no-git-tag-version` (updates package.json + lock), then
    commit as `X.Y.Z`.
-4. `git tag vX.Y.Z` at that commit. (The user runs `npm publish` and
-   `git push --tags` — the sandbox never publishes or pushes.)
+4. `git tag vX.Y.Z` at that commit, then `npm publish` (the user has authorized
+   it). Every qrp publish is followed by bumping and publishing qrp-shadcdn — see
+   `../AGENTS.md`. Don't `git push`; the user pushes.
 
 `docs/` (the `.md` reference) and `CHANGELOG.md` **do** ship in the tarball —
 they're the reference a coding agent reads straight out of `node_modules`, so
