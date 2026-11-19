@@ -6,6 +6,10 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
+_(nothing yet)_
+
+## 0.14.0
+
 Lessons from mailab, a production lab dashboard built on qrp. It reimplemented
 a lot that qrp already had, and also hit some real gaps.
 
