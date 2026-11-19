@@ -11,7 +11,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-optional-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
 [![core size](https://img.shields.io/badge/core-~5.9_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
-[![tests](https://img.shields.io/badge/tests-361_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
+[![tests](https://img.shields.io/badge/tests-521_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
 
@@ -347,6 +347,46 @@ effect(() => bar.hidden = http.loading.pending === 0);          // a spinner in 
 http.get("/export.msgpack", { responseType: "arraybuffer" });  // binary, not just JSON
 ```
 
+**Live data without a render storm.** A reconnecting WebSocket routed by message
+type, a store that only writes what changed, and high-rate values coalesced to a
+few renders a second.
+
+```js
+const live = socket("/ws");                          // backoff + reactive live.status
+const values = coalesce(lab.live, { interval: 250 }); // latest per key, one batch
+live.on("state", (m) => assign(lab, m.state));       // writes only changed keys
+live.on("samples", (m) => values.set(m.name, m.v));
+live.on("event", (m) => append(lab.log, m, 200));    // capped feed
+el("b", {}, () => si(lab.live.volts, "V"));           // "3.301 V"
+stickToBottom(logEl);                                // follows only while you're at the bottom
+```
+
+**Search and export what the user sees.** `searchFilter` turns a search box into
+AND-ed terms with `field:text` scoping; `sorted()` is every page in the user's
+order.
+
+```js
+table({ rows, filter, filterFn: searchFilter(["name", "status"]), clearSort: true, fields });
+download(toCSV(view.sorted(), columns), "rows.csv");
+copy(text);   // falls back to execCommand on plain-http LAN dashboards
+```
+
+**Large apps, and pages qrp doesn't own.** A layout library (GridStack,
+golden-layout) owns the DOM; `reconcile` keeps its widgets in sync with state
+(one scope per item) and `island` mounts a qrp view in each, with props pushed in.
+Imperative widgets go the other way with `embed`. How to structure the whole
+thing: [`docs/LARGE-APPS.md`](docs/LARGE-APPS.md).
+
+```js
+reconcile(() => lab.panes, (p) => p.id, {
+  create: (pane) => { const w = grid.addWidget(pane); return { ...w, panel: island(w.body, VIEWS[pane.type], { pane }) }; },
+  update: (w, pane) => w.panel.update({ pane }),
+  recreate: (a, b) => a.type !== b.type,
+  destroy: (w) => grid.removeWidget(w.item)
+});
+el("div", {}, embed((host) => new uPlot(opts, data, host)));   // created once attached, resized, destroyed
+```
+
 **Dashboard utilities that carry the boring parts.** Rate-limit, debounce,
 validate — the stuff every admin tool hand-rolls.
 
@@ -617,7 +657,7 @@ test("rows render and react to a state write", () => {
 ```
 
 Writes are synchronous, so there's nothing to `await` — the assertion runs right
-after the state write. This is how qrp tests *itself* (361 tests, `node --test` +
+after the state write. This is how qrp tests *itself* (521 tests, `node --test` +
 happy-dom); your app tests the same way.
 
 ## 📖 API reference
@@ -629,7 +669,7 @@ Full reference — every export, signature, and a usage snippet per module — i
 
 ```sh
 npm install     # dev-only: happy-dom (tests), eslint, typescript, husky
-npm test        # node --test — 361 tests across every module
+npm test        # node --test — 521 tests across every module
 npm run lint    # eslint (eslint:recommended + house style)
 npm run typecheck  # tsc --noEmit over the .d.ts + a usage suite (strict)
 ```

@@ -4,10 +4,10 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>qrp — turn data into a dashboard</title>
-	<meta name="description" content="A data-first, declarative frontend framework. Zero runtime dependencies, no build step required — use it with any bundler (Vite/webpack/Rollup) or none at all. Reactivity is a Proxy, the DOM is real; core ~4.7 KB min+gzip (~22.3 KB whole library).">
+	<meta name="description" content="A data-first, declarative frontend framework. Zero runtime dependencies, no build step required — use it with any bundler (Vite/webpack/Rollup) or none at all. Reactivity is a Proxy, the DOM is real; core ~5.9 KB min+gzip (~34.3 KB whole library).">
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
 	<meta property="og:title" content="qrp — turn data into a dashboard">
-	<meta property="og:description" content="A data-first, declarative frontend framework. Zero runtime deps, build-optional (any bundler or none), ~4.7 KB min+gzip core (~22.3 KB whole library).">
+	<meta property="og:description" content="A data-first, declarative frontend framework. Zero runtime deps, build-optional (any bundler or none), ~5.9 KB min+gzip core (~34.3 KB whole library).">
 	<link rel="stylesheet" href="./qrp.css">
 	<style>
 		:root {
@@ -53,7 +53,7 @@
 		.brand { font-weight: 800; font-size: 1.2rem; letter-spacing: -0.03em; }
 		.brand b { color: var(--accent); }
 		.nav-links { margin-left: auto; display: flex; gap: 1.4rem; font-size: 0.9rem; }
-		.nav-links a { color: var(--muted); }
+		.nav-links a { color: var(--muted); white-space: nowrap; }
 		.nav-links a:hover { color: var(--fg); }
 		.online-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 0.4rem; }
 
@@ -163,15 +163,15 @@
 			<div class="nav-links">
 				<a href="./start.html">Guide</a>
 				<a href="#esp32">ESP32</a>
-				<a href="#composition">Composition</a>
 				<a href="#perf">Performance</a>
 				<a href="#reactivity">Reactivity</a>
 				<a href="#table">Table</a>
-				<a href="#spark">Charts</a>
-				<a href="#http">Data</a>
+				<a href="#live">Live data</a>
+				<a href="#large">Large apps</a>
 				<a href="#modules">Modules</a>
 				<a href="./api.html">API</a>
 				<a href="./styling.html">Styling</a>
+				<a href="./recipes.html">Recipes</a>
 				<a href="https://github.com/nemanjan00/qrp" target="_blank">GitHub</a>
 				<span class="dim" id="net"></span>
 			</div>
@@ -184,12 +184,12 @@
 		<section class="hero">
 			<div class="wordmark">qrp</div>
 			<div class="tagline">Turn data into a dashboard. Nothing else.</div>
-			<p class="lede">A data-first, declarative frontend framework. Reactivity is a <code>Proxy</code>, the DOM is real. The published core is ~4.7 KB min+gzip — the number comparable to Solid or React; ~22.3 KB for the whole library. (Use it with any bundler, or none — your call.)</p>
+			<p class="lede">A data-first, declarative frontend framework. Reactivity is a <code>Proxy</code>, the DOM is real. The published core is ~5.9 KB min+gzip — the number comparable to Solid or React; ~34.3 KB for the whole library. (Use it with any bundler, or none — your call.)</p>
 			<div class="badges">
 				<span class="badge"><b>0</b> dependencies</span>
 				<span class="badge"><b>0</b> required build step</span>
-				<span class="badge"><b>~4.7 KB</b> min+gzip core</span>
-				<span class="badge"><b>292</b> tests</span>
+				<span class="badge"><b>~5.9 KB</b> min+gzip core</span>
+				<span class="badge"><b>521</b> tests</span>
 				<span class="badge"><b>vanilla-DOM</b> parity on hot paths</span>
 			</div>
 			<div class="cta">
@@ -223,6 +223,9 @@
 				"@nemanjan00/qrp/collection": "./collection/index.js",
 				"@nemanjan00/qrp/datagrid": "./datagrid/index.js",
 				"@nemanjan00/qrp/http": "./http/index.js",
+				"@nemanjan00/qrp/socket": "./socket/index.js",
+				"@nemanjan00/qrp/store": "./store/index.js",
+				"@nemanjan00/qrp/host": "./host/index.js",
 				"@nemanjan00/qrp/resource": "./resource/index.js",
 				"@nemanjan00/qrp/format": "./format/index.js",
 				"@nemanjan00/qrp/spark": "./spark/index.js",
@@ -239,6 +242,8 @@
 				"@nemanjan00/qrp/behaviors/anchored": "./behaviors/anchored.js",
 				"@nemanjan00/qrp/behaviors/disclosure": "./behaviors/disclosure.js",
 				"@nemanjan00/qrp/behaviors/busy-while": "./behaviors/busy-while.js",
+				"@nemanjan00/qrp/behaviors/embed": "./behaviors/embed.js",
+				"@nemanjan00/qrp/behaviors/stick-to-bottom": "./behaviors/stick-to-bottom.js",
 				"@nemanjan00/qrp/utils": "./utils/index.js",
 				"@nemanjan00/qrp/utils/memoize": "./utils/memoize.js",
 				"@nemanjan00/qrp/utils/lru": "./utils/lru.js",
@@ -249,7 +254,7 @@
 		}
 	</script>
 	<script type="module">
-		import { state, effect, el, mount, list, when, derive } from "@nemanjan00/qrp";
+		import { state, effect, el, mount, list, when, derive, untracked } from "@nemanjan00/qrp";
 		import { html } from "@nemanjan00/qrp/html";
 		import { table } from "@nemanjan00/qrp/table";
 		import { form, registerInput, inputs } from "@nemanjan00/qrp/forms";
@@ -264,6 +269,12 @@
 		import { spark } from "@nemanjan00/qrp/spark";
 		import { persisted, viewport, online, seen, media, poll } from "@nemanjan00/qrp/browser";
 		import { wrapMethod, delegate } from "@nemanjan00/qrp/proto";
+		import { searchFilter } from "@nemanjan00/qrp/collection";
+		import { toCSV, download, copy } from "@nemanjan00/qrp/export";
+		import { si } from "@nemanjan00/qrp/format";
+		import { append, coalesce } from "@nemanjan00/qrp/store";
+		import { island, reconcile } from "@nemanjan00/qrp/host";
+		import { stickToBottom } from "@nemanjan00/qrp/behaviors/stick-to-bottom";
 
 		// mount the global toast stack (demos fire real toasts)
 		mount(document.body, toasts.component);
@@ -279,7 +290,7 @@
 		const highlight = (code) => {
 			const esc = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 			return esc.replace(
-				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen|wrapMethod|delegate|onceOnly|debounce|throttle|limit|validate|scoped|currentRoute|loadScript|memoize)\b/g,
+				/(\/\/[^\n]*)|(`[^`]*`|"[^"]*"|'[^']*')|\b(const|let|import|export|from|return|new|await|function|if|else)\b|\b(state|effect|el|html|list|when|mount|table|form|notify|derive|createHttp|registerInput|inputs|bind|scope|router|portal|trapFocus|dismissable|disclosure|persisted|viewport|online|seen|wrapMethod|delegate|onceOnly|debounce|throttle|limit|validate|scoped|currentRoute|loadScript|memoize|socket|coalesce|append|assign|island|reconcile|stickToBottom|embed|searchFilter|toCSV|download|copy|si|parseSI|onChange)\b/g,
 				(m, c, s, k, fn) =>
 					c ? `<span class="c">${c}</span>`
 					: s ? `<span class="s">${s}</span>`
@@ -586,7 +597,8 @@ form({ settings, fields: {
 			const badge = (st) => el("span", { class: `qrp-badge qrp-badge-${st === "active" ? "success" : st === "warning" ? "warning" : "info"}` }, st);
 			const t = table({
 				rows: () => store.rows, key: (r) => r.id, filter, page,
-				filterFn: (r, f) => !f.q || r.name.toLowerCase().includes(f.q.toLowerCase()),
+				filterFn: searchFilter(["name", "status"]),
+				clearSort: true,
 				sort: state({ key: "signups", dir: -1 }),
 				fields: [
 					{ key: "name", label: "Name", sortable: true },
@@ -594,11 +606,15 @@ form({ settings, fields: {
 					{ key: "signups", label: "Signups", sortable: true, formatter: (v) => v.toLocaleString() }
 				]
 			});
+			// export what the user sees: every page, filtered, in their sort order
+			const csv = () => toCSV(t.view.sorted(), [{ key: "name", label: "Name" }, { key: "status", label: "Status" }, { key: "signups", label: "Signups" }]);
 			return el("div", { class: "window", style: "padding:0" },
-				el("div", { class: "window-bar" }, el("span", { class: "dot r" }), el("span", { class: "dot y" }), el("span", { class: "dot g" }), el("span", { class: "window-name" }, "live · sortable · filtered · paginated")),
+				el("div", { class: "window-bar" }, el("span", { class: "dot r" }), el("span", { class: "dot y" }), el("span", { class: "dot g" }), el("span", { class: "window-name" }, "live · sortable · searchable · paginated · exportable")),
 				el("div", { style: "padding:1rem" },
 					el("div", { class: "toolbar" },
-						el("input", { type: "search", "aria-label": "Filter table rows", placeholder: "Filter names…", style: "flex:1", oninput: (e) => { filter.q = e.target.value; page.index = 0; } })),
+						el("input", { type: "search", "aria-label": "Filter table rows", placeholder: "Search… try status:idle or a name", style: "flex:1", oninput: (e) => { filter.q = e.target.value; page.index = 0; } }),
+						el("button", { class: "btn", title: "Download the rows you see (all pages, in your sort order)", onclick: () => download(csv(), "people.csv") }, "CSV"),
+						el("button", { class: "btn", title: "Copy as CSV", onclick: () => copy(csv()).then(() => notify.success("Copied as CSV"), () => notify.error("Copy refused")) }, "copy")),
 					el("div", { style: "overflow-x:auto" }, t),
 					el("div", { class: "pager" },
 						el("button", { class: "btn", onclick: () => { if(page.index > 0) page.index--; } }, "‹"),
@@ -606,14 +622,15 @@ form({ settings, fields: {
 						el("button", { class: "btn", onclick: () => { if(page.index < t.view.pageCount() - 1) page.index++; } }, "›"))));
 		};
 		app.appendChild(section("table", "The flagship", "A data table in a dozen lines.",
-			"Sortable headers, live filter, pagination, and keyed row reuse — sort or filter and qrp moves the existing <tr> nodes instead of rebuilding them. Click the headers.",
+			"Sortable headers, a search box with field:text terms, pagination, CSV export of exactly what you see, and keyed row reuse — sort or filter and qrp moves the existing <tr> nodes instead of rebuilding them. Click a header three times to get back to the original order.",
 			el("div", { style: "display:grid;grid-template-columns:1fr;gap:1.2rem" },
 				codeWindow("table.js", `
 const t = table({
   rows: () => store.rows,
   key: (r) => r.id,                       // the :key equivalent
   filter, page,
-  filterFn: (r, f) => r.name.toLowerCase().includes(f.q),
+  filterFn: searchFilter(["name", "status"]), // "status:idle ada"
+  clearSort: true,                         // asc → desc → off
   sort: state({ key: "signups", dir: -1 }),
   fields: [
     { key: "name",    label: "Name",    sortable: true },
@@ -622,8 +639,165 @@ const t = table({
     { key: "signups", label: "Signups", sortable: true,
       formatter: (v) => v.toLocaleString() }
   ]
-});`),
+});
+
+// every page, filtered, in the user's sort order:
+download(toCSV(t.view.sorted(), columns), "people.csv");`),
 				tableDemo())));
+
+		// ============================================================ LIVE DATA (store + stickToBottom + si)
+		const EVENTS = ["psu: output on", "ch1 crossed 3.35 V", "scope: trigger armed", "sweep pass complete", "uart: 112 bytes", "ch1 back under 3.35 V", "device rfcat reconnected", "approval granted: psu.set"];
+		const liveDemo = () => {
+			// a simulated 150 Hz instrument stream (no server needed); a real
+			// app wires socket("/ws") into the same three calls
+			const readings = state({ volts: 3.3, hz: 433.92e6, amps: 0.0123, received: 0 });
+			const values = coalesce(readings, { interval: 250 });
+			const log = state({ lines: [] });
+			const renders = state({ n: 0 });
+			let received = 0;
+			let seq = 0;
+			let t = 0;
+
+			poll(() => {
+				[0, 1, 2].forEach(() => {
+					t += 1;
+					received += 1;
+					values.set("volts", 3.3 + Math.sin(t / 40) * 0.06 + (Math.random() - 0.5) * 0.004);
+					values.set("hz", 433.92e6 + Math.sin(t / 90) * 2400 + (Math.random() - 0.5) * 40);
+					values.set("amps", 0.0123 + Math.sin(t / 25) * 0.0015);
+					values.set("received", received);
+				});
+			}, 20);
+			poll(() => {
+				seq += 1;
+				append(log.lines, { id: seq, at: new Date().toLocaleTimeString(), text: EVENTS[seq % EVENTS.length] }, 200);
+			}, 700);
+
+			// count actual renders: one per coalesced flush, not one per sample
+			effect(() => {
+				readings.received;
+				untracked(() => { renders.n += 1; });
+			});
+
+			const feed = el("div", { class: "feed mono", style: "height:170px;overflow:auto;font-size:.8rem;border:1px solid var(--border);border-radius:8px;padding:.4rem .6rem" },
+				list(() => log.lines, (line) => line.id, (line) => el("div", {}, el("span", { class: "dim" }, `${line.at}  `), line.text)));
+			const stick = stickToBottom(feed);
+			const readout = (label, value) => el("div", { style: "flex:1;min-width:120px" },
+				el("div", { class: "dim", style: "font-size:.75rem" }, label),
+				el("div", { style: "font-size:1.35rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums" }, value));
+
+			return livePanel(
+				el("div", { class: "row", style: "gap:1rem;flex-wrap:wrap" },
+					readout("supply", () => si(readings.volts, "V")),
+					readout("carrier", () => si(readings.hz, "Hz")),
+					readout("current", () => si(readings.amps, "A"))),
+				el("div", { class: "dim", style: "font-size:.8rem;font-variant-numeric:tabular-nums" },
+					() => `${readings.received.toLocaleString()} samples in · ${renders.n.toLocaleString()} renders (coalesced to 4/s)`),
+				feed,
+				el("div", { class: "row", style: "min-height:2.2rem" },
+					el("span", { class: "dim", style: "font-size:.8rem" }, () => stick.pinned.value ? "following the newest event — scroll up to read history" : "paused: you scrolled up"),
+					when(() => !stick.pinned.value, () => el("button", { class: "btn", onclick: stick.scrollToBottom }, "↓ jump to latest"))));
+		};
+		app.appendChild(section("live", "Live data", "A firehose in, four renders a second out.",
+			"socket() reconnects with backoff and routes messages by type. coalesce() keeps the latest value per key and writes them in one batch per interval, append() keeps a capped feed, stickToBottom() follows the log only while you're reading the bottom, and si() formats engineering units. Scroll the log up — it stops following until you come back. (Simulated stream, so it runs with no server.)",
+			el("div", { class: "demo" },
+				codeWindow("live.js", `
+const live = socket("/ws");    // reconnects, routes by type
+const values = coalesce(lab.live, { interval: 250 });
+
+live.on("samples", (m) => values.set(m.name, m.v));
+live.on("event", (m) => append(lab.log, m, 200));
+
+stickToBottom(logEl);   // follows only while pinned
+el("b", {}, () => si(lab.live.volts, "V")); // 3.301 V`),
+				liveDemo())));
+
+		// ============================================================ LARGE APPS (host: island + reconcile)
+		const largeDemo = () => {
+			// a stand-in for GridStack / golden-layout: a "library" that owns its
+			// own DOM and knows nothing about qrp
+			const board = el("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.5rem;min-height:96px" });
+			const foreignGrid = {
+				add: (id) => {
+					const item = document.createElement("div");
+					item.className = "card";
+					item.style.cssText = "margin:0;padding:.6rem";
+					item.dataset.id = id;
+					const body = document.createElement("div");
+					item.appendChild(body);
+					board.appendChild(item);
+					return { item, body };
+				},
+				remove: (widget) => widget.item.remove()
+			};
+
+			const ticker = state({ n: 0 });
+			poll(() => { ticker.n += 1; }, 1000);
+
+			const VIEWS = {
+				gauge: (p) => el("div", {},
+					el("strong", {}, () => p.pane.title),
+					el("div", { style: "font-size:1.3rem;color:var(--accent);font-variant-numeric:tabular-nums" }, () => si(3.3 + Math.sin(ticker.n) * 0.05, "V"))),
+				counter: (p) => el("div", {},
+					el("strong", {}, () => p.pane.title),
+					el("div", { style: "font-size:1.3rem;color:var(--accent2);font-variant-numeric:tabular-nums" }, () => `${ticker.n} s`))
+			};
+
+			const lab = state({ panes: [{ id: 1, type: "gauge", title: "PSU" }, { id: 2, type: "counter", title: "Uptime" }] });
+			const events = state({ lines: [] });
+			let nextId = 3;
+			let eventId = 0;
+			const note = (text) => append(events.lines, { id: eventId += 1, text }, 5);
+
+			reconcile(() => lab.panes, (pane) => pane.id, {
+				create: (pane) => {
+					note(`create #${pane.id} (${pane.type})`);
+					const widget = foreignGrid.add(pane.id);
+					return { ...widget, panel: island(widget.body, VIEWS[pane.type], { pane }) };
+				},
+				update: (widget, pane) => {
+					note(`update #${pane.id} → island props`);
+					widget.panel.update({ pane });
+				},
+				recreate: (previous, pane) => previous.type !== pane.type,
+				destroy: (widget, id) => {
+					note(`destroy #${id}`);
+					foreignGrid.remove(widget);
+				}
+			});
+
+			// the server's view of the world: every edit replaces the pane object
+			const first = () => lab.panes[0];
+			const replaceFirst = (patch) => { lab.panes = [{ ...first(), ...patch }, ...lab.panes.slice(1)]; };
+
+			return livePanel(
+				el("div", { class: "row", style: "flex-wrap:wrap" },
+					el("button", { class: "btn btn-primary", onclick: () => { lab.panes = [...lab.panes, { id: nextId, type: nextId % 2 ? "gauge" : "counter", title: `Pane ${nextId}` }]; nextId += 1; } }, "+ pane"),
+					el("button", { class: "btn", disabled: () => !lab.panes.length, onclick: () => replaceFirst({ title: `${first().title}!` }) }, "rename first"),
+					el("button", { class: "btn", disabled: () => !lab.panes.length, onclick: () => replaceFirst({ type: first().type === "gauge" ? "counter" : "gauge" }) }, "change type"),
+					el("button", { class: "btn", disabled: () => !lab.panes.length, onclick: () => { lab.panes = lab.panes.slice(0, -1); } }, "remove last")),
+				board,
+				el("div", { class: "mono dim", style: "font-size:.78rem;min-height:5.5em" },
+					list(() => events.lines, (line) => line.id, (line) => el("div", {}, line.text))));
+		};
+		app.appendChild(section("large", "Large apps", "When qrp doesn't own the page.",
+			"Big dashboards often live inside a layout library (GridStack, golden-layout) that owns the DOM. reconcile() keeps that library's widgets in sync with state — create, update, recreate on a type change, destroy — with one scope per item, and island() mounts a qrp view into each widget with props you push in. Removing a pane disposes everything its view built. The grid below is a plain, non-qrp \"library\".",
+			el("div", { class: "demo" },
+				codeWindow("shell.js", `
+reconcile(() => lab.panes, (p) => p.id, {
+  create: (pane) => {
+    const w = grid.addWidget(pane);
+    return { ...w, panel:
+      island(w.body, VIEWS[pane.type], { pane }) };
+  },
+  update: (w, pane) => w.panel.update({ pane }),
+  recreate: (a, b) => a.type !== b.type,
+  destroy: (w) => grid.removeWidget(w.item)
+});`),
+				largeDemo()),
+			el("p", { class: "dim", style: "margin-top:1.2rem" }, "Structuring something this size — transport, store, features, shell: ",
+				el("a", { href: "./large-apps.html" }, "the large-app guide"), ". About to hand-roll a helper? Check ",
+				el("a", { href: "./recipes.html" }, "the recipes"), " first.")));
 
 		// ============================================================ SPARK (charts)
 		const sparkDemo = () => {
@@ -933,23 +1107,26 @@ effect(() => applyTheme(
 
 		// ============================================================ MODULES
 		const modules = [
-			["⚡", "qrp", "state, effect, derive, el, html, list, when, mount, router, scope"],
+			["⚡", "qrp", "state, effect, derive, onChange, el, list, when, mount, router, scope"],
 			["📝", "html``", "author DOM as HTML — inline ${}, storable #{} templates, ref()"],
 			["📋", "forms", "declarative forms + open input-type registry"],
 			["🗂️", "table", "sortable, keyed, paginated data table"],
-			["🔀", "collection", "reactive sort / filter / paginate over a dataset"],
+			["🔀", "collection", "reactive sort / filter / paginate; searchFilter, sorted() for export"],
 			["▦", "datagrid", "headless grid state: selection, column visibility, paging"],
 			["🌐", "http", "fetch client: auth headers, reactive loader, error bus"],
+			["🔌", "socket", "reconnecting WebSocket: backoff, reactive status, routed by type"],
+			["🗄️", "store", "server mirror: assign changed keys, capped append, coalesce high-rate writes"],
+			["🏗️", "host", "island + reconcile — qrp inside layout libraries you don't own"],
 			["🔁", "resource", "reactive async data: loading / data / error / reload; bus refresh"],
 			["📈", "spark", "data → reactive <svg>: line / area / bar sparklines"],
-			["🔢", "format", "Intl formatters: num, compact, pct, bytes, duration, relTime, date"],
+			["🔢", "format", "Intl formatters: num, pct, bytes, duration, relTime, date, si / parseSI"],
 			["📐", "scale", "linear / ordinal / quantize + colourblind-safe palette"],
 			["⏱️", "timeseries", "rate / rolling / bucket / downsample (LTTB)"],
-			["⬇️", "export", "toCSV / download / copy — get table data out"],
+			["⬇️", "export", "toCSV / download / copy (works on plain-http LANs too)"],
 			["📡", "events", "global event bus on native EventTarget"],
 			["🔔", "toasts", "notifications off the bus; content is any renderable"],
-			["🪟", "browser", "URL, localStorage, media, viewport, online, poll — as reactive state"],
-			["🧩", "behaviors", "portal, dismissable, trapFocus, anchored, disclosure"],
+			["🪟", "browser", "URL, localStorage, media, viewport, online, size, poll — as reactive state"],
+			["🧩", "behaviors", "portal, dismissable, trapFocus, anchored, disclosure, embed, stickToBottom"],
 			["🧬", "proto", "wrapMethod, delegate, onceOnly — patch prototypes, no classes"],
 			["🛠️", "utils", "memoize, lru, cache, paginate, limit, debounce, validate, loadScript — pure helpers"],
 			["🎨", "qrp.css", "optional minimal baseline (design tokens + classes)"]
@@ -963,7 +1140,7 @@ effect(() => applyTheme(
 					el("p", {}, m[2]))))));
 
 		// footer stats
-		document.getElementById("foot-stats").textContent = "~4.7 KB min+gzip core · 292 tests · built with qrp";
+		document.getElementById("foot-stats").textContent = "~5.9 KB min+gzip core · 521 tests · built with qrp";
 	</script>
 </body>
 </html>

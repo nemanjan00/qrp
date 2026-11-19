@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>qrp — large apps</title>
+	<meta name="description" content="Structuring a large qrp app: transport, store, features and shell, from a 56k-line production dashboard. Rendered from docs/LARGE-APPS.md, live, with qrp.">
+	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📡</text></svg>">
+	<link rel="stylesheet" href="./docs-site.css">
+</head>
+<body>
+	<nav>
+		<div class="nav-inner">
+			<a href="./" class="brand">q<b>r</b>p</a>
+			<div class="nav-links">
+				<a href="./">Home</a>
+				<a href="./start.html">Guide</a>
+				<a href="./api.html">API</a>
+				<a href="./styling.html">Styling</a>
+				<a href="./recipes.html">Recipes</a>
+				<a href="./large-apps.html">Large apps</a>
+				<a href="./#table">Demos</a>
+				<a href="https://github.com/nemanjan00/qrp" target="_blank">GitHub</a>
+			</div>
+		</div>
+	</nav>
+
+	<div class="layout">
+		<aside>
+			<input class="search" id="search" type="search" aria-label="Filter the guide" placeholder="Filter…" autocomplete="off">
+			<nav id="toc" aria-label="Guide sections"></nav>
+		</aside>
+		<main id="doc"><div class="loading">Loading the guide…</div></main>
+	</div>
+
+	<!-- renderDocPage() pulls state/el/list from the core entry; that is the only
+	     bare specifier docs-site.js needs, so the map is one line, not the full set. -->
+	<script type="importmap">
+		{ "imports": { "@nemanjan00/qrp": "./qrp/index.js" } }
+	</script>
+	<script type="module">
+		import { renderDocPage } from "./docs-site.js";
+		renderDocPage({ md: "./docs/LARGE-APPS.md", noun: "the large-app guide", sections: "Large apps" });
+	</script>
+</body>
+</html>

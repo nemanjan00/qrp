@@ -1,6 +1,6 @@
 /**
  * docs-site.js — the shared engine behind the rendered doc pages (start / api /
- * styling / sharp). Each page is a thin shell that links docs-site.css and calls
+ * styling / sharp / recipes / large-apps). Each page is a thin shell that links docs-site.css and calls
  * renderDocPage() with its own markdown source; this fetches that single-source
  * `.md` and renders it to DOM with a compact Markdown renderer — dogfooding qrp,
  * no markdown library. One source instead of four copy-pasted renderers.
@@ -10,7 +10,7 @@ import { state, el, list } from "@nemanjan00/qrp";
 
 // Cross-doc `.md` links -> their rendered pages (the `.md` is authored for
 // GitHub); other relative paths are kept / rebased for the site context.
-const DOC_PAGES = { "API.md": "api.html", "GETTING-STARTED.md": "start.html", "STYLING.md": "styling.html", "SHARP-EDGES.md": "sharp.html" };
+const DOC_PAGES = { "API.md": "api.html", "GETTING-STARTED.md": "start.html", "STYLING.md": "styling.html", "SHARP-EDGES.md": "sharp.html", "RECIPES.md": "recipes.html", "LARGE-APPS.md": "large-apps.html" };
 
 const resolveHref = (href) => {
 	if(/^(https?:|#)/.test(href)) { return href; }
