@@ -6,7 +6,45 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
-_(nothing yet)_
+Lessons from mailab, a production lab dashboard built on qrp. It reimplemented
+a lot that qrp already had, and also hit some real gaps.
+
+- **New `docs/RECIPES.md`**: "I'm about to write X → use Y". The README now
+  links it next to SHARP-EDGES.
+- **New module `socket`**: `socket(url, options)` is a reconnecting WebSocket.
+  A path becomes `ws(s)://` on the page's origin, and `url` may be a function
+  that is re-read on each reconnect. Backoff is exponential (500 ms → 10 s).
+  `status` is reactive (`state`, `connected`, `attempts`). JSON is decoded and
+  messages are routed by type with `on("samples", fn)`. `send()` returns false
+  while disconnected, and `buffered()` returns the socket's `bufferedAmount`.
+  The socket closes with its scope.
+- **Core: `onChange(source, callback, { immediate, equals })`**: runs a side
+  effect when a reactive value changes. Only `source` is tracked, and the
+  callback runs untracked. This replaces the error-prone
+  `effect(() => { key(); untracked(…) })` + `last !== key` pattern.
+- **`collection`**: `sorted()` returns the filtered and sorted rows without
+  paging (export what the user sees). The `clearSort` option makes headers
+  cycle asc → desc → off (also on `table`). `searchFilter(fields)` is a
+  ready-made search-box `filterFn`: AND-ed case-insensitive terms,
+  `field:text` scoping, `"quoted phrases"`, and an unknown `x:y` kept as text.
+- **`format`**: `si(value, unit)` gives SI/engineering notation ("1.2 mV",
+  "433.92 MHz"). The prefix is picked after rounding. `parseSI(text, unit)` is
+  its inverse ("2.4G", "3.3 kV", with `u`/`μ`/`K` spellings), so a numeric input
+  can accept engineering suffixes.
+- **`browser`**: `size(element)` returns a reactive `{ width, height }` from a
+  ResizeObserver. It disconnects with the scope.
+- **`behaviors/embed`**: `embed(create)` hosts an imperative widget (uPlot,
+  canvas, xterm). It creates the widget only once the host is connected,
+  forwards `resize(w, h)`, and destroys it with the scope.
+- **`behaviors/stick-to-bottom`**: `stickToBottom(scroller)` keeps a log, chat
+  or feed at the newest entry only while the user is at the bottom. A reactive
+  `pinned` drives a "jump to latest" button.
+- **Fix (`export`)**: `copy()` threw a synchronous TypeError on plain-http
+  origins (`http://192.168.x.x` has no `navigator.clipboard`). It now falls back
+  to `execCommand("copy")` and always returns a promise.
+- **Fix (`export`)**: `download()` revoked the object URL in the same task as
+  `click()`, which can cancel the download in Safari and Firefox. The revoke is
+  now delayed by 30 s.
 
 ## 0.13.1
 

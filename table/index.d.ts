@@ -91,6 +91,8 @@ export interface TableBaseOptions<T> {
 	page?: PageState;
 	filter?: Record<string, any>;
 	filterFn?: (item: T, filter: Record<string, any>) => boolean;
+	/** Header clicks cycle asc → desc → off (source order) instead of asc ⇄ desc. */
+	clearSort?: boolean;
 	rowClass?: (item: T) => string;
 	/** Extra class(es) for the <table>. */
 	class?: string;

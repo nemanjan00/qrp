@@ -10,7 +10,7 @@ A data-first, declarative frontend framework for the browser — reactivity is a
 [![CI](https://img.shields.io/github/actions/workflow/status/nemanjan00/qrp/ci.yml?branch=master&style=flat-square&labelColor=0a0d12&label=CI)](https://github.com/nemanjan00/qrp/actions/workflows/ci.yml)
 [![dependencies](https://img.shields.io/badge/dependencies-0-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![build step](https://img.shields.io/badge/build_step-optional-34d399?style=flat-square&labelColor=0a0d12)](#-what-is-qrp)
-[![core size](https://img.shields.io/badge/core-~5.7_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
+[![core size](https://img.shields.io/badge/core-~5.9_KB_min%2Bgzip-ffb23e?style=flat-square&labelColor=0a0d12)](#-performance)
 [![tests](https://img.shields.io/badge/tests-361_passing-34d399?style=flat-square&labelColor=0a0d12)](#-tests--tooling)
 [![types](https://img.shields.io/badge/TypeScript-.d.ts_included-ffb23e?style=flat-square&labelColor=0a0d12)](#-typescript)
 [![license](https://img.shields.io/npm/l/@nemanjan00/qrp?style=flat-square&labelColor=0a0d12&color=34d399)](LICENSE)
@@ -25,9 +25,9 @@ Zero runtime dependencies and **no required build step**. Drop it into a
 `<script type="module">` and run with zero tooling — **or** `npm install` it and
 let your bundler (Vite, webpack, Rollup, esbuild) resolve subpaths and tree-shake.
 Same library either way; the build is your choice, not qrp's. Reactivity is a
-`Proxy`, the DOM is real, and the published core is **~5.7 KB min+gzip** — the
+`Proxy`, the DOM is real, and the published core is **~5.9 KB min+gzip** — the
 number that lines up next to Solid (~7 KB) or React (~45 KB). The whole library,
-every module, is **~29.7 KB min+gzip**.
+every module, is **~33.0 KB min+gzip**.
 
 > The npm package ships a minified build (esbuild) — a flat per-module mirror in
 > `dist/`, so a browser pulls the small file — still no build step on *your* end. The readable source,
@@ -53,12 +53,18 @@ data, the DOM follows.
 > `Proxy` actually work — thunk-vs-value reactivity, `list()` key uniqueness, the
 > runaway-effect guard. None are bugs; each bites exactly once. Five minutes there
 > saves an afternoon of "why doesn't this update / where did my rows go".
+>
+> **📋 Before hand-rolling a helper, check [`docs/RECIPES.md`](docs/RECIPES.md).**
+> It maps "I'm about to write X" to the qrp module that already does it: sorting,
+> search, CSV export, polling, a reconnecting WebSocket, hosting a chart library,
+> log autoscroll, SI units, copy on plain http. Most of qrp is opt-in, so it's
+> easy to miss.
 
 ---
 
 ## 🛰️ Small enough to run on a microcontroller
 
-Because the whole library is ~29.7 KB min+gzip, a useful qrp app doesn't need a
+Because the whole library is ~33.0 KB min+gzip, a useful qrp app doesn't need a
 server or a CDN — it fits **in flash on an ESP32**. Not a static form, either: a
 **live dashboard** — telemetry streaming into reactive bindings, an LED you drive,
 a config form that rewrites itself with `when()`, and a WiFi-scan modal built from
@@ -369,24 +375,25 @@ unused exports tree-shake away.
 
 | Module | What it gives you |
 |--------|-------------------|
-| `@nemanjan00/qrp` | Core: `state`, `effect`, `derive`, `untracked`, `batch`, `raw`, `onEffectError`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `router`, `navigate`, `currentRoute`, `compilePath` |
+| `@nemanjan00/qrp` | Core: `state`, `effect`, `derive`, `onChange`, `untracked`, `batch`, `raw`, `onEffectError`, `el`, `reactive`, `bind`, `list` (keyed), `when`, `clear`, `mount`, `scope`, `onDispose`, `router`, `navigate`, `currentRoute`, `compilePath` |
 | `@nemanjan00/qrp/html` | `` html`` `` / `html()` (inline, `${}` holes), `html.template` (storable, `#{}` placeholders), `ref` (inject a live node into a plain string) — author DOM as HTML; text holes escaped (see escaping guarantee above) |
 | `@nemanjan00/qrp/forms` | Declarative forms + open input-type registry (`registerInput`, `field`, `form`, `parseKV`) |
 | `@nemanjan00/qrp/table` | Declarative data table: sortable headers, keyed row reuse, per-column accessor/formatter/render |
-| `@nemanjan00/qrp/collection` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()` |
+| `@nemanjan00/qrp/collection` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()`; `sorted()` for export, `searchFilter` (`col:text` search box), `clearSort` |
 | `@nemanjan00/qrp/datagrid` | Headless data-grid state over `collection`: keyed selection (select-all/indeterminate), column visibility, page-size, windowed pager — no markup |
 | `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing, per-request `responseType` (json/text/binary), pluggable `fetch` |
+| `@nemanjan00/qrp/socket` | `socket` — reconnecting WebSocket: backoff, reactive `status`, JSON decode, `on(type)` routing, scope-owned |
 | `@nemanjan00/qrp/resource` | Reactive async data: `{ data, loading, error, reload }` over a fetcher thunk; `refreshOn` bus event for global refresh; `asyncView` → `when` branches |
-| `@nemanjan00/qrp/format` | Intl-backed pure formatters: `num`, `compact`, `pct`, `bytes`, `duration`, `relTime`, `date` (nullish → "") |
+| `@nemanjan00/qrp/format` | Intl-backed pure formatters: `num`, `compact`, `pct`, `bytes`, `duration`, `relTime`, `date`, SI/engineering `si` ("1.2 mV") + `parseSI` ("2.4G") (nullish → "") |
 | `@nemanjan00/qrp/spark` | Charting primitive: data → a reactive `<svg>` (line/area/bar). Not a chart library — the sparkline 80% |
 | `@nemanjan00/qrp/scale` | Micro scales `linear`/`ordinal`/`quantize`/`ticks` + a colourblind-safe categorical `palette` |
 | `@nemanjan00/qrp/timeseries` | Pure `{x,y}` math: `deltas`, `rate`, `rolling`, `bucket`, `downsample` (LTTB) |
-| `@nemanjan00/qrp/export` | `toCSV` / `download` / `copy` — get table/collection data out |
+| `@nemanjan00/qrp/export` | `toCSV` / `download` / `copy` (falls back to `execCommand` on plain-http origins) — get table/collection data out |
 | `@nemanjan00/qrp/events` | Global event bus on native `EventTarget`: `bus`, `emitter`, `request`/`respond`, `channel` |
 | `@nemanjan00/qrp/toasts` | Notifications off the bus: `notify.*`, mountable `toasts`; content is any renderable |
-| `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen`, `poll` (scope-aware interval, pauses when hidden) |
+| `@nemanjan00/qrp/browser` | Reactive wrappers over native APIs: `persisted`, `query`, `media`, `viewport`, `online`, `cookies`, `seen`, `size` (ResizeObserver), `poll` (scope-aware interval, pauses when hidden) |
 | `@nemanjan00/qrp/context` | `createContext` — values a subtree provides and descendants read through the DOM (`provide`/`read`/`watch`), reactive so children built before their parent still resolve; portaled content resolves through its owner (`setOwner`) |
-| `@nemanjan00/qrp/behaviors/*` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile` |
+| `@nemanjan00/qrp/behaviors/*` | Headless helpers to build styled components: `portal`, `dismissable`, `trapFocus`, `anchored`, `disclosure`, `busyWhile`, `embed` (host uPlot/canvas/xterm), `stickToBottom` (log autoscroll) |
 | `@nemanjan00/qrp/utils/*` | Pure data helpers for dashboards: `memoize` (+ttl/invalidate), `lru`, `cache`, `paginate`, `limit` (concurrency/rate/timeout), `debounce`/`throttle`, `validate`, `loadScript` |
 | `@nemanjan00/qrp/proto` | Prototype-level enhancement (objects & `__proto__`, no classes): `findProto`, `wrapMethod`, `onceOnly`, `delegate` |
 | `qrp.css` | Optional minimal baseline (design tokens + semantic classes). Link it yourself. |
@@ -613,7 +620,7 @@ happy-dom); your app tests the same way.
 ## 📖 API reference
 
 Full reference — every export, signature, and a usage snippet per module — in
-[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md). Styling & theming: [`docs/STYLING.md`](docs/STYLING.md).
+[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md). "Is there already a helper for this?": [`docs/RECIPES.md`](docs/RECIPES.md). Styling & theming: [`docs/STYLING.md`](docs/STYLING.md).
 
 ## 🧪 Tests & tooling
 

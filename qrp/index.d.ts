@@ -1,6 +1,6 @@
 /**
  * @module qrp
- * Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
+ * Core: reactivity (`state`/`effect`/`derive`/`onChange`), DOM (`el`/`reactive`/`bind`),
  * keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
  * and HTML5 routing. `import … from "@nemanjan00/qrp"`.
  */
@@ -174,6 +174,20 @@ export function batch<T>(fn: () => T): T;
  * el("span", {}, () => full.value);
  */
 export function derive<T>(fn: () => T): Derived<T>;
+
+/**
+ * Run a side effect when a reactive value changes. Only `source()` is tracked;
+ * `callback(next, previous)` runs untracked, so what it reads never subscribes.
+ * Not called for the initial value unless `immediate`. Compare with `equals`
+ * (default `Object.is`) — return a primitive key from `source` for compound values.
+ * @example
+ * onChange(() => pane.config.device, (device) => reload(device));
+ */
+export function onChange<T>(
+	source: () => T,
+	callback: (next: T, previous: T | undefined) => void,
+	options?: { immediate?: boolean; equals?: (a: T, b: T) => boolean; name?: string }
+): EffectHandle;
 
 /** Register a cleanup to run when the current effect/scope disposes. */
 export function onDispose(fn: () => void): void;

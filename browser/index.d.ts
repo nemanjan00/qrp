@@ -50,3 +50,9 @@ export function cookies(interval?: number): Record<string, string>;
 
 /** IntersectionObserver as reactive state: { matches } (on screen). */
 export function seen(element: Element, options?: IntersectionObserverInit): { matches: boolean };
+/**
+ * ResizeObserver as reactive state: `size(el).width` / `.height` track the
+ * element's content box (starts from its current rect). Disconnects with the
+ * enclosing scope.
+ */
+export function size(element: Element): { width: number; height: number };

@@ -64,6 +64,11 @@ export const toCSV = (rows, columns, options = {}) => {
 	return rows.length ? `${header}\r\n${body}` : header;
 };
 
+// Revoking the object URL in the same task as click() can cancel the download
+// (Safari, and Firefox for large blobs, start reading it asynchronously). Keep
+// it alive a while; a leaked URL for half a minute costs nothing.
+const REVOKE_AFTER_MS = 30000;
+
 /** Trigger a browser download of `content` (string or Blob) as `filename`. */
 export const download = (content, filename, type = "text/csv;charset=utf-8") => {
 	const blob = content instanceof Blob ? content : new Blob([content], { type });
@@ -75,8 +80,55 @@ export const download = (content, filename, type = "text/csv;charset=utf-8") => 
 	document.body.appendChild(link);
 	link.click();
 	link.remove();
-	URL.revokeObjectURL(url);
+	setTimeout(() => URL.revokeObjectURL(url), REVOKE_AFTER_MS);
 };
 
-/** Copy text to the clipboard; returns the clipboard promise. */
-export const copy = (text) => navigator.clipboard.writeText(text);
+// navigator.clipboard only exists in secure contexts: a dashboard served from
+// http://<lan-ip> has none. The legacy path copies the selection of an
+// off-screen textarea, then restores the user's focus.
+const legacyCopy = (text) => new Promise((resolve, reject) => {
+	const area = document.createElement("textarea");
+	const focused = document.activeElement;
+
+	area.value = text;
+	area.setAttribute("readonly", "");
+	area.style.position = "fixed";
+	area.style.top = "0";
+	area.style.left = "0";
+	area.style.opacity = "0";
+	// inside an open modal <dialog> everything else is inert: stay in it
+	((focused && focused.closest && focused.closest("dialog[open]")) || document.body).appendChild(area);
+	area.select();
+
+	try {
+		if(document.execCommand && document.execCommand("copy")) {
+			resolve();
+		} else {
+			reject(new Error("copy: the browser refused to copy"));
+		}
+	} catch(error) {
+		reject(error);
+	} finally {
+		area.remove();
+		if(focused && focused.focus) {
+			focused.focus();
+		}
+	}
+});
+
+/**
+ * Copy text to the clipboard. Uses `navigator.clipboard` when the page has it
+ * (secure contexts) and falls back to `execCommand("copy")` on plain-http
+ * origins. Always returns a promise — it never throws synchronously.
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+export const copy = (text) => {
+	const value = String(text);
+
+	if(typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+		return navigator.clipboard.writeText(value).catch(() => legacyCopy(value));
+	}
+
+	return legacyCopy(value);
+};

@@ -281,3 +281,51 @@ import { nice } from "../scale/index.js";
 	notify.info({ body: "FYI", id: "fyi", description: "more" });
 	notify.warning("plain");
 }
+
+// --- 0.14: lessons from a production dashboard (mailab) ---------------------
+import { onChange } from "../qrp/index.js";
+import { searchFilter } from "../collection/index.js";
+import { si, parseSI } from "../format/index.js";
+import { size } from "../browser/index.js";
+import { copy } from "../export/index.js";
+import { embed } from "../behaviors/embed.js";
+import { stickToBottom } from "../behaviors/stick-to-bottom.js";
+import { socket } from "../socket/index.js";
+
+{
+	type Reading = { id: number; name: string; volts: number };
+	const readings = state({ rows: [] as Reading[], q: "" });
+
+	const watcher = onChange(() => readings.q, (next: string, previous: string | undefined) => void [next, previous]);
+	watcher.dispose();
+	// @ts-expect-error equals must compare the source type
+	onChange(() => readings.q, () => {}, { equals: (a: number, b: number) => a === b });
+
+	const view = collection(() => readings.rows, {
+		filter: readings,
+		filterFn: searchFilter<Reading>(["name", { label: "v", value: (r) => r.volts }]),
+		clearSort: true
+	});
+	const ordered: Reading[] = view.sorted();
+	searchFilter<Reading>({ name: (r) => r.name }, { key: "q" });
+
+	const label: string = si(0.0012, "V");
+	const value: number = parseSI("2.4G");
+	const box: { width: number; height: number } = size(document.body);
+	const copied: Promise<void> = copy("text");
+
+	const host: HTMLElement = embed((node) => ({ resize: (w, h) => void [node, w, h], destroy: () => {} }), { props: { class: "chart" } });
+	embed(() => () => {});
+	const stick = stickToBottom(host, { threshold: 10 });
+	const pinned: boolean = stick.pinned.value;
+
+	const live = socket("/ws", { reconnect: { min: 250 }, binaryType: "arraybuffer" });
+	const off = live.on<{ type: "samples"; v: number[] }>("samples", (msg) => void msg.v.length);
+	const ok: boolean = live.send({ type: "subscribe" });
+	const state0: "connecting" | "open" | "closed" = live.status.state;
+	socket(() => "/ws?t=1", { reconnect: false });
+	// @ts-expect-error reconnect is options or false
+	socket("/ws", { reconnect: true });
+	off();
+	void [ordered, label, value, box, copied, pinned, ok, state0];
+}

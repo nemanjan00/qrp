@@ -21,6 +21,7 @@ next to each module, so editors resolve them with no build step.
 - [table](#table)
 - [datagrid](#datagrid)
 - [http](#http)
+- [socket](#socket)
 - [resource](#resource)
 - [format](#format)
 - [export](#export)
@@ -43,7 +44,7 @@ next to each module, so editors resolve them with no build step.
 import { … } from "@nemanjan00/qrp"
 ```
 
-Core: reactivity (`state`/`effect`/`derive`), DOM (`el`/`reactive`/`bind`),
+Core: reactivity (`state`/`effect`/`derive`/`onChange`), DOM (`el`/`reactive`/`bind`),
 keyed lists (`list`), conditionals (`when`), components (`mount`/`scope`),
 and HTML5 routing. `import … from "@nemanjan00/qrp"`.
 
@@ -184,6 +185,21 @@ A read-only reactive value derived from other state.
 ```js
 const full = derive(() => `${s.first} ${s.last}`);
 el("span", {}, () => full.value);
+```
+
+### `onChange`
+
+```ts
+onChange<T>(source: () => T, callback: (next: T, previous: T | undefined) => void, options?: { immediate?: boolean; equals?: (a: T, b: T) => boolean; name?: string }): EffectHandle
+```
+
+Run a side effect when a reactive value changes. Only `source()` is tracked;
+`callback(next, previous)` runs untracked, so what it reads never subscribes.
+Not called for the initial value unless `immediate`. Compare with `equals`
+(default `Object.is`) — return a primitive key from `source` for compound values.
+
+```js
+onChange(() => pane.config.device, (device) => reload(device));
 ```
 
 ### `onDispose`
@@ -796,7 +812,9 @@ Reactive sort / filter / paginate over a dataset. `collection(source, options)`
 returns `{ sort, filter, page, items(), filtered(), total(), pageCount(),
 pageIndex(), toggleSort() }`;
 `items()` is reactive — feed it to `list()`. `options`:
-`{ sort?, page?, filter?, filterFn?, compare? }`. `compareValues(a, b, dir?)`
+`{ sort?, page?, filter?, filterFn?, compare?, clearSort? }`. `sorted()` is the
+filtered+sorted set across all pages ("export what I see"). `searchFilter(fields)`
+builds a search-box `filterFn` (AND-ed terms, `field:text`, "quoted phrases"). `compareValues(a, b, dir?)`
 is the default comparator (missing values last, numbers/Dates numeric, else
 natural-order strings) — reuse it inside a custom `compare`.
 
@@ -818,7 +836,24 @@ The default sort comparator: null/undefined/NaN always last (either
 direction), numbers and Dates numerically, everything else by natural-order
 string comparison. `dir` is 1 (ascending, default) or -1.
 
+### `searchFilter`
+
+```ts
+searchFilter<T>(fields: readonly SearchField<T>[] | Record<string, (item: T) => unknown>, options?: { key?: string }): (item: T, filter: Record<string, any>) => boolean
+```
+
+A ready-made `filterFn` for a search box. Every whitespace-separated term must
+match (case-insensitive substring); `field:text` limits a term to the field
+labelled `field` (or the first label starting with it); "quoted phrases" keep
+spaces. Reads the query from `filterState[options.key ?? "q"]`.
+
 #### Supporting types
+
+```ts
+type SearchField<T> = string | { key?: string; label?: string; value?: (item: T) => unknown; accessor?: (item: T) => unknown };
+```
+
+A search field: a key, a `{ key, label?, value? }` descriptor (table/export column shape).
 
 ```ts
 interface SortState {
@@ -847,6 +882,8 @@ interface CollectionOptions<T> {
 	filter?: Record<string, any>;
 	filterFn?: (item: T, filter: Record<string, any>) => boolean;
 	compare?: (a: T, b: T, sort: SortState) => number;
+	/** `toggleSort` cycles asc → desc → off (source order) instead of asc ⇄ desc. */
+	clearSort?: boolean;
 }
 ```
 
@@ -859,6 +896,8 @@ interface Collection<T> {
 	items(): T[];
 	/** Reactive: the full filtered set (unpaged, unsorted) — for select-all/export. */
 	filtered(): T[];
+	/** Reactive: filtered and sorted, unpaged — export what the user sees, in their order. */
+	sorted(): T[];
 	/** Count after filtering (before paging). */
 	total(): number;
 	/** Number of pages at the current size. */
@@ -869,7 +908,10 @@ interface Collection<T> {
 	 * of range; pagers and "Showing X–Y" summaries should read this instead.
 	 */
 	pageIndex(): number;
-	/** Toggle sort direction on the same key, else sort by it ascending. */
+	/**
+	 * Toggle sort direction on the same key, else sort by it ascending. With
+	 * `clearSort`, clicking a descending key clears the sort.
+	 */
 	toggleSort(key: string): void;
 }
 ```
@@ -1000,6 +1042,8 @@ interface TableBaseOptions<T> {
 	page?: PageState;
 	filter?: Record<string, any>;
 	filterFn?: (item: T, filter: Record<string, any>) => boolean;
+	/** Header clicks cycle asc → desc → off (source order) instead of asc ⇄ desc. */
+	clearSort?: boolean;
 	rowClass?: (item: T) => string;
 	/** Extra class(es) for the <table>. */
 	class?: string;
@@ -1259,6 +1303,87 @@ interface HttpClient {
 ```
 
 
+## socket
+
+```js
+import { … } from "@nemanjan00/qrp/socket"
+```
+
+A reconnecting WebSocket for live dashboards. `socket(url, options)` opens
+`ws(s)://` on the page's origin for a path, reconnects with exponential
+backoff, exposes `status` as reactive state (`state`, `connected`,
+`attempts`), decodes JSON, and routes messages by their `type` field:
+`on("samples", fn)`. `send()` returns false while disconnected. Created inside
+a scope, it closes with it.
+
+### `socket`
+
+```ts
+socket(url: string | (() => string), options?: SocketOptions): Socket
+```
+
+Open a reconnecting WebSocket. `url` may be a path ("/ws"), a full ws(s)/http(s)
+URL, or a function re-read on every reconnect (fresh tokens).
+
+#### Supporting types
+
+```ts
+interface SocketStatus {
+	state: "connecting" | "open" | "closed";
+	connected: boolean;
+	/** Reconnect attempts since the last successful open. */
+	attempts: number;
+}
+```
+
+```ts
+interface ReconnectOptions {
+	/** First delay in ms (default 500). */
+	min?: number;
+	/** Delay cap in ms (default 10000). */
+	max?: number;
+	/** Growth per attempt (default 2). */
+	factor?: number;
+}
+```
+
+```ts
+interface SocketOptions {
+	protocols?: string | string[];
+	binaryType?: BinaryType;
+	/** Backoff config, or false to never reconnect. */
+	reconnect?: ReconnectOptions | false;
+	/** Incoming data → message. Default: JSON.parse when it parses, else the raw data. */
+	decode?: (data: any) => any;
+	/** Outgoing value → data. Default: strings/binary as-is, everything else JSON. */
+	encode?: (value: any) => string | ArrayBufferLike | Blob | ArrayBufferView;
+	/** Field a decoded object is routed by (default "type"). */
+	typeKey?: string;
+}
+```
+
+```ts
+interface Socket {
+	/** Reactive connection state. */
+	status: SocketStatus;
+	/**
+	 * Subscribe; returns an unsubscribe function. Types: "open", "close",
+	 * "error", "message" (every message), or a message's `type` value.
+	 */
+	on<T = any>(type: string, handler: Handler<T>): () => void;
+	off(type: string, handler: Handler): void;
+	/** Send (encoded); false and dropped while not connected. */
+	send(value: any): boolean;
+	/** Bytes queued on the socket (bufferedAmount); 0 while disconnected. */
+	buffered(): number;
+	/** Drop the current connection and connect again now. */
+	reconnect(): void;
+	/** Close for good (no more reconnects). Also runs on scope dispose. */
+	close(code?: number, reason?: string): void;
+}
+```
+
+
 ## resource
 
 ```js
@@ -1329,7 +1454,9 @@ import { … } from "@nemanjan00/qrp/format"
 
 Intl-backed pure formatters for dashboards — zero-dep, safe in reactive
 bindings (nullish/NaN → ""). `num`, `compact`, `pct`, `bytes`, `duration`,
-`relTime`, `date`. Each takes optional Intl options.
+`relTime`, `date`, plus SI/engineering notation `si` and its inverse
+`parseSI` ("2.4G", "100m", "3.3 kV") for instrument/IoT/latency readouts
+and numeric inputs. Each formatter takes optional Intl options.
 
 ### `num`
 
@@ -1387,6 +1514,27 @@ date(value: Date | string | number | null | undefined, opts?: Intl.DateTimeForma
 
 A date/time: `date(iso)` → "Jul 17, 2026".
 
+### `si`
+
+```ts
+si(value: number | null | undefined, unit?: string, opts?: Intl.NumberFormatOptions): string
+```
+
+Engineering notation with an SI prefix: `si(0.0012, "V")` → "1.2 mV",
+`si(433.92e6, "Hz")` → "433.92 MHz", `si(1500)` → "1.5 k". The prefix is
+picked after rounding (999.9996 → "1 k"). Defaults to 3 fraction digits.
+
+### `parseSI`
+
+```ts
+parseSI(text: string | number | null | undefined, unit?: string): number
+```
+
+Parse a number with an optional SI prefix — the inverse of `si`:
+`parseSI("2.4G")` → 2.4e9, `parseSI("3.3 kV", "V")` → 3300. Prefixes are
+case-sensitive (m = milli, M = mega); "u"/"μ" read as µ, "K" as k. Returns
+NaN when the text isn't a number (check with `Number.isFinite`).
+
 
 ## export
 
@@ -1412,7 +1560,9 @@ Formula-looking string cells are guarded by default — see {@link ToCSVOptions}
 download(content: string | Blob, filename: string, type?: string): void
 ```
 
-Trigger a browser download of `content` (string or Blob) as `filename`.
+Trigger a browser download of `content` (string or Blob) as `filename`. The
+object URL is revoked after a delay, not synchronously (an immediate revoke
+can cancel the download in Safari/Firefox).
 
 ### `copy`
 
@@ -1420,7 +1570,10 @@ Trigger a browser download of `content` (string or Blob) as `filename`.
 copy(text: string): Promise<void>
 ```
 
-Copy text to the clipboard; returns the clipboard promise.
+Copy text to the clipboard. Uses `navigator.clipboard` where it exists
+(secure contexts) and falls back to `execCommand("copy")` on plain-http
+origins such as `http://192.168.1.10` — where `navigator.clipboard` is
+undefined. Always returns a promise; rejects if the browser refuses.
 
 #### Supporting types
 
@@ -1983,6 +2136,16 @@ seen(element: Element, options?: IntersectionObserverInit): { matches: boolean }
 
 IntersectionObserver as reactive state: { matches } (on screen).
 
+### `size`
+
+```ts
+size(element: Element): { width: number; height: number }
+```
+
+ResizeObserver as reactive state: `size(el).width` / `.height` track the
+element's content box (starts from its current rect). Disconnects with the
+enclosing scope.
+
 #### Supporting types
 
 ```ts
@@ -2073,7 +2236,9 @@ import { … } from "@nemanjan00/qrp/behaviors/<name>"
 
 Headless helpers to build styled components (one file each, or the whole set
 via the `@nemanjan00/qrp/behaviors` barrel): `portal`, `dismissable`,
-`trapFocus`, `anchored`, `disclosure`, `busyWhile`. Compose them: a modal is
+`trapFocus`, `anchored`, `disclosure`, `busyWhile`, `embed` (host an
+imperative widget — uPlot, canvas, xterm), `stickToBottom` (log/chat
+autoscroll that lets go when the user scrolls up). Compose them: a modal is
 `portal` + `trapFocus` + `dismissable`; a dropdown is `anchored` +
 `dismissable` + `disclosure`. You bring the markup and CSS; they carry the
 platform and a11y hard parts. UI built outside a render (a modal from an
@@ -2172,6 +2337,26 @@ busyWhile(): BusyWhile
 ```
 
 Track in-flight promises as reactive busy state (spinners/overlays).
+
+### `embed`
+
+```ts
+embed(create: (host: HTMLElement) => Embedded, options?: EmbedOptions): HTMLElement
+```
+
+Host an imperative widget (uPlot, a canvas, a map, xterm) in qrp DOM. Returns
+the host; `create(host)` runs once the host is connected (so it can measure),
+its `resize(width, height)` runs when the host resizes, and `destroy()` (or
+the returned teardown) runs when the enclosing scope disposes.
+
+### `stickToBottom`
+
+```ts
+stickToBottom(scroller: HTMLElement, options?: StickToBottomOptions): StickToBottom
+```
+
+Keep a log/chat/feed scroller at the bottom as content arrives — but only
+while the user is at the bottom; scrolling up to read history unpins it.
 
 #### Supporting types
 
@@ -2275,6 +2460,39 @@ interface BusyWhile {
 	state: { pending: number };
 	run<T>(promise: Promise<T>): Promise<T>;
 	readonly active: boolean;
+}
+```
+
+```ts
+type Embedded = { resize?(width: number, height: number): void; destroy?(): void } | (() => void) | void | null | undefined;
+```
+
+What `create` may return: an instance with optional hooks, a teardown, or nothing.
+
+```ts
+interface EmbedOptions {
+	/** Host tag (default "div"). */
+	tag?: string;
+	/** el() props for the host element. */
+	props?: Props;
+}
+```
+
+```ts
+interface StickToBottomOptions {
+	/** Pixels from the bottom that still count as "at the bottom" (default 24). */
+	threshold?: number;
+}
+```
+
+```ts
+interface StickToBottom {
+	/** Reactive: true while the view follows new content. */
+	pinned: { value: boolean };
+	/** Scroll to the newest content and pin again. */
+	scrollToBottom(): void;
+	/** Stop following (idempotent; also runs when the enclosing scope disposes). */
+	dispose(): void;
 }
 ```
 

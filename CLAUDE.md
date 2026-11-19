@@ -66,6 +66,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 `/index.js` is always written out.
 
 - `qrp/index.js` — core: reactivity (`state`/`effect`/`derive`/`untracked`,
+  `onChange(source, cb)` — tracks only `source`, runs `cb(next, prev)` untracked,
   `batch` — holds effects until a multi-key update ends, flushes each once in
   creation order so parents dispose stale children first; cascades during the
   flush run synchronously so the runaway guard still works;
@@ -101,6 +102,10 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   `auth:unauthorized`), per-request `responseType` (json/text/arraybuffer/blob/
   response for binary + non-JSON). Auth-agnostic: takes a `token()` getter, emits
   `auth:unauthorized` rather than knowing about logout.
+- `socket/index.js` — reconnecting WebSocket (`socket(url)`): path → ws(s) on
+  the page origin, url may be a function (re-read per reconnect), exponential
+  backoff, reactive `status` {state, connected, attempts}, JSON decode +
+  `on(type)` routing by `msg.type`, `send()` → false while down, scope-owned.
 - `utils/*.js` — pure data helpers **that a dashboard actually needs**, one file
   per concept so file-level import = pay-for-what-you-use with no bundler:
   `memoize.js`, `lru.js`, `cache.js`, `paginate.js`, `limit.js` (concurrency /
@@ -112,7 +117,9 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   don't re-add general-purpose utilities that aren't dashboard-shaped.)
 - `behaviors/*.js` — headless behaviors to build styled components (one file
   each): `portal`, `dismissable`, `trap-focus`, `anchored`, `disclosure`,
-  `busy-while`. Carry platform/a11y hard parts; caller brings markup + CSS. The
+  `busy-while`, `embed` (host an imperative widget: create once CONNECTED,
+  resize, destroy on dispose), `stick-to-bottom` (feed autoscroll only while the
+  user is at the bottom; reactive `pinned`). Carry platform/a11y hard parts; caller brings markup + CSS. The
   teardown-returning ones (`portal`/`dismissable`/`trapFocus`/`anchored`) also
   `onDispose`-register their (idempotent) undo, so building them inside
   `scoped()`/`mount()` means `dispose()` alone cleans up effects AND behaviors.
@@ -126,7 +133,9 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - `collection/index.js` — reactive sort/filter/paginate combiner over a
   dataset; `.items` drives a keyed `list()`. The `form()`-analog for data.
   `.filtered()` exposes the full filtered set (unpaged/unsorted) for
-  select-all/export; `.pageIndex()` is the clamped page `items()` shows (pagers/
+  select-all; `.sorted()` = filtered+sorted unpaged (export what the user sees);
+  `clearSort` option = asc→desc→off; `searchFilter(fields)` = search-box
+  filterFn (AND terms, `col:text`, quoted phrases); `.pageIndex()` is the clamped page `items()` shows (pagers/
   summaries read it, not raw `page.index`). Default sort = exported
   `compareValues` (missing last, numbers/Dates numeric, strings natural order
   via one shared `Intl.Collator`).
@@ -155,11 +164,13 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - `proto/index.js` — prototype-level enhancement helpers.
 - Optional helpers (all separate opt-in modules, zero-dep, pay-for-what-you-use):
   - `format/index.js` — Intl-backed pure formatters (`num`/`compact`/`pct`/
-    `bytes`/`duration`/`relTime`/`date`); nullish → "".
+    `bytes`/`duration`/`relTime`/`date`, SI `si`/`parseSI`); nullish → "".
   - `resource/index.js` — reactive async data (`{ data, loading, error, reload }`),
     transport-agnostic (fetcher thunk); optional `refreshOn` bus event(s) for a
     global refresh; `asyncView(res, { loading, error, empty, data })` → `when`.
   - `export/index.js` — `toCSV`/`download`/`copy`; pairs with table/collection.
+    `copy` falls back to `execCommand` where `navigator.clipboard` is missing
+    (plain-http LAN dashboards); `download` revokes its object URL after 30 s.
     `toCSV` guards formula injection by default (`'` prefix) but leaves plain/
     formatted numbers and a lone "-" alone; `{ formulaGuard: false }` opts out.
   - `spark/index.js` — charting PRIMITIVE (not a library): data → reactive `el()`
@@ -169,7 +180,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   - `timeseries/index.js` — pure `{x,y}` math (`deltas`/`rate`/`rolling`/`bucket`/
     `downsample` LTTB); pairs with spark.
   - (`browser/index.js` also exports `poll(fn, ms)` — scope-aware interval, pauses
-    while the tab is hidden.)
+    while the tab is hidden — and `size(el)`, reactive ResizeObserver.)
 
 ## Types & docs
 
@@ -182,6 +193,12 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
 - **`docs/API.md`** — the API reference (curated). **`api.html`** renders it
   live with a qrp-built markdown renderer (single source — the site derives from
   the markdown; don't hand-duplicate API content into the page).
+- **`docs/RECIPES.md`** — "before you hand-roll it": a need → module lookup
+  table. Written after mailab (a production dashboard) used only
+  el/list/when/state/mount and reimplemented table sort/filter/export, poll,
+  persisted, router, anchored popovers and a WebSocket client by hand. When you
+  add a module or export, add its row there too; the README points at it
+  next to SHARP-EDGES, which is where consuming agents actually look.
 - **`docs/GETTING-STARTED.md`** — the tutorial (zero-to-dashboard, the five core
   ideas). **`start.html`** renders it with the same markdown renderer as
   `api.html` (same single-source pattern; it rewrites the `.md`'s doc-relative
@@ -200,7 +217,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   asked; ~doubles the tarball, zero runtime cost). The npm package ships `dist/` (minified) + the hand-written
   `.d.ts` — **not** the raw source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so
   the reference travels with the package: a coding agent reads the API straight
-  out of `node_modules`). Core is **~5.7 KB min+gzip**, whole library ~29.7 KB.
+  out of `node_modules`). Core is **~5.9 KB min+gzip**, whole library ~33.0 KB.
   `dist/` is gitignored (rebuilt on pack/publish). The consumer still runs zero
   build. (No code-splitting: the opaque `chunk-*.js` files it produced made
   self-hosting on a plain static server confusing — the user rejected chunking.)

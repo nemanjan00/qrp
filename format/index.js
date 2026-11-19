@@ -104,3 +104,74 @@ export const date = (value, opts = { dateStyle: "medium" }) => {
 
 	return when && Number.isFinite(when.getTime()) ? new Intl.DateTimeFormat(undefined, opts).format(when) : "";
 };
+
+// SI prefixes by power of ten. "µ" (U+00B5) is the one si() writes; parseSI()
+// also reads "u", Greek "μ" and "K" (as in "10K"), the spellings people type.
+const SI_PREFIXES = [
+	["f", -15], ["p", -12], ["n", -9], ["µ", -6], ["m", -3], ["", 0],
+	["k", 3], ["M", 6], ["G", 9], ["T", 12], ["P", 15]
+];
+const SI_ALIASES = { u: "µ", "μ": "µ", K: "k" };
+const SI_POWER = new Map(SI_PREFIXES);
+const SI_MIN = -15;
+const SI_MAX = 15;
+
+// A number (optionally signed with "-", "+" or the typographic minus,
+// optionally with an exponent), then whatever follows it.
+const SI_NUMBER = /^([+\-−]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*(.*)$/i;
+
+const prefixFor = (power) => SI_PREFIXES.find(([, p]) => p === power)[0];
+
+/**
+ * Engineering notation with an SI prefix: `si(0.0012, "V")` → "1.2 mV",
+ * `si(433.92e6, "Hz")` → "433.92 MHz", `si(1500)` → "1.5 k". Picks the prefix
+ * after rounding, so 999.9996 shows as "1 k", not "1,000". Defaults to 3
+ * fraction digits; pass Intl.NumberFormat options to change it.
+ * @param {number} value in base units
+ * @param {string} [unit] base unit appended after the prefix ("V", "Hz", "s")
+ * @param {Intl.NumberFormatOptions} [opts]
+ * @returns {string}
+ */
+export const si = (value, unit = "", opts = {}) => {
+	if(bad(value) || !Number.isFinite(value)) { return ""; }
+
+	const digits = shownDigits(3, opts);
+	const magnitude = value === 0 ? 0 : Math.floor(Math.log10(Math.abs(value)) / 3) * 3;
+	const first = Math.min(SI_MAX, Math.max(SI_MIN, magnitude));
+	// rounding can carry into the next prefix (999.9996 k → 1 M)
+	const power = first < SI_MAX && Math.abs(rounded(value / 10 ** first, digits)) >= 1000 ? first + 3 : first;
+	const shown = num(value / 10 ** power, { maximumFractionDigits: maxFraction(3, opts), ...opts });
+	const suffix = prefixFor(power) + unit;
+
+	return suffix ? `${shown} ${suffix}` : shown;
+};
+
+/**
+ * Parse a number typed with an optional SI prefix — the inverse of si():
+ * `parseSI("2.4G")` → 2.4e9, `parseSI("100m")` → 0.1, `parseSI("3.3 kV", "V")`
+ * → 3300, `parseSI("-5 mV", "V")` → -0.005. With `unit`, a trailing unit is
+ * optional ("3.3k" also parses). Prefixes are case-sensitive (m = milli,
+ * M = mega); "u"/"μ" read as µ and "K" as k. Returns NaN for anything else,
+ * so `Number.isFinite(parseSI(input))` is the validity check.
+ * @param {string|number} text
+ * @param {string} [unit]
+ * @returns {number}
+ */
+export const parseSI = (text, unit = "") => {
+	if(typeof text === "number") { return text; }
+	if(typeof text !== "string") { return NaN; }
+
+	const match = SI_NUMBER.exec(text.trim());
+
+	if(!match) { return NaN; }
+
+	const rest = match[2].trim();
+	const prefix = unit && rest.endsWith(unit) ? rest.slice(0, -unit.length).trim() : rest;
+	const power = SI_POWER.get(SI_ALIASES[prefix] || prefix);
+
+	if(power === undefined) { return NaN; }
+
+	const [mantissa, exponent = "0"] = match[1].replace("−", "-").split(/e/i);
+
+	return Number(`${mantissa}e${Number(exponent) + power}`);
+};

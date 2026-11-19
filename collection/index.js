@@ -73,8 +73,10 @@ export const compareValues = (a, b, dir = 1) => {
  * @param {object} [options.filter] state consumed by filterFn (e.g. { q })
  * @param {Function} [options.filterFn] (item, filterState) => boolean
  * @param {Function} [options.compare] (a, b, sortState) => number (custom sort)
- * @returns {object} { sort, filter, page, items, filtered, total, pageCount,
- *   pageIndex, toggleSort }
+ * @param {boolean} [options.clearSort] toggleSort cycles asc → desc → off
+ *   (source order) instead of asc ⇄ desc
+ * @returns {object} { sort, filter, page, items, filtered, sorted, total,
+ *   pageCount, pageIndex, toggleSort }
  */
 export const collection = (source, options = {}) => {
 	// state() is idempotent on an existing proxy, so a caller who passes
@@ -147,20 +149,131 @@ export const collection = (source, options = {}) => {
 		// pages", export-all, or a count of matches. Reactive.
 		filtered: () => filtered(),
 
+		// Filtered AND sorted, unpaged: "export what I see" across every page,
+		// in the order the user picked. Reactive.
+		sorted: () => sorted(),
+
 		total: () => filtered().length,
 
 		pageCount: () => (page.size ? Math.ceil(filtered().length / page.size) : 1),
 
 		pageIndex,
 
-		// Click a column header: toggle direction if same key, else sort ascending.
+		// Click a column header: toggle direction if same key, else sort
+		// ascending. With `clearSort`, a third click (on a descending key)
+		// returns to the source order.
 		toggleSort: (key) => {
-			if(sort.key === key) {
+			if(sort.key === key && options.clearSort && (sort.dir || 1) === -1) {
+				sort.key = null;
+				sort.dir = 1;
+			} else if(sort.key === key) {
 				sort.dir = -(sort.dir || 1);
 			} else {
 				sort.key = key;
 				sort.dir = 1;
 			}
 		}
+	};
+};
+
+// Search tokens: bare words, "quoted phrases", and field:"quoted phrase".
+const SEARCH_TOKEN = /(?:[^\s"]+|"[^"]*")+/g;
+
+const searchText = (value) => {
+	if(value === null || value === undefined) {
+		return "";
+	}
+
+	if(value instanceof Date) {
+		return value.toISOString();
+	}
+
+	return typeof value === "object" ? JSON.stringify(value) : String(value);
+};
+
+const unquote = (token) => token.replace(/"/g, "");
+
+// fields → [{ label, value(item) }]: a key string, { key, label?, value? }, or
+// an object map { label: accessor }.
+const searchFields = (fields) => {
+	if(!Array.isArray(fields)) {
+		return Object.keys(fields).map((label) => ({ label, value: fields[label] }));
+	}
+
+	return fields.map((field) => {
+		if(typeof field === "string") {
+			return { label: field, value: (item) => item[field] };
+		}
+
+		return {
+			label: field.label != null ? field.label : field.key,
+			value: field.value || field.accessor || ((item) => item[field.key])
+		};
+	});
+};
+
+// "col:text" scopes a term to the field labelled col (exact, else the first
+// label starting with it). An unknown col keeps the whole token as a plain term,
+// so "12:30" still finds a time.
+const parseSearch = (query, labels) => {
+	const tokens = String(query || "").match(SEARCH_TOKEN) || [];
+
+	return tokens.map((token) => {
+		const colon = token.indexOf(":");
+
+		if(colon > 0) {
+			const name = unquote(token.slice(0, colon)).toLowerCase();
+			const exact = labels.indexOf(name);
+			const field = exact !== -1 ? exact : labels.findIndex((label) => label.startsWith(name));
+
+			if(field !== -1) {
+				return { field, text: unquote(token.slice(colon + 1)).toLowerCase() };
+			}
+		}
+
+		return { field: -1, text: unquote(token).toLowerCase() };
+	}).filter((term) => term.text !== "");
+};
+
+/**
+ * A ready-made `filterFn` for a search box: every term must match
+ * (case-insensitive substring), `field:text` limits a term to one field, and
+ * "quoted phrases" keep their spaces.
+ *
+ *   const filter = state({ q: "" });
+ *   collection(() => rows, { filter, filterFn: searchFilter(["name", "status"]) });
+ *   el("input", { type: "search", bind: [filter, "q"] });   // "status:err disk"
+ *
+ * @param {Array<string|object>|object} fields key strings, `{ key, label?, value? }`
+ *   descriptors (same shape as table/export columns), or `{ label: accessor }`
+ * @param {object} [options]
+ * @param {string} [options.key] which filter-state key holds the query (default "q")
+ * @returns {Function} (item, filterState) => boolean
+ */
+export const searchFilter = (fields, options = {}) => {
+	const key = options.key || "q";
+	const columns = searchFields(fields);
+	const labels = columns.map((column) => String(column.label || "").toLowerCase());
+	// one parse per query, not per row
+	let last = null;
+	let terms = [];
+
+	return (item, filterState) => {
+		const query = filterState ? filterState[key] : "";
+
+		if(query !== last) {
+			last = query;
+			terms = parseSearch(query, labels);
+		}
+
+		if(!terms.length) {
+			return true;
+		}
+
+		const cells = columns.map((column) => searchText(column.value(item)).toLowerCase());
+
+		return terms.every((term) => (term.field >= 0
+			? cells[term.field].includes(term.text)
+			: cells.some((cell) => cell.includes(term.text))));
 	};
 };

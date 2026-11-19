@@ -72,9 +72,11 @@ test("toCSV { formulaGuard: false } writes cells unchanged", () => {
 });
 
 test("download creates + clicks an anchor (no throw)", () => {
-	const origCreate = URL.createObjectURL, origRevoke = URL.revokeObjectURL;
+	const origCreate = URL.createObjectURL, origRevoke = URL.revokeObjectURL, origTimeout = globalThis.setTimeout;
 	URL.createObjectURL = () => "blob:x";
 	URL.revokeObjectURL = () => {};
+	// the deferred revoke would hold the test process open for 30 s
+	globalThis.setTimeout = () => 0;
 	try {
 		let clicked = false;
 		const realCreate = document.createElement.bind(document);
@@ -83,6 +85,6 @@ test("download creates + clicks an anchor (no throw)", () => {
 		assert.equal(clicked, true);
 		document.createElement = realCreate;
 	} finally {
-		URL.createObjectURL = origCreate; URL.revokeObjectURL = origRevoke;
+		URL.createObjectURL = origCreate; URL.revokeObjectURL = origRevoke; globalThis.setTimeout = origTimeout;
 	}
 });

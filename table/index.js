@@ -148,6 +148,7 @@ export const table = (options) => {
 		page: options.page,
 		filter: options.filter,
 		filterFn: options.filterFn,
+		clearSort: options.clearSort,
 		compare: (a, b, sortState) => {
 			const fieldSpec = lookupField(sortState.key);
 

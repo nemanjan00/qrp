@@ -36,6 +36,10 @@
 			"types": "./http/index.d.ts",
 			"default": "./dist/http.js"
 		},
+		"./socket": {
+			"types": "./socket/index.d.ts",
+			"default": "./dist/socket.js"
+		},
 		"./events": {
 			"types": "./events/index.d.ts",
 			"default": "./dist/events.js"
@@ -124,7 +128,7 @@
 	"scripts": {
 		"test": "node --test 'test/*.test.js'",
 		"build": "node bin/build.js",
-		"lint": "eslint qrp forms browser events toasts proto http utils behaviors collection table html context datagrid format resource export spark scale timeseries bin test",
+		"lint": "eslint qrp forms browser events toasts proto http socket utils behaviors collection table html context datagrid format resource export spark scale timeseries bin test",
 		"prepack": "node bin/build.js",
 		"prepare": "husky",
 		"typecheck": "tsc --noEmit",

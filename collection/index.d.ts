@@ -4,7 +4,9 @@
  * returns `{ sort, filter, page, items(), filtered(), total(), pageCount(),
  * pageIndex(), toggleSort() }`;
  * `items()` is reactive — feed it to `list()`. `options`:
- * `{ sort?, page?, filter?, filterFn?, compare? }`. `compareValues(a, b, dir?)`
+ * `{ sort?, page?, filter?, filterFn?, compare?, clearSort? }`. `sorted()` is the
+ * filtered+sorted set across all pages ("export what I see"). `searchFilter(fields)`
+ * builds a search-box `filterFn` (AND-ed terms, `field:text`, "quoted phrases"). `compareValues(a, b, dir?)`
  * is the default comparator (missing values last, numbers/Dates numeric, else
  * natural-order strings) — reuse it inside a custom `compare`.
  */
@@ -30,6 +32,8 @@ export interface CollectionOptions<T> {
 	filter?: Record<string, any>;
 	filterFn?: (item: T, filter: Record<string, any>) => boolean;
 	compare?: (a: T, b: T, sort: SortState) => number;
+	/** `toggleSort` cycles asc → desc → off (source order) instead of asc ⇄ desc. */
+	clearSort?: boolean;
 }
 
 export interface Collection<T> {
@@ -40,6 +44,8 @@ export interface Collection<T> {
 	items(): T[];
 	/** Reactive: the full filtered set (unpaged, unsorted) — for select-all/export. */
 	filtered(): T[];
+	/** Reactive: filtered and sorted, unpaged — export what the user sees, in their order. */
+	sorted(): T[];
 	/** Count after filtering (before paging). */
 	total(): number;
 	/** Number of pages at the current size. */
@@ -50,7 +56,10 @@ export interface Collection<T> {
 	 * of range; pagers and "Showing X–Y" summaries should read this instead.
 	 */
 	pageIndex(): number;
-	/** Toggle sort direction on the same key, else sort by it ascending. */
+	/**
+	 * Toggle sort direction on the same key, else sort by it ascending. With
+	 * `clearSort`, clicking a descending key clears the sort.
+	 */
 	toggleSort(key: string): void;
 }
 
@@ -63,3 +72,17 @@ export function collection<T>(source: () => readonly T[], options?: CollectionOp
  * string comparison. `dir` is 1 (ascending, default) or -1.
  */
 export function compareValues(a: unknown, b: unknown, dir?: number): number;
+
+/** A search field: a key, a `{ key, label?, value? }` descriptor (table/export column shape). */
+export type SearchField<T> = string | { key?: string; label?: string; value?: (item: T) => unknown; accessor?: (item: T) => unknown };
+
+/**
+ * A ready-made `filterFn` for a search box. Every whitespace-separated term must
+ * match (case-insensitive substring); `field:text` limits a term to the field
+ * labelled `field` (or the first label starting with it); "quoted phrases" keep
+ * spaces. Reads the query from `filterState[options.key ?? "q"]`.
+ */
+export function searchFilter<T>(
+	fields: readonly SearchField<T>[] | Record<string, (item: T) => unknown>,
+	options?: { key?: string }
+): (item: T, filter: Record<string, any>) => boolean;

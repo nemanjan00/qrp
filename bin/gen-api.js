@@ -23,6 +23,7 @@ const MODULES = [
 	{ title: "table", imp: "@nemanjan00/qrp/table", files: ["table/index.d.ts"] },
 	{ title: "datagrid", imp: "@nemanjan00/qrp/datagrid", files: ["datagrid/index.d.ts"] },
 	{ title: "http", imp: "@nemanjan00/qrp/http", files: ["http/index.d.ts"] },
+	{ title: "socket", imp: "@nemanjan00/qrp/socket", files: ["socket/index.d.ts"] },
 	{ title: "resource", imp: "@nemanjan00/qrp/resource", files: ["resource/index.d.ts"] },
 	{ title: "format", imp: "@nemanjan00/qrp/format", files: ["format/index.d.ts"] },
 	{ title: "export", imp: "@nemanjan00/qrp/export", files: ["export/index.d.ts"] },
@@ -35,7 +36,8 @@ const MODULES = [
 	{ title: "context", imp: "@nemanjan00/qrp/context", files: ["context/index.d.ts"] },
 	{ title: "behaviors", imp: "@nemanjan00/qrp/behaviors/<name>", files: [
 		"behaviors/portal.d.ts", "behaviors/dismissable.d.ts", "behaviors/trap-focus.d.ts",
-		"behaviors/anchored.d.ts", "behaviors/disclosure.d.ts", "behaviors/busy-while.d.ts"] },
+		"behaviors/anchored.d.ts", "behaviors/disclosure.d.ts", "behaviors/busy-while.d.ts",
+		"behaviors/embed.d.ts", "behaviors/stick-to-bottom.d.ts"] },
 	{ title: "utils", imp: "@nemanjan00/qrp/utils/<name>", files: [
 		"utils/lru.d.ts", "utils/memoize.d.ts", "utils/cache.d.ts", "utils/paginate.d.ts",
 		"utils/limit.d.ts", "utils/debounce.d.ts", "utils/load-script.d.ts", "utils/validate.d.ts"] },

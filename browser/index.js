@@ -12,6 +12,7 @@
  *   online()     navigator.onLine
  *   visible()    Page Visibility API
  *   seen()       IntersectionObserver — "is this element on screen"
+ *   size()       ResizeObserver — an element's width/height
  *
  * Every factory registers its listeners/observers/intervals through onDispose,
  * so creating one inside a component (or scope) auto-cleans on unmount — no
@@ -377,6 +378,42 @@ export const seen = (element, options = {}) => {
 			store.matches = entry.isIntersecting;
 		});
 	}, options);
+
+	observer.observe(element);
+	onDispose(() => observer.disconnect());
+
+	return store;
+};
+
+/**
+ * ResizeObserver as reactive state: size(element).width/.height track the
+ * element's content box. Charts, canvases and virtualized lists re-layout from
+ * an effect instead of a hand-wired observer — and the observer disconnects
+ * with the enclosing scope.
+ */
+export const size = (element) => {
+	const rect = element.getBoundingClientRect();
+	const store = state({ width: rect.width, height: rect.height });
+
+	if(typeof ResizeObserver === "undefined") {
+		return store;
+	}
+
+	const observer = new ResizeObserver((entries) => {
+		entries.forEach((entry) => {
+			const box = entry.contentRect;
+
+			// one write per changed key: an unchanged height doesn't re-run
+			// effects that only read it
+			if(store.width !== box.width) {
+				store.width = box.width;
+			}
+
+			if(store.height !== box.height) {
+				store.height = box.height;
+			}
+		});
+	});
 
 	observer.observe(element);
 	onDispose(() => observer.disconnect());

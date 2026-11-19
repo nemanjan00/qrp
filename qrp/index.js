@@ -544,6 +544,53 @@ export const derive = (fn) => {
 	return result;
 };
 
+/**
+ * Run a side effect when a reactive value CHANGES: tracks only `source()`,
+ * then calls `callback(next, previous)` untracked — so whatever the callback
+ * reads (a whole dataset, a chart's state) never subscribes. The hand-written
+ * version (`effect(() => { const k = key(); untracked(() => { if(k !== last)
+ * … }) })`) gets the bookkeeping wrong in subtle ways; this is that, once.
+ *
+ *   onChange(() => cfg.device + "|" + cfg.image, () => reload());
+ *
+ * @param {Function} source () => value — the only thing tracked
+ * @param {Function} callback (next, previous) => void
+ * @param {object} [options]
+ * @param {boolean} [options.immediate] also call it for the initial value (previous undefined)
+ * @param {Function} [options.equals] (a, b) => boolean, default Object.is
+ * @param {string} [options.name] effect name for error reports
+ * @returns {object} the effect handle ({ dispose })
+ */
+export const onChange = (source, callback, options = {}) => {
+	const equals = options.equals || Object.is;
+	let started = false;
+	let previous;
+
+	return effect(() => {
+		const next = source();
+
+		if(!started) {
+			started = true;
+			previous = next;
+
+			if(options.immediate) {
+				untracked(() => callback(next, undefined));
+			}
+
+			return;
+		}
+
+		if(equals(next, previous)) {
+			return;
+		}
+
+		const old = previous;
+
+		previous = next;
+		untracked(() => callback(next, old));
+	}, { name: options.name });
+};
+
 // ---------------------------------------------------------------------------
 // Component scopes
 // ---------------------------------------------------------------------------
