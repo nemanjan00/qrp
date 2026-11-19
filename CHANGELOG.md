@@ -6,6 +6,10 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
+_(nothing yet)_
+
+## 0.15.0
+
 Large apps. mailab (56k lines, 39 pane types, live samples at kilohertz
 rates, a GridStack layout) used qrp for its views and hand-wrote its app
 plumbing. That plumbing is now in qrp.
