@@ -6,6 +6,10 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
+_(nothing yet)_
+
+## 0.15.1
+
 - **A second copy of qrp's core now warns.** Two copies on one page (qrp from
   one CDN URL, qrp-shadcdn's bundle from another; jsDelivr `+esm` subpaths; two
   versions in `node_modules`) don't share reactivity, and that used to fail
