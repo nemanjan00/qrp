@@ -6,7 +6,30 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
-_(nothing yet)_
+Large apps. mailab (56k lines, 39 pane types, live samples at kilohertz
+rates, a GridStack layout) used qrp for its views and hand-wrote its app
+plumbing. That plumbing is now in qrp.
+
+- **New `docs/LARGE-APPS.md`**: how to structure a large qrp app (transport →
+  store → features → shell), with bulk data kept outside `state()`, a feature
+  registry with lazy `import()`, testing, and instructions for coding agents.
+  RECIPES.md has rows for the new helpers.
+- **New module `store`**:
+  - `assign(target, patch, { prune })` merges a server snapshot in one batch
+    and writes only the keys that changed. It compares raw values, so an
+    unchanged object read back through the proxy counts as unchanged.
+  - `append(array, items, max)` adds to a capped feed in one batch.
+  - `coalesce(target, { interval })` buffers high-rate values (latest per key
+    wins) and writes them once per interval or animation frame, skipping
+    unchanged ones.
+- **New module `host`**:
+  - `island(parent, view, props)` mounts a qrp view in a container owned by
+    something else (a layout library) and returns reactive `props`,
+    `update(next)` and `dispose()`. It also disposes with the scope it was
+    created in.
+  - `reconcile(source, key, { create, update, recreate, destroy })` keeps a
+    keyed set of foreign widgets in sync with state. Each item gets its own
+    scope, so whatever `create` builds is cleaned up with it.
 
 ## 0.14.0
 

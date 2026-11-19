@@ -329,3 +329,37 @@ import { socket } from "../socket/index.js";
 	off();
 	void [ordered, label, value, box, copied, pinned, ok, state0];
 }
+
+// --- 0.15: large apps (store, host) -----------------------------------------
+import { assign, append, coalesce } from "../store/index.js";
+import { island, reconcile } from "../host/index.js";
+
+{
+	type Pane = { id: string; type: string; title: string };
+	const lab = state({ panes: [] as Pane[], activity: [] as string[], live: {} as Record<string, number> });
+
+	const changed: string[] = assign(lab, { panes: [] });
+	// @ts-expect-error unknown key
+	assign(lab, { nope: 1 });
+	append(lab.activity, "boot", 500);
+	append(lab.activity, ["a", "b"]);
+	// @ts-expect-error wrong item type
+	append(lab.activity, 1);
+	const values = coalesce(lab.live, { interval: "frame" });
+	values.set("v1", 3.3);
+	values.flush();
+
+	const panel = island(document.body, (p: { title: string }) => el("h3", {}, () => p.title), { title: "x" });
+	panel.update({ title: "y" });
+	// @ts-expect-error props shape is fixed by the view
+	panel.update({ title: 1 });
+
+	const r = reconcile(() => lab.panes, (p) => p.id, {
+		create: (pane) => ({ el: document.createElement("div"), pane }),
+		update: (handle, pane) => void [handle.el, pane.title],
+		recreate: (prev, next) => prev.type !== next.type,
+		destroy: (handle, id: string) => void [handle.el.remove(), id]
+	});
+	const handles: Map<string, { el: HTMLDivElement; pane: Pane }> = r.handles();
+	void [changed, handles];
+}

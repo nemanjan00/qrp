@@ -106,6 +106,18 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   the page origin, url may be a function (re-read per reconnect), exponential
   backoff, reactive `status` {state, connected, attempts}, JSON decode +
   `on(type)` routing by `msg.type`, `send()` → false while down, scope-owned.
+- `store/index.js` — server-mirror plumbing for big apps: `assign(target,
+  patch, { prune })` (batch, writes only changed keys — compares `raw()` so a
+  proxy read back counts as unchanged), `append(array, items, max)` (capped
+  feed), `coalesce(target, { interval | "frame" })` (latest-wins buffered writes,
+  timer only while pending, scope-owned).
+- `host/index.js` — bridges when qrp doesn't own the page: `island(parent,
+  view, props)` (mount + reactive props + `update(next)`; registers its dispose
+  with the enclosing scope, because `scope()` does NOT adopt nested mounts) and
+  `reconcile(source, key, { create, update, recreate, destroy, equals })` (keyed
+  sync of foreign widgets; `create` runs untracked in its own scope per key so
+  effect re-runs never dispose entries; `onDispose(dispose)` ties all to the
+  enclosing scope).
 - `utils/*.js` — pure data helpers **that a dashboard actually needs**, one file
   per concept so file-level import = pay-for-what-you-use with no bundler:
   `memoize.js`, `lru.js`, `cache.js`, `paginate.js`, `limit.js` (concurrency /
@@ -199,6 +211,10 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   persisted, router, anchored popovers and a WebSocket client by hand. When you
   add a module or export, add its row there too; the README points at it
   next to SHARP-EDGES, which is where consuming agents actually look.
+- **`docs/LARGE-APPS.md`** — structuring a big app (transport → store →
+  features → shell, bulk data outside state, feature registry + lazy import,
+  testing, agent instructions), drawn from mailab. Large dashboards ARE in
+  scope: app-scale plumbing that dashboards share (store, host) belongs here.
 - **`docs/GETTING-STARTED.md`** — the tutorial (zero-to-dashboard, the five core
   ideas). **`start.html`** renders it with the same markdown renderer as
   `api.html` (same single-source pattern; it rewrites the `.md`'s doc-relative
@@ -217,7 +233,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   asked; ~doubles the tarball, zero runtime cost). The npm package ships `dist/` (minified) + the hand-written
   `.d.ts` — **not** the raw source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so
   the reference travels with the package: a coding agent reads the API straight
-  out of `node_modules`). Core is **~5.9 KB min+gzip**, whole library ~33.0 KB.
+  out of `node_modules`). Core is **~5.9 KB min+gzip**, whole library ~34.3 KB.
   `dist/` is gitignored (rebuilt on pack/publish). The consumer still runs zero
   build. (No code-splitting: the opaque `chunk-*.js` files it produced made
   self-hosting on a plain static server confusing — the user rejected chunking.)

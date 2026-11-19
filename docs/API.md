@@ -22,6 +22,8 @@ next to each module, so editors resolve them with no build step.
 - [datagrid](#datagrid)
 - [http](#http)
 - [socket](#socket)
+- [store](#store)
+- [host](#host)
 - [resource](#resource)
 - [format](#format)
 - [export](#export)
@@ -1380,6 +1382,167 @@ interface Socket {
 	reconnect(): void;
 	/** Close for good (no more reconnects). Also runs on scope dispose. */
 	close(code?: number, reason?: string): void;
+}
+```
+
+
+## store
+
+```js
+import { … } from "@nemanjan00/qrp/store"
+```
+
+Plumbing for an app-wide store that mirrors a server (see
+docs/LARGE-APPS.md). `assign(target, patch)` merges a snapshot in one batch,
+writing only changed keys. `append(array, items, max)` keeps a capped feed.
+`coalesce(target, { interval })` turns a high-rate stream into one batched
+write every `interval` ms (latest value per key wins).
+
+### `assign`
+
+```ts
+assign<T extends object>(target: T, patch: Partial<T>, options?: { prune?: boolean }): string[]
+```
+
+Merge `patch` into a reactive object in one batch, writing only keys whose
+value changed (`Object.is`). `prune` deletes keys the patch lacks. Returns the
+changed keys.
+
+```js
+live.on("state", (msg) => assign(lab, msg.state));
+```
+
+### `append`
+
+```ts
+append<T>(array: T[], items: T | T[], max?: number): T[]
+```
+
+Append item(s) to a reactive array, dropping the oldest past `max`, in one
+batch.
+
+```js
+live.on("activity", (msg) => append(lab.activity, msg.entry, 500));
+```
+
+### `coalesce`
+
+```ts
+coalesce<T extends object>(target: T, options?: CoalesceOptions): Coalesced<T>
+```
+
+Buffer high-rate writes and apply them to `target` in one batch per
+`interval`, skipping unchanged values.
+
+```js
+const values = coalesce(lab.live, { interval: 250 });
+live.on("samples", (msg) => values.set(msg.name, msg.last));
+```
+
+#### Supporting types
+
+```ts
+interface CoalesceOptions {
+	/** ms between flushes (default 250), or "frame" for the next animation frame. */
+	interval?: number | "frame";
+}
+```
+
+```ts
+interface Coalesced<T> {
+	/** Queue a value; it lands on `target[key]` at the next flush (latest wins). */
+	set<K extends keyof T>(key: K, value: T[K]): void;
+	/** Apply everything pending now. */
+	flush(): void;
+	/** Cancel the pending flush and drop queued values (also on scope dispose). */
+	dispose(): void;
+}
+```
+
+
+## host
+
+```js
+import { … } from "@nemanjan00/qrp/host"
+```
+
+Bridges for apps where qrp doesn't own the whole page: a layout library
+(GridStack, golden-layout), another framework's router, a legacy shell (see
+docs/LARGE-APPS.md). `island(parent, view, props)` mounts a qrp view into a
+container someone else owns, with props pushed in through `update()`.
+`reconcile(source, key, hooks)` keeps a keyed set of foreign widgets in sync
+with a reactive list (create / update / recreate / destroy, one scope per
+item). For the reverse direction, a foreign widget inside qrp DOM, see
+`embed` in behaviors.
+
+### `island`
+
+```ts
+island<P extends object>(parent: HTMLElement, view: (props: P) => unknown, initial?: P): Island<P>
+```
+
+Mount `view(props)` into a container owned by something else, with reactive
+props. `update(next)` re-runs only the bindings that read a changed key.
+Created inside a scope (a component, `reconcile`'s `create`), it also
+disposes with that scope.
+
+```js
+const panel = island(gridItemBody, (p) => el("h3", {}, () => p.title), { title: "CPU" });
+panel.update({ title: "CPU %" });
+```
+
+### `reconcile`
+
+```ts
+reconcile<T, H, K = unknown>(source: () => readonly T[] | null | undefined, key: (item: T) => K, hooks: ReconcileHooks<T, H, K>): Reconciled<H, K>
+```
+
+Keep a keyed set of things qrp doesn't render (grid widgets, map layers,
+dock panels) in sync with a reactive list, like `list()` does for DOM.
+
+```js
+reconcile(() => lab.panes, (p) => p.id, {
+  create: (pane) => addWidget(pane),
+  update: (w, pane) => w.panel.update({ pane }),
+  recreate: (prev, next) => prev.type !== next.type,
+  destroy: (w) => grid.removeWidget(w.item)
+});
+```
+
+#### Supporting types
+
+```ts
+interface Island<P extends object> {
+	/** The reactive props the view reads. */
+	props: P;
+	/** Write changed keys (Object.is) in one batch and delete missing ones. */
+	update(next: P): void;
+	/** Tear down the view's effects and clear its DOM. */
+	dispose(): void;
+}
+```
+
+```ts
+interface ReconcileHooks<T, H, K> {
+	/** Build the foreign thing for a new key; runs in its own scope. Returns your handle. */
+	create(item: T, key: K): H;
+	/** The item under a key changed (per `equals`). */
+	update?(handle: H, item: T, previous: T): void;
+	/** A key went away (its scope is disposed right after). */
+	destroy?(handle: H, key: K): void;
+	/** Return true to destroy + create instead of update (e.g. the type changed). */
+	recreate?(previous: T, item: T): boolean;
+	/** Item equality (default Object.is). */
+	equals?(previous: T, item: T): boolean;
+}
+```
+
+```ts
+interface Reconciled<H, K> {
+	/** A copy of the live handles by key. */
+	handles(): Map<K, H>;
+	/** Destroy every entry and stop tracking (also on scope dispose). */
+	dispose(): void;
 }
 ```
 

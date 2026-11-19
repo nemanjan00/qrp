@@ -27,7 +27,7 @@ let your bundler (Vite, webpack, Rollup, esbuild) resolve subpaths and tree-shak
 Same library either way; the build is your choice, not qrp's. Reactivity is a
 `Proxy`, the DOM is real, and the published core is **~5.9 KB min+gzip** — the
 number that lines up next to Solid (~7 KB) or React (~45 KB). The whole library,
-every module, is **~33.0 KB min+gzip**.
+every module, is **~34.3 KB min+gzip**.
 
 > The npm package ships a minified build (esbuild) — a flat per-module mirror in
 > `dist/`, so a browser pulls the small file — still no build step on *your* end. The readable source,
@@ -58,13 +58,14 @@ data, the DOM follows.
 > It maps "I'm about to write X" to the qrp module that already does it: sorting,
 > search, CSV export, polling, a reconnecting WebSocket, hosting a chart library,
 > log autoscroll, SI units, copy on plain http. Most of qrp is opt-in, so it's
-> easy to miss.
+> easy to miss. Building something big (many feature views, live data, a
+> layout library)? [`docs/LARGE-APPS.md`](docs/LARGE-APPS.md) covers where things go.
 
 ---
 
 ## 🛰️ Small enough to run on a microcontroller
 
-Because the whole library is ~33.0 KB min+gzip, a useful qrp app doesn't need a
+Because the whole library is ~34.3 KB min+gzip, a useful qrp app doesn't need a
 server or a CDN — it fits **in flash on an ESP32**. Not a static form, either: a
 **live dashboard** — telemetry streaming into reactive bindings, an LED you drive,
 a config form that rewrites itself with `when()`, and a WiFi-scan modal built from
@@ -382,6 +383,8 @@ unused exports tree-shake away.
 | `@nemanjan00/qrp/collection` | Reactive sort/filter/paginate over a dataset — drives a keyed `list()`; `sorted()` for export, `searchFilter` (`col:text` search box), `clearSort` |
 | `@nemanjan00/qrp/datagrid` | Headless data-grid state over `collection`: keyed selection (select-all/indeterminate), column visibility, page-size, windowed pager — no markup |
 | `@nemanjan00/qrp/http` | `createHttp` — fetch client with auth headers, reactive loader, error bus routing, per-request `responseType` (json/text/binary), pluggable `fetch` |
+| `@nemanjan00/qrp/store` | Server-mirror plumbing: `assign` (batch-merge changed keys), `append` (capped feeds), `coalesce` (high-rate values → one batched write per interval) |
+| `@nemanjan00/qrp/host` | Bridges for pages qrp doesn't own: `island` (a qrp view in a layout library's container, with reactive props), `reconcile` (keep foreign widgets in sync with state, one scope per item) |
 | `@nemanjan00/qrp/socket` | `socket` — reconnecting WebSocket: backoff, reactive `status`, JSON decode, `on(type)` routing, scope-owned |
 | `@nemanjan00/qrp/resource` | Reactive async data: `{ data, loading, error, reload }` over a fetcher thunk; `refreshOn` bus event for global refresh; `asyncView` → `when` branches |
 | `@nemanjan00/qrp/format` | Intl-backed pure formatters: `num`, `compact`, `pct`, `bytes`, `duration`, `relTime`, `date`, SI/engineering `si` ("1.2 mV") + `parseSI` ("2.4G") (nullish → "") |
@@ -620,7 +623,7 @@ happy-dom); your app tests the same way.
 ## 📖 API reference
 
 Full reference — every export, signature, and a usage snippet per module — in
-[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md). "Is there already a helper for this?": [`docs/RECIPES.md`](docs/RECIPES.md). Styling & theming: [`docs/STYLING.md`](docs/STYLING.md).
+[`docs/API.md`](docs/API.md). Gotchas worth knowing once: [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md). "Is there already a helper for this?": [`docs/RECIPES.md`](docs/RECIPES.md). Structuring a large app: [`docs/LARGE-APPS.md`](docs/LARGE-APPS.md). Styling & theming: [`docs/STYLING.md`](docs/STYLING.md).
 
 ## 🧪 Tests & tooling
 

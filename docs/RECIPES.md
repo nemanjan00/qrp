@@ -21,7 +21,9 @@ import and the trap it already handles. Signatures are in [API.md](./API.md).
 | `{ data, loading, error }` + reload | `resource` / `asyncView` from `qrp/resource` | races (only the latest call wins), refresh on a bus event, loading/error/empty branches |
 | `setInterval(load, 2000)` + `clearInterval` in `onDispose` | `poll(fn, ms)` from `qrp/browser` | pauses in hidden tabs, stops with the scope |
 | `new WebSocket` + `onclose → setTimeout(connect)` + a `switch` on `msg.type` | `socket(url)` from `qrp/socket` | ws/wss from the page, backoff, a reactive `status`, JSON decode, `on(type)` routing, `send()` → false while down, closes with the scope |
-| a high-rate stream written straight into `state` | buffer it, then write on a timer or frame inside `batch()` | each dependent effect runs once per flush. See [SHARP-EDGES](./SHARP-EDGES.md) on batching |
+| a high-rate stream written straight into `state` | `coalesce(target, { interval })` from `qrp/store` | latest value per key wins, one batch per interval (or frame), unchanged values skipped |
+| `Object.keys(msg.state).forEach(k => store[k] = msg.state[k])` inside `batch` | `assign(store, snapshot)` from `qrp/store` | writes only the keys that changed, so bindings on untouched keys don't re-run |
+| `feed.push(x); if(feed.length > N) feed.splice(…)` | `append(feed, x, N)` from `qrp/store` | one push and one trim in a batch; a keyed `list()` reconciles once |
 
 ## Data shown
 
@@ -54,12 +56,19 @@ import and the trap it already handles. Signatures are in [API.md](./API.md).
 
 | You're about to write… | Use | It already handles |
 |---|---|---|
+| a `{ mount(body, props), update(next), destroy() }` adapter so a layout library can host a qrp view | `island(parent, view, props)` from `qrp/host` | reactive props (`update` re-runs only bindings on changed keys), disposes with its scope |
+| a keyed diff of "which widgets should exist" (`syncPanes`: mount new, update changed, remove gone) | `reconcile(source, key, { create, update, recreate, destroy })` from `qrp/host` | one scope per item (everything `create` builds is disposed with it), recreate on type change, duplicate-key warning |
 | `localStorage.getItem` / `setItem` in try/catch for a theme or name | `persisted(key, defaults)` from `qrp/browser` | quota and private-mode errors, sync across tabs |
 | `/tab/:name` with `pushState` + `popstate` | `router` / `navigate` / `currentRoute` from the core | param matching, back/forward, intercepted links, a reactive current route |
 | `?filter=` in the URL | `query()` from `qrp/browser` | two-way reactive query string |
 | an app-wide event emitter | `bus` / `emitter` from `qrp/events` | native `EventTarget`; `off` works with the same handler |
 | toasts | `notify.*` + `toasts` from `qrp/toasts` | driven by the bus, so http errors show up without extra wiring |
 | `prompt()` / `confirm()` / a form in a dialog that stays open on a server error | `confirmDialog` / `promptDialog` in [qrp-shadcdn](https://www.npmjs.com/package/@nemanjan00/qrp-shadcdn) | a promise result, inline errors from a rejected `onSubmit`, focus return |
+
+## Bigger than one page?
+
+For where state, features and the shell go in a large app, see
+[LARGE-APPS.md](./LARGE-APPS.md).
 
 ## Ownership rule of thumb
 

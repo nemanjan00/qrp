@@ -24,6 +24,8 @@ const MODULES = [
 	{ title: "datagrid", imp: "@nemanjan00/qrp/datagrid", files: ["datagrid/index.d.ts"] },
 	{ title: "http", imp: "@nemanjan00/qrp/http", files: ["http/index.d.ts"] },
 	{ title: "socket", imp: "@nemanjan00/qrp/socket", files: ["socket/index.d.ts"] },
+	{ title: "store", imp: "@nemanjan00/qrp/store", files: ["store/index.d.ts"] },
+	{ title: "host", imp: "@nemanjan00/qrp/host", files: ["host/index.d.ts"] },
 	{ title: "resource", imp: "@nemanjan00/qrp/resource", files: ["resource/index.d.ts"] },
 	{ title: "format", imp: "@nemanjan00/qrp/format", files: ["format/index.d.ts"] },
 	{ title: "export", imp: "@nemanjan00/qrp/export", files: ["export/index.d.ts"] },
