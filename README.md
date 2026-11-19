@@ -25,9 +25,9 @@ Zero runtime dependencies and **no required build step**. Drop it into a
 `<script type="module">` and run with zero tooling — **or** `npm install` it and
 let your bundler (Vite, webpack, Rollup, esbuild) resolve subpaths and tree-shake.
 Same library either way; the build is your choice, not qrp's. Reactivity is a
-`Proxy`, the DOM is real, and the published core is **~5.9 KB min+gzip** — the
+`Proxy`, the DOM is real, and the published core is **~6.1 KB min+gzip** — the
 number that lines up next to Solid (~7 KB) or React (~45 KB). The whole library,
-every module, is **~34.3 KB min+gzip**.
+every module, is **~34.4 KB min+gzip**.
 
 > The npm package ships a minified build (esbuild) — a flat per-module mirror in
 > `dist/`, so a browser pulls the small file — still no build step on *your* end. The readable source,
@@ -51,7 +51,8 @@ data, the DOM follows.
 > **⚠️ Before implementing anything, read [`docs/SHARP-EDGES.md`](docs/SHARP-EDGES.md).**
 > qrp uses the platform directly, so a few behaviors follow from how the DOM and
 > `Proxy` actually work — thunk-vs-value reactivity, `list()` key uniqueness, the
-> runaway-effect guard. None are bugs; each bites exactly once. Five minutes there
+> runaway-effect guard, cleanup through `onDispose` (there is no `ondisconnect`),
+> one copy of qrp per page. None are bugs; each bites exactly once. Five minutes there
 > saves an afternoon of "why doesn't this update / where did my rows go".
 >
 > **📋 Before hand-rolling a helper, check [`docs/RECIPES.md`](docs/RECIPES.md).**
@@ -65,7 +66,7 @@ data, the DOM follows.
 
 ## 🛰️ Small enough to run on a microcontroller
 
-Because the whole library is ~34.3 KB min+gzip, a useful qrp app doesn't need a
+Because the whole library is ~34.4 KB min+gzip, a useful qrp app doesn't need a
 server or a CDN — it fits **in flash on an ESP32**. Not a static form, either: a
 **live dashboard** — telemetry streaming into reactive bindings, an LED you drive,
 a config form that rewrites itself with `when()`, and a WiFi-scan modal built from
@@ -145,7 +146,10 @@ what I'd reach for in production.
 
 Fine for a prototype or a REPL, but a CDN is a network dependency: one flaky
 fetch and the page comes up blank, with no graceful degradation. For anything
-real, vendor it (above) — it's the same code, served by you.
+real, use your bundler or vendor it (above) — it's the same code, served by you.
+On a CDN, also take every qrp import from **one** source: jsDelivr's `+esm` can
+give each subpath URL its own private core, and two cores don't share
+reactivity (qrp warns in the console when a second copy loads).
 
 ## 🧭 What is qrp?
 
@@ -657,7 +661,7 @@ test("rows render and react to a state write", () => {
 ```
 
 Writes are synchronous, so there's nothing to `await` — the assertion runs right
-after the state write. This is how qrp tests *itself* (521 tests, `node --test` +
+after the state write. This is how qrp tests *itself* (523 tests, `node --test` +
 happy-dom); your app tests the same way.
 
 ## 📖 API reference
@@ -669,7 +673,7 @@ Full reference — every export, signature, and a usage snippet per module — i
 
 ```sh
 npm install     # dev-only: happy-dom (tests), eslint, typescript, husky
-npm test        # node --test — 521 tests across every module
+npm test        # node --test — 523 tests across every module
 npm run lint    # eslint (eslint:recommended + house style)
 npm run typecheck  # tsc --noEmit over the .d.ts + a usage suite (strict)
 ```

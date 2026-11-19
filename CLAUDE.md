@@ -81,6 +81,9 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   (`mount`/`scope`/`onDispose`), routing
   (`router`/`navigate`/`compilePath`, reactive `currentRoute`). `state()` skips
   proxying frozen objects (freeze static data to opt out of reactivity).
+  On load the core registers itself under `Symbol.for("qrp.core")` on
+  `globalThis` and `console.warn`s if a copy is already there (two cores don't
+  share reactivity — consumers hit this mixing CDN URLs).
 - `html/index.js` — author DOM as HTML strings, three forms: `` html`` `` /
   `html()` (inline `${}` holes), `html.template("…#{field}…")` (STORABLE — parsed
   once, filled from a data object, reactive with state), and `ref(value)` (opt-in
@@ -233,7 +236,7 @@ browser and Node ESM don't auto-resolve a bare directory to `index.js`, so the
   asked; ~doubles the tarball, zero runtime cost). The npm package ships `dist/` (minified) + the hand-written
   `.d.ts` — **not** the raw source `.js` — plus `docs/*.md` + `CHANGELOG.md` (so
   the reference travels with the package: a coding agent reads the API straight
-  out of `node_modules`). Core is **~5.9 KB min+gzip**, whole library ~34.3 KB.
+  out of `node_modules`). Core is **~6.1 KB min+gzip**, whole library ~34.4 KB.
   `dist/` is gitignored (rebuilt on pack/publish). The consumer still runs zero
   build. (No code-splitting: the opaque `chunk-*.js` files it produced made
   self-hosting on a plain static server confusing — the user rejected chunking.)

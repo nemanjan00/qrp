@@ -46,6 +46,7 @@ import and the trap it already handles. Signatures are in [API.md](./API.md).
 | You're about to write… | Use | It already handles |
 |---|---|---|
 | `requestAnimationFrame(() => chart = new uPlot(…, host))` + `ResizeObserver` + `destroy` in `onDispose` | `embed(create)` from `qrp/behaviors/embed` | waits until the host is **connected** (not just one frame), skips unchanged sizes, cancels a pending create, destroys with the scope |
+| an `ondisconnect` hook, a `MutationObserver` watching for removal, or a manual `destroy()` call to stop a listener / loop / stream when its element goes away | `onDispose(fn)` from the core, inside the component | runs when the owning `when()` branch, `list()` row or `mount()`/`scoped()` handle is disposed — see [SHARP-EDGES](./SHARP-EDGES.md#dom--rendering) |
 | a `ResizeObserver` feeding layout math | `size(element)` from `qrp/browser` | reactive `{ width, height }`, disconnects with the scope |
 | a feed that should "stay at the bottom" | `stickToBottom(scroller)` from `qrp/behaviors/stick-to-bottom` | follows only while the user is at the bottom, a reactive `pinned` for a "jump to latest" button, disconnects with the scope |
 | a popover placed with `getBoundingClientRect` math | `anchored` + `dismissable` (+ `portal`) | flip/shift, one Escape/outside-click layer stack, nested popups |

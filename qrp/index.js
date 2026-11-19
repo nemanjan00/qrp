@@ -18,6 +18,33 @@
  */
 
 // ---------------------------------------------------------------------------
+// One core per page
+// ---------------------------------------------------------------------------
+
+// Reactivity lives in this module's own variables (the active effect, the dep
+// maps), so two copies of the core on one page can't see each other: a write
+// through one copy's state never re-runs the other copy's bindings, and nothing
+// errors. It happens when one app loads qrp from two URLs — a CDN `+esm` subpath
+// bundles a private core, and so does importing qrp next to a component bundle
+// that re-exports it. Every copy after the first warns once.
+const CORE_KEY = Symbol.for("qrp.core");
+
+const registerCore = () => {
+	const url = import.meta.url;
+	const first = globalThis[CORE_KEY];
+
+	if(first) {
+		console.warn(`qrp: a second copy of qrp's core loaded from ${url} (first: ${first.url}). Copies don't share reactivity; load qrp from one place. See docs/SHARP-EDGES.md, "one copy of qrp".`);
+
+		return;
+	}
+
+	globalThis[CORE_KEY] = { url };
+};
+
+registerCore();
+
+// ---------------------------------------------------------------------------
 // Reactivity
 // ---------------------------------------------------------------------------
 

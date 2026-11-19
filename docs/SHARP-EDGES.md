@@ -132,6 +132,38 @@ static-ish nodes, wrong for rows.) See the
 
 ## DOM & rendering
 
+**Cleanup follows ownership, not the DOM.** There is no `ondisconnect` prop.
+Register teardown with [`onDispose`](./API.md#ondispose) inside the component
+that owns the listener, `ResizeObserver`, timer, `requestAnimationFrame` loop or
+camera stream; it runs when the owning `when()` branch switches, the `list()` row
+goes away, or the `mount()`/`scoped()` handle is disposed:
+
+```js
+const Panorama = () => {
+	const canvas = el("canvas");
+	let frame = requestAnimationFrame(function draw() { paint(canvas); frame = requestAnimationFrame(draw); });
+	const onKey = (e) => {
+		if(e.key === "Escape") {
+			ui.ar = false;
+		}
+	};
+	window.addEventListener("keydown", onKey);
+	onDispose(() => {
+		cancelAnimationFrame(frame);
+		window.removeEventListener("keydown", onKey);
+	});
+	return canvas;
+};
+
+el("section", {}, when(() => ui.ar, Panorama));   // leaving AR cleans up
+```
+
+Removing or moving a node yourself (`node.remove()`, `other.append(node)`)
+disposes nothing. If you insert and remove a subtree by hand, build it in
+`scoped()` and call its `dispose()` when you take it out. For a chart or canvas
+widget that needs a sized, connected host, [`embed`](./RECIPES.md#imperative-widgets-and-layout) does the
+create/resize/destroy cycle for you.
+
 **A DOM node lives in exactly one place.** Appending "the same" node in two spots
 moves it. To render the same content twice, use a thunk `() => el(...)` (a fresh
 node each call) or `node.cloneNode(true)` — never a shared live node.
@@ -274,6 +306,25 @@ always arrays, parsed from and serialized to the repeated-key form
 (`?status=a&status=b`).
 
 ## Serving
+
+**Use a bundler (or vendored files) for anything real; a CDN is for prototypes.**
+A CDN import is a network dependency on someone else's server: one failed fetch
+and the page is blank. Install from npm and import `@nemanjan00/qrp` through
+Vite/esbuild/Rollup/webpack, or copy `dist/` next to your page and map it with an
+import map (see the README). Pin exact versions on a prototype that others use.
+
+**Load exactly one copy of qrp per page.** Reactivity lives in the core module's
+own variables, so two copies don't see each other: state changed through one
+never updates bindings made by the other, and nothing throws. qrp logs
+`qrp: a second copy of qrp's core loaded from …` when it happens. The usual causes:
+
+- importing qrp from one CDN URL and qrp-shadcdn's bundle (which re-exports the
+  core) from another — on a CDN, take `state`/`el`/`mount` from the qrp-shadcdn
+  bundle;
+- importing qrp subpaths through jsDelivr `+esm` or esm.sh — each subpath URL
+  can bundle its own private core;
+- two versions in `node_modules` (a dependency pinning a different qrp) — check
+  with `npm ls @nemanjan00/qrp` and dedupe.
 
 **History-API routing needs a server fallback.** A plain static server has no SPA
 fallback, so refreshing a deep route (`/users/7`) 404s. Configure the host to

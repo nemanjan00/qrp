@@ -6,7 +6,16 @@ find out by reading a diff. Newest first.
 
 ## Unreleased
 
-_(nothing yet)_
+- **A second copy of qrp's core now warns.** Two copies on one page (qrp from
+  one CDN URL, qrp-shadcdn's bundle from another; jsDelivr `+esm` subpaths; two
+  versions in `node_modules`) don't share reactivity, and that used to fail
+  silently. Each extra copy now logs `qrp: a second copy of qrp's core loaded`
+  with both URLs.
+- **Docs: cleanup and CDN use.** `onDispose` documents how to clean up when a
+  component's element goes away (there is no `ondisconnect`), with an example.
+  SHARP-EDGES has new entries: cleanup follows ownership, not the DOM; one copy
+  of qrp per page; a CDN is for prototypes. RECIPES has a row that points
+  "`ondisconnect` / manual `destroy()`" to `onDispose`.
 
 ## 0.15.0
 

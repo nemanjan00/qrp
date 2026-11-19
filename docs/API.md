@@ -210,7 +210,31 @@ onChange(() => pane.config.device, (device) => reload(device));
 onDispose(fn: () => void): void
 ```
 
-Register a cleanup to run when the current effect/scope disposes.
+Register a cleanup to run when the current effect/scope disposes. This is
+qrp's "on unmount" — there is no `ondisconnect` prop. A component that owns
+a listener, observer, timer, animation loop or camera stream registers its
+teardown here, and it runs when the owning `when()` branch switches, its
+`list()` row is removed, or the `mount()`/`scoped()` handle is disposed:
+
+  const Clock = () => {
+    const now = state({ t: Date.now() });
+    const id = setInterval(() => { now.t = Date.now(); }, 1000);
+    const onKey = (e) => { if(e.key === "Escape") close(); };
+    window.addEventListener("keydown", onKey);
+    onDispose(() => {
+      clearInterval(id);
+      window.removeEventListener("keydown", onKey);
+    });
+    return el("time", {}, () => new Date(now.t).toLocaleTimeString());
+  };
+
+  el("div", {}, when(() => ui.showClock, Clock));   // hiding it clears both
+
+Cleanup follows **ownership, not the DOM**: removing a node yourself
+(`node.remove()`, moving it with `append`) runs nothing. For a subtree you
+insert and remove by hand, build it inside `scoped()` and call its
+`dispose()` when you take it out. Called outside any effect or scope (at
+module top level), the cleanup is never run.
 
 ### `scope`
 
