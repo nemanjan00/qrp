@@ -684,17 +684,20 @@ download(toCSV(t.view.sorted(), columns), "people.csv");`),
 			const stick = stickToBottom(feed);
 			const readout = (label, value) => el("div", { style: "flex:1;min-width:120px" },
 				el("div", { class: "dim", style: "font-size:.75rem" }, label),
-				el("div", { style: "font-size:1.35rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums" }, value));
+				el("div", { style: "font-size:1.35rem;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap" }, value));
+			// fixed decimals: si() drops trailing zeros (433.920 → 433.92), which
+			// changes the width every tick and wraps the unit onto the next line
+			const fixed = (digits) => ({ minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 			return livePanel(
 				el("div", { class: "row", style: "gap:1rem;flex-wrap:wrap" },
-					readout("supply", () => si(readings.volts, "V")),
-					readout("carrier", () => si(readings.hz, "Hz")),
-					readout("current", () => si(readings.amps, "A"))),
-				el("div", { class: "dim", style: "font-size:.8rem;font-variant-numeric:tabular-nums" },
+					readout("supply", () => si(readings.volts, "V", fixed(2))),
+					readout("carrier", () => si(readings.hz, "Hz", fixed(3))),
+					readout("current", () => si(readings.amps, "A", fixed(2)))),
+				el("div", { class: "dim", style: "font-size:.8rem;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" },
 					() => `${readings.received.toLocaleString()} samples in · ${renders.n.toLocaleString()} renders (coalesced to 4/s)`),
 				feed,
-				el("div", { class: "row", style: "min-height:2.2rem" },
+				el("div", { class: "row", style: "height:2.2rem" },
 					el("span", { class: "dim", style: "font-size:.8rem" }, () => stick.pinned.value ? "following the newest event — scroll up to read history" : "paused: you scrolled up"),
 					when(() => !stick.pinned.value, () => el("button", { class: "btn", onclick: stick.scrollToBottom }, "↓ jump to latest"))));
 		};
